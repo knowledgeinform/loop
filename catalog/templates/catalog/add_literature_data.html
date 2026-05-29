@@ -1,0 +1,878 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+  <title>LOOP - Add Literature Data</title>
+{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/periodic-table.css' %}">
+  <style>
+    .synthesis-step { border: 1px solid #dee2e6; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f8f9fa; position: relative; cursor: pointer; }
+    .synthesis-step.active { border-color: #002d72; background: #fff; cursor: default; }
+    .synthesis-step:not(.active):hover { border-color: #adb5bd; background: #f1f3f5; }
+    .step-header { display: flex; justify-content: space-between; align-items: center; padding-right: 2rem; min-height: 38px; cursor: pointer; }
+    .synthesis-step.active .step-header { margin-bottom: 0.75rem; }
+    .step-header:hover { opacity: 0.8; }
+    .step-header-left { display: flex; align-items: center; gap: 0.5rem; }
+    .step-move-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+    .step-move-btns button { display: block; background: none; border: none; padding: 0 3px; line-height: 1; font-size: 0.55rem; color: #adb5bd; cursor: pointer; }
+    .step-move-btns button:not(:disabled):hover { color: #002d72; }
+    .step-move-btns button:disabled { opacity: 0.25; cursor: default; }
+    .step-number { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #002d72; color: #fff; border-radius: 50%; font-weight: 600; font-size: 0.9rem; flex-shrink: 0; }
+    .step-type-select { font-weight: 600; }
+    .step-arrow { color: #6c757d; font-size: 0.75rem; transition: transform 0.2s; }
+    .synthesis-step.active .step-arrow { transform: rotate(180deg); }
+    .step-content { display: none; }
+    .synthesis-step.active .step-content { display: block; }
+    .remove-step { position: absolute; top: 50%; right: 0.5rem; transform: translateY(-50%); z-index: 10; }
+    .synthesis-step.active .remove-step { top: 0.75rem; transform: none; }
+    .add-step-btn { border: 2px dashed #dee2e6; background: transparent; width: 100%; padding: 1rem; border-radius: 8px; color: #6c757d; cursor: pointer; transition: all 0.2s; }
+    .add-step-btn:hover { border-color: #002d72; color: #002d72; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div>
+  <div class="mb-1">
+    <a href="{% url 'add_data' %}" class="text-muted text-decoration-none small">← Back</a>
+  </div>
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'add_data' %}">Add Data</a></li>
+      {% if existing_material_auid %}
+      <li class="breadcrumb-item"><a href="{% url 'composition_detail' material_auid=existing_material_auid %}"><span class="text-monospace">{{ existing_material_auid }}</span></a></li>
+      {% endif %}
+      <li class="breadcrumb-item active">{% if edit_lit_id %}Modify Literature Data{% else %}Add Literature Data{% endif %}</li>
+    </ol>
+  </nav>
+
+  <h1>{% if edit_lit_id %}Modify Literature Data{% else %}Add Literature Data{% endif %}</h1>
+  {% if existing_material_auid %}
+  <div class="alert alert-info">
+    <strong>Locked material:</strong> <span class="text-monospace">{{ existing_material_auid }}</span> ({{ locked_structure_family|title }})
+  </div>
+  {% endif %}
+
+  <form method="post" class="upload-form" id="literature-upload-form">
+    {% csrf_token %}
+    {% if existing_material_auid %}
+    <input type="hidden" name="material_auid" value="{{ existing_material_auid }}">
+    {% endif %}
+    {% if edit_lit_id %}
+    <input type="hidden" name="edit_lit_id" value="{{ edit_lit_id }}">
+    <input type="hidden" name="edit_recipe_id" value="{{ edit_recipe_id }}">
+    {% endif %}
+
+    <section class="upload-section mb-4">
+      <h2>1. DOI and Synthesis Outcome</h2>
+      <div class="row align-items-start">
+        <div class="col-lg-8 mb-3">
+          <label for="{{ form.doi.id_for_label }}" class="form-label">DOI <span class="text-danger">*</span></label>
+          <div class="input-group">
+            {{ form.doi }}
+            <button type="button" class="btn btn-outline-secondary" id="doi-fetch-btn">Fetch metadata</button>
+          </div>
+          <div id="doi-fetch-status" class="form-text"></div>
+          <div class="form-text">e.g., 10.1038/s41578-019-0170-8</div>
+          {% if form.doi.errors %}<div class="text-danger small">{{ form.doi.errors }}</div>{% endif %}
+        </div>
+        <div class="col-lg-4 mb-3">
+          <label class="form-label mb-2">Successful synthesis? <span class="text-danger">*</span></label>
+          <div class="pt-1">
+            {% for radio in form.synthesis_successful %}
+            <div class="form-check mb-2">
+              {{ radio.tag }}
+              <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          {% if form.synthesis_successful.errors %}<div class="text-danger small mt-1">{{ form.synthesis_successful.errors }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-7 mb-3">
+          {{ form.title.label_tag }}
+          {{ form.title }}
+        </div>
+        <div class="col-md-5 mb-3">
+          {{ form.authors.label_tag }}
+          {{ form.authors }}
+          <div class="form-text">{{ form.authors.help_text }}</div>
+        </div>
+        <div class="col-md-3 mb-3">
+          {{ form.journal.label_tag }}
+          {{ form.journal }}
+        </div>
+        <div class="col-md-2 mb-3">
+          {{ form.year.label_tag }}
+          {{ form.year }}
+        </div>
+      </div>
+    </section>
+
+    <section class="upload-section mb-4">
+      <h2>2. Composition</h2>
+      <p class="text-muted">Select elements and specify ratios from the paper.</p>
+      <div class="mb-3 col-lg-8">
+        <label for="{{ form.structure_family.id_for_label }}" class="form-label">Structure Family <span class="text-danger">*</span></label>
+        <select
+          name="structure_family"
+          id="{{ form.structure_family.id_for_label }}"
+          class="form-select"
+          required
+          {% if existing_material_auid %}disabled{% endif %}
+        >
+          {% for value, label in form.structure_family.field.choices %}
+            <option
+              value="{{ value }}"
+              {% if locked_structure_family and locked_structure_family == value %}selected{% elif form.structure_family.value == value %}selected{% endif %}
+            >
+              {{ label }}
+            </option>
+          {% endfor %}
+        </select>
+        {% if existing_material_auid %}
+          <input type="hidden" name="structure_family" value="{{ locked_structure_family }}">
+        {% endif %}
+        {% if form.structure_family.errors %}<div class="text-danger small">{{ form.structure_family.errors }}</div>{% endif %}
+      </div>
+      <div class="visually-hidden" aria-hidden="true">
+        {{ form.element_order }}
+      </div>
+      {% if existing_material_auid %}
+        <div class="alert alert-light border mb-0">
+          <div class="small text-muted mb-2"><strong>Composition values locked from <span class="text-monospace">{{ existing_material_auid }}</span></strong></div>
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead>
+                <tr><th>Element</th><th>Ratio</th></tr>
+              </thead>
+              <tbody>
+                {% for item in locked_elements_display %}
+                <tr>
+                  <td>{{ item.0 }}</td>
+                  <td>{{ item.1 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% else %}
+        {# Required for periodic.js: syncs selected elements to POST field "elements" (same as upload/computational forms). #}
+        <input type="hidden" name="elements" id="composition-json" value="[]">
+        {% include "_periodic_table.html" with ptable_wrap_class="ptable-upload" %}
+      {% endif %}
+    </section>
+
+    <section class="upload-section">
+      <h2>3. Synthesis Process</h2>
+      <p class="text-muted mb-3">Add steps in the order they were performed. Click a step to expand/collapse details.</p>
+
+      <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+        <select class="form-select form-select-sm" style="max-width:320px;" id="protocol-load-select">
+          <option value="">— Load saved protocol —</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="protocol-load-btn">Load</button>
+        <span class="small" id="protocol-load-status"></span>
+      </div>
+
+      <div id="synthesis-steps-container">
+          <!-- Step 1 is always present -->
+          <div class="synthesis-step active" data-step="1">
+              <div class="step-header">
+                  <div class="step-header-left">
+                      <div class="step-move-btns">
+                          <button type="button" class="step-move-up" title="Move up">▲</button>
+                          <button type="button" class="step-move-down" title="Move down">▼</button>
+                      </div>
+                      <span class="step-number">1</span>
+                      <select name="step_1_type" class="form-select d-inline-block w-auto step-type-select">
+                          <option value="weighing">Weighing / Precursor Prep</option>
+                          <option value="ball_milling" selected>Ball Milling</option>
+                          <option value="mixing">Dry Mixing</option>
+                          <option value="pelletizing">Pelletizing / Pressing</option>
+                          <option value="heat_treatment">Heat Treatment / Sintering</option>
+                          <option value="annealing">Annealing</option>
+                          <option value="arc_melting">Arc Melting</option>
+                          <option value="quenching">Quenching</option>
+                          <option value="cooling">Controlled Cooling</option>
+                          <option value="grinding">Grinding / Polishing</option>
+                          <option value="xrd_measurement">Diffraction Measurement</option>
+                          <option value="other">Other</option>
+                      </select>
+                  </div>
+                  <span class="step-arrow">▼</span>
+              </div>
+              <div class="step-content">
+                  <!-- Ball Milling Fields (default) -->
+                  <div class="step-fields" data-for="ball_milling">
+                      <div class="row g-3">
+                          <div class="col-md-3">
+                              <label class="form-label">Milling Time (hours)</label>
+                              <input type="number" step="0.1" name="step_1_milling_time" class="form-control" placeholder="e.g., 20">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Milling Speed (RPM)</label>
+                              <input type="number" name="step_1_milling_rpm" class="form-control" placeholder="e.g., 400">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Ball:Powder Ratio</label>
+                              <input type="text" name="step_1_bpr" class="form-control"
+                                     placeholder="e.g., 10:1"
+                                     pattern="^\s*\d+(\.\d+)?\s*:\s*\d+(\.\d+)?\s*$"
+                                     title="Enter a ratio like 10:1">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Atmosphere</label>
+                              <select name="step_1_atmosphere" class="form-select">
+                                  <option value="argon">Argon</option>
+                                  <option value="nitrogen">Nitrogen</option>
+                                  <option value="air">Air</option>
+                                  <option value="vacuum">Vacuum</option>
+                              </select>
+                          </div>
+                      </div>
+                      <div class="row g-3 mt-2">
+                          <div class="col-md-4">
+                              <label class="form-label">Jar Material</label>
+                              <select name="step_1_jar_material" class="form-select">
+                                  <option value="stainless_steel">Stainless Steel</option>
+                                  <option value="tungsten_carbide">Tungsten Carbide</option>
+                                  <option value="zirconia">Zirconia</option>
+                                  <option value="agate">Agate</option>
+                              </select>
+                          </div>
+                          <div class="col-md-4">
+                              <label class="form-label">Ball Material</label>
+                              <select name="step_1_ball_material" class="form-select">
+                                  <option value="stainless_steel">Stainless Steel</option>
+                                  <option value="tungsten_carbide">Tungsten Carbide</option>
+                                  <option value="zirconia">Zirconia</option>
+                              </select>
+                          </div>
+                          <div class="col-md-4">
+                              <label class="form-label">Process Control Agent</label>
+                              <input type="text" name="step_1_pca" class="form-control" placeholder="e.g., ethanol, stearic acid">
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Weighing Fields -->
+                  <div class="step-fields d-none" data-for="weighing">
+                      <div class="row g-3">
+                          <div class="col-md-4">
+                              <label class="form-label">Total Mass (g)</label>
+                              <input type="number" step="0.001" name="step_1_total_mass" class="form-control" placeholder="e.g., 5.000">
+                          </div>
+                          <div class="col-md-8">
+                              <label class="form-label">Precursor Details</label>
+                              <textarea name="step_1_precursors" class="form-control" rows="2" placeholder="List precursors with purity, e.g., Co (99.9%), Cu (99.95%)"></textarea>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Mixing Fields -->
+                  <div class="step-fields d-none" data-for="mixing">
+                      <div class="row g-3">
+                          <div class="col-md-4">
+                              <label class="form-label">Mixing Time (min)</label>
+                              <input type="number" name="step_1_mixing_time" class="form-control" placeholder="e.g., 30">
+                          </div>
+                          <div class="col-md-4">
+                              <label class="form-label">Mixing Method</label>
+                              <select name="step_1_mixing_method" class="form-select">
+                                  <option value="mortar_pestle">Mortar & Pestle</option>
+                                  <option value="tumbler">Tumbler</option>
+                                  <option value="vortex">Vortex Mixer</option>
+                              </select>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Pelletizing Fields -->
+                  <div class="step-fields d-none" data-for="pelletizing">
+                      <div class="row g-3">
+                          <div class="col-md-3">
+                              <label class="form-label">Pressure (MPa)</label>
+                              <input type="number" name="step_1_press_pressure" class="form-control" placeholder="e.g., 300">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Hold Time (min)</label>
+                              <input type="number" name="step_1_press_time" class="form-control" placeholder="e.g., 5">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Die Diameter (mm)</label>
+                              <input type="number" name="step_1_die_diameter" class="form-control" placeholder="e.g., 13">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Lubricant</label>
+                              <input type="text" name="step_1_lubricant" class="form-control" placeholder="e.g., none, stearic acid">
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Heat Treatment Fields -->
+                  <div class="step-fields d-none" data-for="heat_treatment">
+                      <div class="row g-3">
+                          <div class="col-md-3">
+                              <label class="form-label">Max Temp (°C)</label>
+                              <input type="number" name="step_1_max_temp" class="form-control" placeholder="e.g., 1000">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Ramp Rate (°C/min)</label>
+                              <input type="number" step="0.1" name="step_1_ramp_rate" class="form-control" placeholder="e.g., 5">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Hold Time (hours)</label>
+                              <input type="number" step="0.1" name="step_1_hold_time" class="form-control" placeholder="e.g., 6">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Atmosphere</label>
+                              <select name="step_1_heat_atmosphere" class="form-select">
+                                  <option value="air">Air</option>
+                                  <option value="argon">Argon</option>
+                                  <option value="nitrogen">Nitrogen</option>
+                                  <option value="hydrogen">H₂/Ar (Reducing)</option>
+                                  <option value="oxygen">Oxygen</option>
+                                  <option value="vacuum">Vacuum</option>
+                              </select>
+                          </div>
+                      </div>
+                      <div class="row g-3 mt-2">
+                          <div class="col-md-4">
+                              <label class="form-label">Furnace Type</label>
+                              <select name="step_1_furnace_type" class="form-select">
+                                  <option value="box">Box Furnace</option>
+                                  <option value="tube">Tube Furnace</option>
+                                  <option value="muffle">Muffle Furnace</option>
+                                  <option value="sps">SPS/FAST</option>
+                              </select>
+                          </div>
+                          <div class="col-md-4">
+                              <label class="form-label">O₂ Partial Pressure (bar)</label>
+                              <input type="number" step="0.001" name="step_1_o2_pressure" class="form-control" placeholder="optional">
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Annealing Fields -->
+                  <div class="step-fields d-none" data-for="annealing">
+                      <div class="row g-3">
+                          <div class="col-md-3">
+                              <label class="form-label">Temperature (°C)</label>
+                              <input type="number" name="step_1_anneal_temp" class="form-control" placeholder="e.g., 800">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Duration (hours)</label>
+                              <input type="number" step="0.1" name="step_1_anneal_time" class="form-control" placeholder="e.g., 24">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Atmosphere</label>
+                              <select name="step_1_anneal_atmosphere" class="form-select">
+                                  <option value="air">Air</option>
+                                  <option value="argon">Argon</option>
+                                  <option value="vacuum">Vacuum</option>
+                              </select>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Arc Melting Fields -->
+                  <div class="step-fields d-none" data-for="arc_melting">
+                      <div class="row g-3">
+                          <div class="col-md-3">
+                              <label class="form-label">Current (A)</label>
+                              <input type="number" name="step_1_arc_current" class="form-control" placeholder="e.g., 150">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Number of Remelts</label>
+                              <input type="number" name="step_1_remelts" class="form-control" placeholder="e.g., 5">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Hearth Material</label>
+                              <select name="step_1_hearth" class="form-select">
+                                  <option value="copper">Water-cooled Copper</option>
+                                  <option value="graphite">Graphite</option>
+                              </select>
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Atmosphere</label>
+                              <select name="step_1_arc_atmosphere" class="form-select">
+                                  <option value="argon">Argon</option>
+                                  <option value="argon_hydrogen">Ar + H₂</option>
+                              </select>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Quenching Fields -->
+                  <div class="step-fields d-none" data-for="quenching">
+                      <div class="row g-3">
+                          <div class="col-md-4">
+                              <label class="form-label">Quenching Medium</label>
+                              <select name="step_1_quench_medium" class="form-select">
+                                  <option value="water">Water</option>
+                                  <option value="oil">Oil</option>
+                                  <option value="liquid_nitrogen">Liquid Nitrogen</option>
+                                  <option value="air">Air (rapid)</option>
+                              </select>
+                          </div>
+                          <div class="col-md-4">
+                              <label class="form-label">Medium Temperature (°C)</label>
+                              <input type="number" name="step_1_quench_temp" class="form-control" placeholder="e.g., 25">
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Cooling Fields -->
+                  <div class="step-fields d-none" data-for="cooling">
+                      <div class="row g-3">
+                          <div class="col-md-4">
+                              <label class="form-label">Cooling Method</label>
+                              <select name="step_1_cool_method" class="form-select">
+                                  <option value="furnace_cool">Furnace Cool (in furnace)</option>
+                                  <option value="air_cool">Air Cool (removed from furnace)</option>
+                                  <option value="controlled">Controlled Rate</option>
+                              </select>
+                          </div>
+                          <div class="col-md-4">
+                              <label class="form-label">Cooling Rate (°C/min)</label>
+                              <input type="number" step="0.1" name="step_1_cool_rate" class="form-control" placeholder="if controlled">
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Grinding Fields -->
+                  <div class="step-fields d-none" data-for="grinding">
+                      <div class="row g-3">
+                          <div class="col-md-4">
+                              <label class="form-label">Method</label>
+                              <select name="step_1_grind_method" class="form-select">
+                                  <option value="mortar">Agate Mortar & Pestle</option>
+                                  <option value="ball_mill">Ball Mill (short)</option>
+                                  <option value="polishing">Mechanical Polishing</option>
+                              </select>
+                          </div>
+                          <div class="col-md-4">
+                              <label class="form-label">Final Particle Size</label>
+                              <input type="text" name="step_1_particle_size" class="form-control" placeholder="e.g., < 45 μm">
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Diffraction Measurement Fields -->
+                  <div class="step-fields d-none" data-for="xrd_measurement">
+                      <div class="row g-3">
+                          <div class="col-md-3">
+                              <label class="form-label">Radiation</label>
+                              <select name="step_1_xrd_radiation" class="form-select">
+                                  <option value="cu_ka">Cu Kα</option>
+                                  <option value="co_ka">Co Kα</option>
+                                  <option value="mo_ka">Mo Kα</option>
+                              </select>
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">2θ Range</label>
+                              <input type="text" name="step_1_xrd_range" class="form-control" placeholder="e.g., 20-80">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Step Size (°)</label>
+                              <input type="number" step="0.001" name="step_1_xrd_step" class="form-control" placeholder="e.g., 0.02">
+                          </div>
+                          <div class="col-md-3">
+                              <label class="form-label">Scan Speed (°/min)</label>
+                              <input type="number" step="0.1" name="step_1_xrd_speed" class="form-control" placeholder="e.g., 2">
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Other Fields -->
+                  <div class="step-fields d-none" data-for="other">
+                      <div class="row g-3">
+                          <div class="col-12">
+                              <label class="form-label">Description</label>
+                              <textarea name="step_1_other_desc" class="form-control" rows="2" placeholder="Describe this synthesis step..."></textarea>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div class="row g-3 mt-2">
+                      <div class="col-12">
+                          <label class="form-label">Step Notes</label>
+                          <input type="text" name="step_1_notes" class="form-control" placeholder="Optional notes for this step">
+                      </div>
+                  </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger remove-step" style="display:none">×</button>
+          </div>
+      </div>
+
+      <button type="button" class="add-step-btn" id="add-step-btn">
+          + Add Another Step
+      </button>
+
+      <input type="hidden" name="step_count" id="step-count" value="1">
+    </section>
+
+    <section class="upload-section mb-4">
+      <h2>4. Additional Findings</h2>
+      <div class="mb-3">
+        {{ form.findings.label_tag }}
+        {{ form.findings }}
+      </div>
+    </section>
+
+    <div class="upload-actions">
+      <a href="{% if edit_lit_id and edit_recipe_id %}{% url 'literature_detail' recipe_id=edit_recipe_id lit_id=edit_lit_id %}{% elif existing_material_auid %}{% url 'composition_detail' material_auid=existing_material_auid %}{% else %}{% url 'add_data' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+      {% if duplicate_literature_warning %}
+      <button type="submit" class="btn btn-warning">Confirm and Submit Literature</button>
+      {% elif edit_lit_id %}
+      <button type="submit" class="btn btn-primary">Save Literature Changes</button>
+      {% else %}
+      <button type="submit" class="btn btn-primary">Submit Literature</button>
+      {% endif %}
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger mt-3">{{ form.non_field_errors }}</div>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  {% if existing_material_auid %}
+  <script>window.LOCK_COMPOSITION = true;</script>
+  {% endif %}
+  <script type="module" src="{% static 'js/upload_form.js' %}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const doiInput = document.getElementById('id_doi');
+      const titleInput = document.getElementById('id_title');
+      const journalInput = document.getElementById('id_journal');
+      const yearInput = document.getElementById('id_year');
+      const fetchBtn = document.getElementById('doi-fetch-btn');
+      const statusEl = document.getElementById('doi-fetch-status');
+      const endpoint = "{% url 'fetch_doi' %}";
+      if (doiInput && fetchBtn) {
+        fetchBtn.addEventListener('click', async function () {
+          const doi = (doiInput.value || '').trim();
+          if (!doi) {
+            statusEl.textContent = 'Enter a DOI first.';
+            statusEl.className = 'form-text text-warning';
+            return;
+          }
+          fetchBtn.disabled = true;
+          statusEl.textContent = 'Fetching DOI metadata...';
+          statusEl.className = 'form-text text-muted';
+          try {
+            const res = await fetch(`${endpoint}?doi=${encodeURIComponent(doi)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || `Request failed (${res.status})`);
+            if (titleInput && data.title) titleInput.value = data.title;
+            if (journalInput && data.journal) journalInput.value = data.journal;
+            if (yearInput && data.year) yearInput.value = data.year;
+            statusEl.textContent = 'Metadata fetched from DOI.';
+            statusEl.className = 'form-text text-success';
+          } catch (err) {
+            statusEl.textContent = `DOI lookup failed: ${err.message}`;
+            statusEl.className = 'form-text text-danger';
+          } finally {
+            fetchBtn.disabled = false;
+          }
+        });
+      }
+
+      let stepCount = 1;
+      const container = document.getElementById('synthesis-steps-container');
+      const addBtn = document.getElementById('add-step-btn');
+      const stepCountInput = document.getElementById('step-count');
+      if (!container || !addBtn || !stepCountInput) return;
+
+      container.addEventListener('click', function(e) {
+        const upBtn   = e.target.closest('.step-move-up');
+        const downBtn = e.target.closest('.step-move-down');
+        if (upBtn || downBtn) {
+          const step = e.target.closest('.synthesis-step');
+          if (step) moveStep(step, upBtn ? 'up' : 'down');
+          return;
+        }
+        const removeBtn = e.target.closest('.remove-step');
+        if (removeBtn) {
+          const step = removeBtn.closest('.synthesis-step');
+          if (step) { step.remove(); renumberSteps(); }
+          return;
+        }
+        const step = e.target.closest('.synthesis-step');
+        if (!step || e.target.closest('select, input, textarea, button')) return;
+        if (!step.classList.contains('active')) {
+          step.classList.add('active');
+        } else if (e.target.closest('.step-header')) {
+          step.classList.remove('active');
+        }
+      });
+
+      container.addEventListener('change', function(e) {
+        if (e.target.classList.contains('step-type-select')) updateStepFields(e.target);
+      });
+
+      function updateStepFields(typeSelect) {
+        const step = typeSelect.closest('.synthesis-step');
+        const selectedType = typeSelect.value;
+        step.querySelectorAll('.step-fields').forEach(field => {
+          field.classList.toggle('d-none', field.dataset.for !== selectedType);
+        });
+      }
+      container.querySelectorAll('.step-type-select').forEach(updateStepFields);
+
+      addBtn.addEventListener('click', function() {
+        const template = container.querySelector('.synthesis-step');
+        const newStep = document.createElement('div');
+        newStep.className = 'synthesis-step active';
+        newStep.innerHTML = template.innerHTML;
+        newStep.querySelectorAll('[name^="step_1_"]').forEach(input => {
+          input.name = input.name.replace('step_1_', 'step_TMP_');
+          if (input.tagName === 'SELECT') input.selectedIndex = 0; else input.value = '';
+        });
+        const tmpSelect = newStep.querySelector('.step-type-select');
+        if (tmpSelect) tmpSelect.name = 'step_TMP_type';
+        const typeSelect = newStep.querySelector('.step-type-select');
+        typeSelect.value = 'heat_treatment';
+        updateStepFields(typeSelect);
+        container.appendChild(newStep);
+        renumberSteps();
+      });
+
+      function renumberSteps() {
+        const steps = container.querySelectorAll('.synthesis-step');
+        stepCount = steps.length;
+        stepCountInput.value = stepCount;
+        steps.forEach((step, index) => {
+          const num = index + 1;
+          step.dataset.step = num;
+          step.querySelector('.step-number').textContent = num;
+          step.querySelectorAll('input, select, textarea').forEach(input => {
+            if (input.name && input.name.match(/^step_(\d+|TMP)_/)) {
+              input.name = input.name.replace(/^step_(\d+|TMP)_/, 'step_' + num + '_');
+            }
+          });
+          const removeBtn = step.querySelector('.remove-step');
+          if (removeBtn) removeBtn.style.display = steps.length > 1 ? '' : 'none';
+          const upBtn   = step.querySelector('.step-move-up');
+          const downBtn = step.querySelector('.step-move-down');
+          if (upBtn)   upBtn.disabled   = (index === 0);
+          if (downBtn) downBtn.disabled = (index === steps.length - 1);
+        });
+      }
+
+      function moveStep(step, dir) {
+        if (dir === 'up') {
+          const prev = step.previousElementSibling;
+          if (prev && prev.classList.contains('synthesis-step')) container.insertBefore(step, prev);
+        } else {
+          const next = step.nextElementSibling;
+          if (next && next.classList.contains('synthesis-step')) container.insertBefore(next, step);
+        }
+        renumberSteps();
+      }
+
+      function mapStoredKeyToFieldSuffix(stepType, key) {
+        const mapping = {
+          ball_milling: {
+            milling_time_hours: 'milling_time',
+            milling_rpm: 'milling_rpm',
+            ball_powder_ratio: 'bpr',
+            atmosphere: 'atmosphere',
+            jar_material: 'jar_material',
+            ball_material: 'ball_material',
+            process_control_agent: 'pca',
+            notes: 'notes',
+          },
+          weighing: { total_mass_g: 'total_mass', precursors: 'precursors', notes: 'notes' },
+          mixing: { mixing_time_min: 'mixing_time', mixing_method: 'mixing_method', notes: 'notes' },
+          pelletizing: {
+            pressure_mpa: 'press_pressure',
+            hold_time_min: 'press_time',
+            die_diameter_mm: 'die_diameter',
+            lubricant: 'lubricant',
+            notes: 'notes',
+          },
+          heat_treatment: {
+            max_temp_c: 'max_temp',
+            ramp_rate_c_min: 'ramp_rate',
+            hold_time_hours: 'hold_time',
+            atmosphere: 'heat_atmosphere',
+            furnace_type: 'furnace_type',
+            o2_partial_pressure_bar: 'o2_pressure',
+            notes: 'notes',
+          },
+          annealing: {
+            temperature_c: 'anneal_temp',
+            duration_hours: 'anneal_time',
+            atmosphere: 'anneal_atmosphere',
+            notes: 'notes',
+          },
+          arc_melting: {
+            current_a: 'arc_current',
+            number_of_remelts: 'remelts',
+            hearth_material: 'hearth',
+            atmosphere: 'arc_atmosphere',
+            notes: 'notes',
+          },
+          quenching: { quenching_medium: 'quench_medium', medium_temperature_c: 'quench_temp', notes: 'notes' },
+          cooling: { cooling_method: 'cool_method', cooling_rate_c_min: 'cool_rate', notes: 'notes' },
+          grinding: { grinding_method: 'grind_method', final_particle_size: 'particle_size', notes: 'notes' },
+          xrd_measurement: {
+            radiation: 'xrd_radiation',
+            two_theta_range: 'xrd_range',
+            step_size_deg: 'xrd_step',
+            scan_speed_deg_min: 'xrd_speed',
+            notes: 'notes',
+          },
+          other: { description: 'other_desc', notes: 'notes' },
+        };
+        return (mapping[stepType] && mapping[stepType][key]) || key;
+      }
+
+      // ── Protocol library integration ─────────────────────────────
+      const protocolSelect     = document.getElementById('protocol-load-select');
+      const protocolLoadBtn    = document.getElementById('protocol-load-btn');
+      const protocolLoadStatus = document.getElementById('protocol-load-status');
+      const API_BASE = window.LOOP_BASE_PATH || '';
+      const apiPath  = (p) => `${API_BASE}${p}`;
+      let savedProtocols = [], savedProtocolsLoaded = false;
+
+      async function fetchSavedProtocols() {
+        if (savedProtocolsLoaded) return savedProtocols;
+        try {
+          const resp = await fetch(apiPath('/api/protocols/'), { credentials: 'same-origin' });
+          const data = await resp.json();
+          savedProtocols = Array.isArray(data.protocols) ? data.protocols : [];
+        } catch (_) { savedProtocols = []; }
+        savedProtocolsLoaded = true;
+        return savedProtocols;
+      }
+
+      function populateProtocolSelect() {
+        if (!protocolSelect) return;
+        protocolSelect.innerHTML = '<option value="">— Load saved protocol —</option>';
+        savedProtocols.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name + (p.uploaded_by_username && !p.is_mine ? ` (${p.uploaded_by_username})` : '');
+          if (p.description) opt.title = p.description;
+          protocolSelect.appendChild(opt);
+        });
+      }
+
+      function setProtocolStatus(text, kind) {
+        if (!protocolLoadStatus) return;
+        protocolLoadStatus.textContent = text || '';
+        protocolLoadStatus.className = 'small text-' + (kind || 'muted');
+        if (text) setTimeout(() => { if (protocolLoadStatus.textContent === text) protocolLoadStatus.textContent = ''; }, 4000);
+      }
+
+      if (protocolSelect) {
+        protocolSelect.addEventListener('focus', async () => {
+          await fetchSavedProtocols();
+          populateProtocolSelect();
+        }, { once: true });
+      }
+
+      function applyProtocolSteps(steps) {
+        if (!Array.isArray(steps) || !steps.length) return;
+        const templateHTML = container.querySelector('.synthesis-step').innerHTML;
+        container.innerHTML = '';
+        steps.forEach((stepData, i) => {
+          const num  = i + 1;
+          const step = document.createElement('div');
+          step.className  = 'synthesis-step active';
+          step.dataset.step = String(num);
+          step.innerHTML  = templateHTML;
+          step.querySelector('.step-number').textContent = String(num);
+          step.querySelectorAll('[name^="step_1_"]').forEach(inp => {
+            inp.name = inp.name.replace('step_1_', 'step_' + num + '_');
+            if (inp.tagName === 'SELECT') inp.selectedIndex = 0; else inp.value = '';
+          });
+          const typeSelect = step.querySelector('.step-type-select');
+          typeSelect.name  = 'step_' + num + '_type';
+          typeSelect.value = stepData.step_type || 'other';
+          updateStepFields(typeSelect);
+          Object.entries(stepData || {}).forEach(([key, value]) => {
+            if (key === 'step_number' || key === 'step_type' || key === 'precursors_list' || value == null) return;
+            const suffix = mapStoredKeyToFieldSuffix(stepData.step_type, key);
+            const field  = step.querySelector(`[name="step_${num}_${suffix}"]`);
+            if (field) field.value = value;
+          });
+          // Map structured precursors_list to the plain textarea used by the literature form
+          if (stepData.step_type === 'weighing' && Array.isArray(stepData.precursors_list) && stepData.precursors_list.length) {
+            const ta = step.querySelector(`[name="step_${num}_precursors"]`);
+            if (ta) {
+              ta.value = stepData.precursors_list.map(p => {
+                const parts = [p.name];
+                if (p.cas_number) parts.push(`(${p.cas_number})`);
+                if (p.purity)     parts.push(p.purity);
+                if (p.supplier)   parts.push(`from ${p.supplier}`);
+                return parts.filter(Boolean).join(' ');
+              }).join(', ');
+            }
+          }
+          container.appendChild(step);
+        });
+        renumberSteps();
+      }
+
+      if (protocolLoadBtn) {
+        protocolLoadBtn.addEventListener('click', () => {
+          const id = protocolSelect ? protocolSelect.value : '';
+          if (!id) { setProtocolStatus('Select a protocol first', 'danger'); return; }
+          const protocol = savedProtocols.find(p => p.id === id);
+          if (!protocol) { setProtocolStatus('Protocol not found', 'danger'); return; }
+          if (!confirm(`Replace all current steps with "${protocol.name}"?`)) return;
+          applyProtocolSteps(protocol.steps || []);
+          setProtocolStatus(`Loaded "${protocol.name}"`, 'success');
+          if (protocolSelect) protocolSelect.value = '';
+        });
+      }
+
+      const existingSteps = JSON.parse('{{ edit_literature_synthesis_steps_json|escapejs }}');
+      if (Array.isArray(existingSteps) && existingSteps.length > 0) {
+        const template = container.querySelector('.synthesis-step');
+        if (template) {
+          container.innerHTML = '';
+          existingSteps.forEach((stepData, index) => {
+            const stepNum = index + 1;
+            const step = document.createElement('div');
+            step.className = 'synthesis-step active';
+            step.dataset.step = String(stepNum);
+            step.innerHTML = template.innerHTML;
+            step.querySelector('.step-number').textContent = String(stepNum);
+            step.querySelectorAll('[name^="step_1_"]').forEach(input => {
+              input.name = input.name.replace('step_1_', 'step_' + stepNum + '_');
+            });
+            const typeSelect = step.querySelector('.step-type-select');
+            typeSelect.name = 'step_' + stepNum + '_type';
+            typeSelect.value = (stepData.step_type || 'ball_milling');
+            updateStepFields(typeSelect);
+
+            Object.entries(stepData || {}).forEach(([key, value]) => {
+              if (key === 'step_number' || key === 'step_type' || value === null || value === undefined) return;
+              const fieldSuffix = mapStoredKeyToFieldSuffix(stepData.step_type, key);
+              const field = step.querySelector(`[name="step_${stepNum}_${fieldSuffix}"]`);
+              if (!field) return;
+              field.value = value;
+            });
+
+            container.appendChild(step);
+          });
+          renumberSteps();
+        }
+      }
+    });
+  </script>
+{% endblock %}

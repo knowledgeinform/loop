@@ -1,0 +1,154 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>LOOP - Recipe {{ recipe_id }}</title>
+{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/catalog-detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 px-xl-5 mt-3 mt-lg-4 catalog-detail-page recipe-page">
+  {% include "catalog/partials/_detail_hero.html" with detail_kind="recipe" %}
+
+  <div class="py-4">
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Synthesis steps</h2>
+      </div>
+      <div class="detail-section-body">
+        {% if synthesis_steps_display %}
+        <div class="synthesis-timeline">
+          {% for step in synthesis_steps_display %}
+          <div class="synthesis-step-card">
+            <h5 class="mb-2">Step {{ step.step_number }} <span class="text-muted fs-6">— {{ step.step_type_label }}</span></h5>
+            {% for detail in step.details %}
+            <div class="step-details-row">
+              <div class="step-details-label">{{ detail.label }}</div>
+              <div class="step-details-value">{{ detail.value }}</div>
+            </div>
+            {% endfor %}
+            {% if step.precursors_list %}
+            <div class="step-details-row">
+              <div class="step-details-label">Precursors</div>
+              <div class="step-details-value">
+                <table class="table table-sm table-bordered mb-0">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Formula</th>
+                      <th>CAS</th>
+                      <th>Purity</th>
+                      <th>Supplier</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for p in step.precursors_list %}
+                    <tr>
+                      <td>{{ p.name|default:"—" }}</td>
+                      <td>{{ p.formula|default:"—" }}</td>
+                      <td>{{ p.cas_number|default:"—" }}</td>
+                      <td>{{ p.purity|default:"—" }}</td>
+                      <td>{{ p.supplier|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No synthesis steps recorded for this recipe.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Trials <span class="badge text-bg-light border ms-1">{{ trials|length }}</span></h2>
+        <a href="{% url 'upload_exp_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add experiment</a>
+      </div>
+      <div class="detail-section-body flush">
+        {% if trials %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0 comp-data-table">
+            <thead>
+              <tr><th>Trial ID</th><th>Date</th><th>Result</th><th>Experimenter</th><th>Raw Data</th></tr>
+            </thead>
+            <tbody>
+              {% for trial in trials %}
+              <tr>
+                <td><a href="{% url 'trial_detail' recipe_id=recipe_id trial_id=trial.trial_id %}">{{ trial.trial_id }}</a></td>
+                <td>{{ trial.trial_date|date:"Y-m-d" }}</td>
+                <td>
+                  {% if trial.phase_status == 'single_phase' %}
+                  <span class="badge text-bg-success">Single phase</span>
+                  {% elif trial.phase_status == 'not_confirmed' %}
+                  <span class="badge text-bg-secondary">Not confirmed</span>
+                  {% elif trial.success %}
+                  <span class="badge text-bg-success">Success</span>
+                  {% elif trial.success == False %}
+                  <span class="badge text-bg-danger">Failed</span>
+                  {% else %}
+                  <span class="badge text-bg-secondary">Not confirmed</span>
+                  {% endif %}
+                </td>
+                <td>{{ trial.experimenter|default:"—" }}</td>
+                <td>
+                  {% if trial.raw_data_link %}
+                  <a href="{{ trial.raw_data_link }}" target="_blank" rel="noopener">{{ trial.raw_data_type|upper }}</a>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="comp-tab-empty mb-0">No trials yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Literature <span class="badge text-bg-light border ms-1">{{ literature|length }}</span></h2>
+        <a href="{% url 'add_literature_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add reference</a>
+      </div>
+      <div class="detail-section-body flush">
+        {% if literature %}
+        <div class="list-group list-group-flush">
+          {% for lit in literature %}
+          <a href="{% url 'literature_detail' recipe_id=recipe_id lit_id=lit.lit_id %}" class="list-group-item list-group-item-action">
+            <div class="d-flex justify-content-between">
+              <div>
+                <h6 class="mb-1">{{ lit.title|default:"Untitled" }}</h6>
+                <small class="text-muted">DOI {{ lit.doi }} · {{ lit.journal|default:"" }} {% if lit.year %}({{ lit.year }}){% endif %}</small>
+              </div>
+              <div class="text-end">
+                {% if lit.synthesis_successful %}
+                <span class="badge text-bg-success">Successful</span>
+                {% else %}
+                <span class="badge text-bg-secondary">Reported</span>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="comp-tab-empty mb-0">No literature references for this recipe yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% load static %}
+
+<div class="mb-3">
+  <label for="ptable" class="form-label">Select Elements</label>
+
+  {# inject optional wrapper class here #}
+  <div class="ptable-scroll {% if ptable_wrap_class %}{{ ptable_wrap_class }}{% endif %}">
+    <div id="ptable" class="ptable-grid"></div>
+  </div>
+
+  <p class="form-text mt-2">Click elements to add them to your composition. Ratios appear below.</p>
+</div>
+
+<div class="mb-3">
+  <label for="selected-elements" class="form-label">Composition Ratios</label>
+  <div id="selected-elements"></div>
+</div>
+
+<script>
+  window.ELEMENTS_URL = "{% static 'js/elements.json' %}";
+</script>

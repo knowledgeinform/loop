@@ -1,0 +1,57 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn --workers 3 --worker-class gthread --threads 4 --timeout 120 --bind 0.0.0.0:8000 loop.wsgi:application
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - /srv/loop/data/LOOP/staticfiles:/app/staticfiles
+      - /srv/loop/data/LOOP/media:/app/media
+      - /srv/loop/data/LOOP/hf-cache:/hf-cache
+      - /srv/loop/data/LOOP/users:/app/sqlite
+      - /srv/loop/data/LOOP/raw-uploads:/app/raw-uploads
+    environment:
+      DJANGO_DEBUG: "False"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,s4e.ai
+      DJANGO_SETTINGS_MODULE: loop.settings
+      SUBPATH: /loop
+      HF_HOME: /hf-cache
+      STATIC_ROOT: /app/staticfiles
+      MEDIA_ROOT: /app/media
+      SQLITE_PATH: /app/sqlite/db.sqlite3
+      RAW_UPLOADS_ROOT: /app/raw-uploads
+      MONGODB_URI: mongodb://mongodb:27017/loop
+      MONGODB_RAW_URI: mongodb://mongodb:27017/loop_raw
+    env_file:
+      - .env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: "no"
+
+  mongodb:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM mongodb/mongodb-atlas-local:8.0.14
+        USER root
+        RUN usermod -u 110 mongod && groupmod -g 110 mongod \
+            && find / -xdev -user 1000 -exec chown 110 {} + 2>/dev/null; \
+               find / -xdev -group 1000 -exec chgrp 110 {} + 2>/dev/null; \
+               true
+        USER mongod
+    hostname: mongodb
+    volumes:
+      - /srv/loop/data/LOOP/mongodb:/data/db
+      - /srv/loop/data/LOOP/mongodb-configdb:/data/configdb
+    environment:
+      MONGO_INITDB_DATABASE: loop
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.runCommand({ ping: 1 }).ok\" && mongosh --quiet --port 27027 --eval \"db.runCommand({ ping: 1 }).ok\""]
+      interval: 10s
+      timeout: 5s
+      retries: 24
+      start_period: 60s
+    restart: "no"

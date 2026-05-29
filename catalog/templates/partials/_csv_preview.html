@@ -1,0 +1,21 @@
+<div class="p-3">
+
+  <!-- Plot -->
+  <img
+    src="{{ preview.plot_image }}"
+    alt="Plot"
+    class="img-fluid mb-3"
+  />
+
+  <!-- Metadata -->
+  <div class="table-responsive">   {# ★ NEW wrapper ★ #}
+    <table class="table table-sm table-striped mb-0">
+      <tbody>
+        {% for key, value in preview.metadata %}
+        <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>

@@ -1,0 +1,301 @@
+{% load humanize %}
+<div class="browse-results-toolbar d-flex justify-content-between align-items-center mb-2 mt-3 flex-wrap gap-2">
+  <span class="text-muted small">
+    {% if view_mode == "materials" %}
+      {{ total }} material{{ total|pluralize }} found
+    {% elif view_mode == "recipes" %}
+      {{ total }} recipe{{ total|pluralize }} found
+    {% elif view_mode == "literature" %}
+      {{ total }} literature record{{ total|pluralize }} found
+    {% else %}
+      {{ total }} calculation{{ total|pluralize }} found
+    {% endif %}
+  </span>
+  <a href="{% url 'add_data' %}" class="btn btn-success btn-sm">+ Add Data</a>
+</div>
+
+{% if composition_rows %}
+  {% if view_mode == "materials" %}
+  <div class="table-responsive browse-table-wrap">
+    <table class="table table-sm table-striped table-hover align-middle browse-data-table mb-0">
+      <thead class="table-light">
+        <tr>
+          {% if search_mode == "semantic" %}
+          <th class="text-end text-nowrap" title="Cosine similarity (best across composition, structure, and synthesis embeddings)">Score</th>
+          {% endif %}
+          <th>Organization</th>
+          <th>Material</th>
+          <th>Structure</th>
+          <th class="text-end text-nowrap" title="Number of distinct elements"># El</th>
+          <th class="text-nowrap">Temp. (°C)</th>
+          <th class="text-center">Lit.</th>
+          <th class="text-center">Exp.</th>
+          <th class="text-center">DFT</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in composition_rows %}
+        <tr
+          class="browse-row-clickable"
+          data-href="{% url 'composition_detail' material_auid=row.material_auid %}"
+        >
+          {% if search_mode == "semantic" %}
+          <td class="text-end text-nowrap">
+            {% if row.semantic_score is not None %}
+              <span class="font-monospace small">{{ row.semantic_score|floatformat:3 }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td>
+            {% if row.organizations %}
+              <div class="d-flex flex-wrap gap-1">
+                {% for org in row.organizations %}
+                <span class="badge org-badge org-badge-{{ org|lower|slugify }}">{{ org }}</span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono">{{ row.material_auid }}</a>
+            {% if row.composition_compact %}
+              <div class="small text-muted browse-elements-inline">{{ row.composition_compact }}</div>
+            {% endif %}
+          </td>
+          <td><span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span></td>
+          <td class="text-end">{{ row.num_elements }}</td>
+          <td class="text-nowrap small">{{ row.temperature_display }}</td>
+          <td class="text-center">
+            {% if row.literature_count %}
+              <span class="badge browse-result-badge">{{ row.literature_count }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if row.trial_count %}
+              <span class="badge browse-result-badge">{{ row.trial_count }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if row.has_comp %}
+              <span class="badge browse-result-badge">✓</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% elif view_mode == "recipes" %}
+  <div class="table-responsive browse-table-wrap">
+    <table class="table table-sm table-striped table-hover align-middle browse-data-table mb-0">
+      <thead class="table-light">
+        <tr>
+          {% if search_mode == "semantic" %}
+          <th class="text-end text-nowrap">Score</th>
+          {% endif %}
+          <th>Organization</th>
+          <th>Recipe</th>
+          <th>Material</th>
+          <th>Structure</th>
+          <th class="text-nowrap">Synthesis (preview)</th>
+          <th class="text-nowrap">Temp.</th>
+          <th class="text-center">Lit.</th>
+          <th class="text-center">Exp.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in composition_rows %}
+        <tr
+          class="browse-row-clickable"
+          data-href="{% url 'recipe_detail' recipe_id=row.recipe_auid %}"
+        >
+          {% if search_mode == "semantic" %}
+          <td class="text-end text-nowrap">
+            {% if row.semantic_score is not None %}
+              <span class="font-monospace small">{{ row.semantic_score|floatformat:3 }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td>
+            {% if row.organizations %}
+              <div class="d-flex flex-wrap gap-1">
+                {% for org in row.organizations %}
+                <span class="badge org-badge org-badge-{{ org|lower|slugify }}">{{ org }}</span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td><a href="{% url 'recipe_detail' recipe_id=row.recipe_auid %}" class="browse-mono small">{{ row.recipe_auid }}</a></td>
+          <td><a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono small">{{ row.material_auid }}</a></td>
+          <td><span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span></td>
+          <td class="small text-muted browse-cell-truncate" title="{{ row.steps_preview|escape }}">{{ row.steps_preview }}</td>
+          <td class="text-nowrap small">{{ row.temperature_display }}</td>
+          <td class="text-center">
+            {% if row.literature_count %}
+              <span class="badge browse-result-badge">{{ row.literature_count }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if row.trial_count %}
+              <span class="badge browse-result-badge">{{ row.trial_count }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% elif view_mode == "literature" %}
+  <div class="table-responsive browse-table-wrap">
+    <table class="table table-sm table-striped table-hover align-middle browse-data-table mb-0">
+      <thead class="table-light">
+        <tr>
+          {% if search_mode == "semantic" %}
+          <th class="text-end text-nowrap">Score</th>
+          {% endif %}
+          <th>DOI</th>
+          <th>Title</th>
+          <th>Year</th>
+          <th>Journal</th>
+          <th>Material</th>
+          <th class="text-nowrap">Temp.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in composition_rows %}
+        <tr
+          class="browse-row-clickable"
+          data-href="{% url 'literature_detail' recipe_id=row.recipe_auid lit_id=row.lit_id %}"
+        >
+          {% if search_mode == "semantic" %}
+          <td class="text-end text-nowrap">
+            {% if row.semantic_score is not None %}
+              <span class="font-monospace small">{{ row.semantic_score|floatformat:3 }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td class="small browse-mono">{{ row.doi }}</td>
+          <td class="small browse-cell-truncate" title="{{ row.title|escape }}">{{ row.title|default:"—" }}</td>
+          <td class="text-nowrap small">{% if row.year %}{{ row.year }}{% else %}—{% endif %}</td>
+          <td class="small browse-cell-truncate">{{ row.journal|default:"—" }}</td>
+          <td><a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono small">{{ row.material_auid }}</a></td>
+          <td class="text-nowrap small">{{ row.temperature_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <div class="table-responsive browse-table-wrap">
+    <table class="table table-sm table-striped table-hover align-middle browse-data-table mb-0">
+      <thead class="table-light">
+        <tr>
+          {% if search_mode == "semantic" %}
+          <th class="text-end text-nowrap">Score</th>
+          {% endif %}
+          <th>Calculation</th>
+          <th>Material</th>
+          <th>Structure</th>
+          <th class="text-end text-nowrap" title="Formation energy (eV/atom or as stored)">E<sub>f</sub></th>
+          <th class="text-end text-nowrap">Hull (eV)</th>
+          <th class="text-end text-nowrap">E<sub>g</sub> (eV)</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in composition_rows %}
+        <tr
+          class="browse-row-clickable"
+          data-href="{% url 'computational_detail' material_auid=row.material_auid comp_auid=row.comp_auid %}"
+        >
+          {% if search_mode == "semantic" %}
+          <td class="text-end text-nowrap">
+            {% if row.semantic_score is not None %}
+              <span class="font-monospace small">{{ row.semantic_score|floatformat:3 }}</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td><a href="{% url 'computational_detail' material_auid=row.material_auid comp_auid=row.comp_auid %}" class="browse-mono small">{{ row.comp_auid }}</a></td>
+          <td><a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono small">{{ row.material_auid }}</a></td>
+          <td><span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span></td>
+          <td class="text-end font-monospace small">
+            {% if row.dft_formation_energy_ev is not None %}{{ row.dft_formation_energy_ev|floatformat:3 }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end font-monospace small">
+            {% if row.dft_hull_distance_ev is not None %}{{ row.dft_hull_distance_ev|floatformat:3 }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end font-monospace small">
+            {% if row.dft_bandgap_ev is not None %}{{ row.dft_bandgap_ev|floatformat:3 }}{% else %}—{% endif %}
+          </td>
+          <td class="small">{{ row.dft_source|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+{% if total_pages > 1 %}
+<nav class="mt-3" aria-label="Page navigation">
+  <ul class="pagination pagination-sm justify-content-center mb-0">
+    {% if page > 1 %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page|add:'-1' }}&{{ query_string }}">&laquo; Prev</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link">&laquo; Prev</span></li>
+    {% endif %}
+
+    <li class="page-item disabled">
+      <span class="page-link">Page {{ page }} of {{ total_pages }}</span>
+    </li>
+
+    {% if page < total_pages %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page|add:'1' }}&{{ query_string }}">Next &raquo;</a>
+    </li>
+    {% else %}
+    <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-info mb-0">
+  {% if view_mode == "materials" %}
+    No materials match your criteria.
+  {% elif view_mode == "recipes" %}
+    No recipes match your criteria.
+  {% elif view_mode == "literature" %}
+    No literature entries match your criteria.
+  {% else %}
+    No computational records match your criteria.
+  {% endif %}
+  <a href="{% url 'add_data' %}">Add data</a> to grow the catalog.
+</div>
+{% endif %}

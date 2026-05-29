@@ -1,0 +1,242 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>LOOP - Trial {{ record.trial_id }}</title>
+{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/catalog-detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 px-xl-5 mt-3 mt-lg-4 catalog-detail-page trial-page">
+  {% include "catalog/partials/_detail_hero.html" with detail_kind="trial" %}
+
+  <div class="py-4">
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Experimental summary</h2>
+      </div>
+      <div class="detail-section-body">
+        <div class="row">
+          <div class="col-lg-7">
+            {% if plot_b64 %}
+            <img src="data:image/png;base64,{{ plot_b64 }}" alt="XRD Plot for {{ record.trial_id }}" class="xrd-plot">
+            {% if plot_notice %}
+            <div class="small text-muted mt-2">{{ plot_notice }}</div>
+            {% endif %}
+            {% if detected_peaks %}
+            <div class="table-responsive mt-3">
+              <table class="table table-sm table-bordered meta-table">
+                <thead>
+                  <tr>
+                    <th>2θ</th>
+                    <th>Intensity</th>
+                    <th>Area</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for peak in detected_peaks %}
+                  <tr>
+                    <td>{{ peak.two_theta|floatformat:4 }}</td>
+                    <td>{{ peak.intensity|floatformat:2 }}</td>
+                    <td>{{ peak.area|floatformat:2 }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="text-muted">No plottable XRD data found for this trial.</div>
+            {% endif %}
+          </div>
+          <div class="col-lg-5">
+            <dl class="row">
+              <dt class="col-5">Date</dt>
+              <dd class="col-7">{{ record.trial_date|date:"Y-m-d H:i" }}</dd>
+
+              <dt class="col-5">Result</dt>
+              <dd class="col-7">
+                {% if record.phase_status == 'single_phase' %}
+                <span class="badge text-bg-success">Single phase</span>
+                {% elif record.phase_status == 'multi_phase' %}
+                <span class="badge text-bg-danger">Multi-phase / failed</span>
+                {% elif record.phase_status == 'not_confirmed' %}
+                <span class="badge text-bg-secondary">Phase not yet confirmed</span>
+                {% elif record.success %}
+                <span class="badge text-bg-success">Success</span>
+                {% elif record.success == False %}
+                <span class="badge text-bg-danger">Failed</span>
+                {% else %}
+                <span class="badge text-bg-secondary">Phase not yet confirmed</span>
+                {% endif %}
+              </dd>
+
+              <dt class="col-5">Experimenter</dt>
+              <dd class="col-7">{{ record.experimenter|default:"—" }}</dd>
+
+              <dt class="col-5">Raw Data</dt>
+              <dd class="col-7">
+                {% if record.raw_data_link %}
+                <a href="{{ record.raw_data_link }}" target="_blank" rel="noopener">Open {{ record.raw_data_type|upper }} file</a>
+                {% else %}
+                —
+                {% endif %}
+              </dd>
+
+              <dt class="col-5">Full GSAS-II</dt>
+              <dd class="col-7">
+                {% if has_xrd_csv %}
+                  {% if full_gsas_applied %}
+                    <span class="small text-success">This plot and peak table used full GSAS-II refinement.</span>
+                  {% else %}
+                    <a href="{{ request.path }}?refine_gsas=1" class="btn btn-outline-secondary btn-sm">Run full GSAS-II refinement</a>
+                    <span class="small text-muted d-block mt-1">Runs a full fit in the browser request — often minutes. The page reloads when it finishes.</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted small">No local XRD CSV found for this trial.</span>
+                {% endif %}
+              </dd>
+
+              {% if record.notes %}
+              <dt class="col-5">Notes</dt>
+              <dd class="col-7">{{ record.notes }}</dd>
+              {% endif %}
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Synthesis process</h2>
+      </div>
+      <div class="detail-section-body">
+        {% if synthesis_steps_display %}
+        <div class="synthesis-timeline">
+          {% for step in synthesis_steps_display %}
+          <div class="synthesis-step-card">
+            <h5 class="mb-2 step-title">
+              Step {{ step.step_number }}
+              <span class="step-type-inline">- {{ step.step_type_label }}</span>
+            </h5>
+            {% if step.details or step.precursors_list %}
+            <div>
+              {% for detail in step.details %}
+              <div class="step-details-row">
+                <div class="step-details-label">{{ detail.label }}</div>
+                <div class="step-details-value">{{ detail.value }}</div>
+              </div>
+              {% endfor %}
+              {% if step.precursors_list %}
+              <div class="step-details-row">
+                <div class="step-details-label">Precursors</div>
+                <div class="step-details-value">
+                  <table class="table table-sm table-bordered mb-0">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Formula</th>
+                        <th>CAS</th>
+                        <th>Purity</th>
+                        <th>Supplier</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for p in step.precursors_list %}
+                      <tr>
+                        <td>{{ p.name|default:"—" }}</td>
+                        <td>{{ p.formula|default:"—" }}</td>
+                        <td>{{ p.cas_number|default:"—" }}</td>
+                        <td>{{ p.purity|default:"—" }}</td>
+                        <td>{{ p.supplier|default:"—" }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No details recorded for this step.</p>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No structured synthesis steps recorded.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Additional information</h2>
+      </div>
+      <div class="detail-section-body">
+        {% if additional_notes %}
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered table-hover meta-table mb-0">
+            <tbody>
+              {% for key, value in additional_notes %}
+              <tr>
+                <th class="text-muted">{{ key }}</th>
+                <td>{{ value }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0 fs-6">No additional information provided.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>CSV metadata</h2>
+      </div>
+      <div class="detail-section-body">
+        {% if metadata_rows %}
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered table-hover meta-table mb-0">
+            <tbody>
+              {% for key, value in metadata_rows %}
+              <tr>
+                <th class="text-muted">{{ key }}</th>
+                <td>{{ value|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No metadata found.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if can_modify_trial or can_delete_trial %}
+    <div class="d-flex justify-content-between align-items-center mt-4">
+      {% if can_modify_trial %}
+      <a href="{% url 'upload_exp_data' %}?material_auid={{ material_auid }}&edit_recipe_id={{ recipe_id }}&edit_trial_id={{ trial_id }}" class="btn btn-outline-primary">Modify Trial</a>
+      {% else %}
+      <span></span>
+      {% endif %}
+      {% if can_delete_trial %}
+      <form method="post" action="{% url 'delete_trial' recipe_id=recipe_id trial_id=trial_id %}" onsubmit="return confirm('Delete this trial? This cannot be undone.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger">Delete Trial</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

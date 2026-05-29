@@ -1,0 +1,397 @@
+/* Shared catalog detail pages (composition + recipe/trial/literature/DFT) */
+:root {
+  --comp-ink: #1a1510;
+  --comp-muted: rgba(26, 21, 16, 0.58);
+  --comp-accent: #002d72;
+  --comp-line: rgba(26, 21, 16, 0.1);
+  --comp-border: rgba(49, 38, 29, 0.1);
+}
+
+.catalog-detail-page .btn,
+.composition-detail .btn {
+  border-radius: 0.35rem;
+}
+
+.comp-hero-banner {
+  background: linear-gradient(135deg, #e8ecf4 0%, #f7f8fb 100%);
+  border-bottom: 1px solid var(--comp-line);
+  border-radius: 10px;
+  padding: 1.25rem 1.15rem 1.5rem;
+  margin-bottom: 0;
+}
+
+.comp-hero-auid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--comp-accent);
+  letter-spacing: -0.02em;
+}
+
+.comp-hero-breadcrumb {
+  font-size: 0.875rem;
+  color: var(--comp-muted);
+  margin-bottom: 0.5rem;
+}
+
+.comp-hero-breadcrumb a {
+  color: var(--comp-muted);
+  text-decoration: none;
+}
+
+.comp-hero-breadcrumb a:hover {
+  color: var(--comp-accent);
+  text-decoration: underline;
+}
+
+.comp-hero-formula-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--comp-muted);
+}
+
+.comp-hero-stats {
+  font-size: 0.9rem;
+  color: var(--comp-muted);
+}
+
+.comp-hero-stats strong {
+  color: var(--comp-ink);
+  font-weight: 600;
+}
+
+.comp-hero-notes {
+  font-size: 0.8rem;
+  color: var(--comp-muted);
+  max-width: 52rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #f5e6c8;
+  border-radius: 8px;
+}
+
+.comp-hero-notes summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--comp-ink);
+  user-select: none;
+}
+
+.comp-hero-formula-line {
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--comp-ink);
+  line-height: 1.5;
+}
+
+.comp-hero-formula-line sub {
+  font-size: 0.65em;
+  font-weight: 500;
+}
+
+.composition-stoich-details {
+  margin-top: 0.35rem;
+}
+
+.composition-stoich-details.composition-stoich-inline {
+  margin-top: 0;
+  vertical-align: baseline;
+}
+
+.composition-stoich-details summary {
+  cursor: pointer;
+  color: var(--comp-accent);
+  font-size: 0.875rem;
+  user-select: none;
+  display: inline;
+}
+
+.composition-stoich-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.composition-stoich-details summary::before {
+  content: "\25B8 ";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.composition-stoich-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+/* Tabs (composition) */
+.comp-detail-tabs .nav-link {
+  color: var(--comp-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.65rem 1.1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+
+.comp-detail-tabs .nav-link:hover {
+  color: var(--comp-accent);
+}
+
+.comp-detail-tabs .nav-link.active {
+  color: var(--comp-accent);
+  background: transparent;
+  border-bottom-color: var(--comp-accent);
+}
+
+.comp-tab-panel {
+  border: 1px solid var(--comp-line);
+  border-radius: 0 0 12px 12px;
+  border-top: none;
+  padding: 0;
+  background: #fff;
+  min-height: 200px;
+}
+
+/* Stacked sections (subpages without tabs) */
+.detail-section-panel {
+  border: 1px solid var(--comp-line);
+  border-radius: 12px;
+  padding: 0;
+  background: #fff;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+
+.comp-tab-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid rgba(26, 21, 16, 0.08);
+  background: rgba(0, 45, 114, 0.03);
+}
+
+.comp-tab-toolbar h2 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(49, 38, 29, 0.5);
+  margin: 0;
+}
+
+.detail-section-body {
+  padding: 1rem 1.15rem;
+}
+
+.detail-section-body.flush {
+  padding: 0;
+}
+
+.catalog-detail-page.literature-page .step-details {
+  margin: 0;
+}
+
+.comp-data-table {
+  width: 100%;
+  margin-bottom: 0;
+  font-size: 0.95rem;
+}
+
+.comp-data-table thead th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--comp-muted);
+  padding: 0.85rem 1.15rem;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--comp-line);
+  background: #fafbfc;
+}
+
+.comp-data-table tbody td {
+  padding: 0.9rem 1.15rem;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(26, 21, 16, 0.06);
+}
+
+.comp-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.comp-data-table .lit-title-cell {
+  white-space: normal;
+  min-width: 12rem;
+}
+
+.comp-route-card {
+  border: 1px solid var(--comp-line);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  margin: 1.15rem;
+  background: #fafbfc;
+}
+
+.comp-route-card .route-link {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--comp-accent);
+  text-decoration: none;
+}
+
+.comp-route-card .route-link:hover {
+  text-decoration: underline;
+}
+
+.comp-route-card .route-auid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--comp-muted);
+  word-break: break-all;
+  margin-top: 0.25rem;
+}
+
+.comp-route-card .route-meta {
+  font-size: 0.88rem;
+  color: rgba(26, 21, 16, 0.55);
+  margin-top: 0.4rem;
+}
+
+.comp-route-card .route-preview {
+  font-size: 0.9rem;
+  color: rgba(26, 21, 16, 0.72);
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+
+.row-clickable {
+  cursor: pointer;
+}
+
+.row-clickable:hover {
+  background: rgba(0, 45, 114, 0.04);
+}
+
+.auid-mono {
+  font-family: var(--bs-font-monospace);
+  font-size: 0.95em;
+  word-break: break-all;
+}
+
+.comp-tab-empty {
+  padding: 1.25rem 1.15rem;
+  color: var(--comp-muted);
+  margin: 0;
+}
+
+/* Synthesis timeline (recipe / trial / literature) */
+.catalog-detail-page .synthesis-timeline {
+  border-left: 3px solid rgba(0, 45, 114, 0.2);
+  margin-left: 0.6rem;
+  padding-left: 1rem;
+}
+
+.catalog-detail-page .synthesis-step-card {
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.6rem;
+  background: #fff;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.catalog-detail-page .synthesis-step-card::before {
+  content: "";
+  position: absolute;
+  left: -1.47rem;
+  top: 1.1rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: #002d72;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 45, 114, 0.2);
+}
+
+.catalog-detail-page .step-details-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 0.75rem;
+  padding: 0.32rem 0;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.catalog-detail-page .step-details-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.catalog-detail-page .step-details-label {
+  color: #6c757d;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.catalog-detail-page .step-details-value {
+  font-size: 0.93rem;
+}
+
+.catalog-detail-page .step-title {
+  font-size: 1.06rem;
+  font-weight: 600;
+}
+
+.catalog-detail-page .step-type-inline {
+  color: #495057;
+  font-size: 1.02rem;
+  font-weight: 500;
+}
+
+.catalog-detail-page.trial-page .step-details-label,
+.catalog-detail-page.literature-page .step-details-label {
+  text-transform: capitalize;
+}
+
+.catalog-detail-page.trial-page .step-details-label::after,
+.catalog-detail-page.literature-page .step-details-label::after {
+  content: ":";
+}
+
+.catalog-detail-page .xrd-plot {
+  width: 100%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.catalog-detail-page .meta-table th {
+  width: 260px;
+  white-space: nowrap;
+}
+
+.catalog-detail-page .hero-actions .btn-outline-secondary {
+  border-color: rgba(0, 45, 114, 0.35);
+  color: var(--comp-accent);
+}
+
+.catalog-detail-page .hero-actions .btn-outline-secondary:hover {
+  background: var(--comp-accent);
+  border-color: var(--comp-accent);
+  color: #fff;
+}
+
+.catalog-detail-page .btn-outline-primary {
+  color: var(--comp-accent);
+  border-color: var(--comp-accent);
+}
+
+.catalog-detail-page .btn-outline-primary:hover {
+  background: var(--comp-accent);
+  border-color: var(--comp-accent);
+  color: #fff;
+}

@@ -1,0 +1,158 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>LOOP - Literature Detail</title>
+{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/catalog-detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 px-xl-5 mt-3 mt-lg-4 catalog-detail-page literature-page">
+  {% include "catalog/partials/_detail_hero.html" with detail_kind="literature" %}
+
+  <div class="py-4">
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Literature summary</h2>
+      </div>
+      <div class="detail-section-body">
+        <dl class="row mb-0">
+          <dt class="col-4">DOI</dt>
+          <dd class="col-8">
+            {% if record.doi %}
+            <a href="https://doi.org/{{ record.doi }}" target="_blank" rel="noopener">{{ record.doi }}</a>
+            {% else %}
+            —
+            {% endif %}
+          </dd>
+
+          <dt class="col-4">Journal</dt>
+          <dd class="col-8">{{ record.journal|default:"—" }}</dd>
+
+          <dt class="col-4">Authors</dt>
+          <dd class="col-8">
+            {% if record.authors %}
+            {{ record.authors|join:", " }}
+            {% else %}
+            —
+            {% endif %}
+          </dd>
+
+          <dt class="col-4">Year</dt>
+          <dd class="col-8">{{ record.year|default:"—" }}</dd>
+
+          <dt class="col-4">Synthesis Outcome</dt>
+          <dd class="col-8">
+            {% if record.synthesis_successful %}
+            <span class="badge text-bg-success">Successful</span>
+            {% else %}
+            <span class="badge text-bg-danger">Not successful</span>
+            {% endif %}
+          </dd>
+
+          <dt class="col-4">Extracted By</dt>
+          <dd class="col-8">{{ record.extracted_by|default:"—" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Additional findings</h2>
+      </div>
+      <div class="detail-section-body">
+        <div class="border rounded p-3 bg-light mb-0">
+          {% if record.notes %}
+          {{ record.notes }}
+          {% else %}
+          <span class="text-muted">No findings provided.</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Synthesis steps</h2>
+      </div>
+      <div class="detail-section-body">
+        {% if synthesis_steps_display %}
+        <div class="synthesis-timeline">
+          {% for step in synthesis_steps_display %}
+          <div class="synthesis-step-card">
+            <div class="mb-2">
+              <h5 class="mb-0 step-title">
+                Step {{ step.step_number|default:forloop.counter }}
+                <span class="step-type-inline">- {{ step.step_type_label|default:"Unspecified" }}</span>
+              </h5>
+            </div>
+            <div class="step-details">
+              {% for detail in step.details %}
+              <div class="step-details-row">
+                <div class="step-details-label">{{ detail.label }}</div>
+                <div class="step-details-value">{{ detail.value }}</div>
+              </div>
+              {% endfor %}
+              {% if step.precursors_list %}
+              <div class="step-details-row">
+                <div class="step-details-label">Precursors</div>
+                <div class="step-details-value">
+                  <table class="table table-sm table-bordered mb-0">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Formula</th>
+                        <th>CAS</th>
+                        <th>Purity</th>
+                        <th>Supplier</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for p in step.precursors_list %}
+                      <tr>
+                        <td>{{ p.name|default:"—" }}</td>
+                        <td>{{ p.formula|default:"—" }}</td>
+                        <td>{{ p.cas_number|default:"—" }}</td>
+                        <td>{{ p.purity|default:"—" }}</td>
+                        <td>{{ p.supplier|default:"—" }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% elif record.exp_condition %}
+        <p class="text-muted mb-0">This entry has synthesis metadata but no structured synthesis steps.</p>
+        {% else %}
+        <p class="text-muted mb-0">No synthesis details recorded.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if can_modify_literature or can_delete_literature %}
+    <div class="d-flex justify-content-between align-items-center mt-4">
+      {% if can_modify_literature %}
+      <a href="{% url 'add_literature_data' %}?material_auid={{ material_auid }}&edit_recipe_id={{ recipe_id }}&edit_lit_id={{ lit_id }}" class="btn btn-outline-primary">Modify Literature</a>
+      {% else %}
+      <span></span>
+      {% endif %}
+      {% if can_delete_literature %}
+      <form method="post" action="{% url 'delete_literature' recipe_id=recipe_id lit_id=lit_id %}" onsubmit="return confirm('Delete this literature entry? This cannot be undone.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger">Delete Literature</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

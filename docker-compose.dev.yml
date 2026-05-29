@@ -1,0 +1,64 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ${STATIC_ROOT_HOST:-./staticfiles}:/app/staticfiles
+      - ${MEDIA_ROOT_HOST:-./media}:/app/media
+      # Persist the sentence-transformers / Hugging Face Hub download across
+      # image rebuilds. Without this volume, the ~90 MB all-MiniLM-L6-v2
+      # weights get re-downloaded every time the web container is rebuilt.
+      - hf_cache:/hf-cache
+      - raw_uploads:/app/raw-uploads
+    environment:
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_SECRET_KEY: dev-secret-change-me
+      DJANGO_EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+      DEV_COLLECTSTATIC: "0"
+      MONGODB_URI: mongodb://mongodb:27017/loop
+      MONGODB_RAW_URI: mongodb://mongodb:27017/loop_raw
+      RAW_UPLOADS_ROOT: /app/raw-uploads
+      # Single canonical cache root for all Hugging Face libraries
+      # (transformers, sentence-transformers, datasets, hub). Set HF_HOME
+      # and every one of them picks it up. Points at the named volume above.
+      HF_HOME: /hf-cache
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  mongodb:
+    # Pinned to an exact LTS 8.0 patch. `latest` auto-upgrades every time
+    # the tag is refreshed and has already broken us once (8.2.x runner
+    # changed the replica-set keyfile init path). Bump this deliberately
+    # after verifying the new version boots against the existing
+    # `mongodb_data` volume; production deployments should mirror this pin.
+    image: mongodb/mongodb-atlas-local:8.0.14
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: loop
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  static_volume:
+  media_volume:
+  mongodb_data:
+  hf_cache:
+  raw_uploads:

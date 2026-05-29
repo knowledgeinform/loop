@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      # Same family/version pin as ``docker-compose.dev.yml`` (prod-like dev + CI parity).
+      mongodb:
+        image: mongodb/mongodb-atlas-local:8.0.14
+        ports:
+          - 27017:27017
+    env:
+      # Atlas Local is a single-node RS that advertises a Docker-only hostname; without
+      # directConnection the driver follows RS discovery and fails on the GitHub runner.
+      MONGODB_URI: mongodb://127.0.0.1:27017/loop_test?directConnection=true
+      MONGODB_RAW_URI: mongodb://127.0.0.1:27017/loop_raw_test?directConnection=true
+      DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
+      DJANGO_DEBUG: "False"
+      DJANGO_SETTINGS_MODULE: loop.settings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Wait for MongoDB
+        run: |
+          for i in $(seq 1 60); do
+            if bash -c "echo >/dev/tcp/127.0.0.1/27017" 2>/dev/null; then
+              echo "Mongo is accepting connections"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Mongo did not become ready in time"
+          exit 1
+      - name: Run tests
+        run: python manage.py test

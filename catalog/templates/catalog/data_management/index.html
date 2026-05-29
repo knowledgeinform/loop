@@ -1,0 +1,36 @@
+{% extends "base_generic.html" %}
+
+{% block title %}
+<title>LOOP — Data management</title>
+{% endblock %}
+
+{% block content %}
+<h1>Data management</h1>
+<p class="text-muted">MongoDB collections (superuser only). You can list documents, edit raw BSON as JSON, or delete rows. Deleting a composition does not automatically remove related trial or literature records—use the main app flows when possible.</p>
+
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Collection</th>
+        <th class="text-end">Documents</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>users</code><br><span class="small text-muted">Django users + affiliations (SQLite + MongoDB)</span></td>
+        <td class="text-end">{{ user_count }}</td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'data_management_users' %}">Open</a></td>
+      </tr>
+      {% for row in collections %}
+      <tr>
+        <td><code>{{ row.slug }}</code><br><span class="small text-muted">{{ row.label }}</span></td>
+        <td class="text-end">{{ row.count }}</td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'data_management_collection' collection=row.slug %}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

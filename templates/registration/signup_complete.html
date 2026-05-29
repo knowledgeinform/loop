@@ -1,0 +1,42 @@
+{% extends "base_generic.html" %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <style>
+    .auth-shell {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .auth-card {
+      border: 1px solid rgba(49, 38, 29, 0.12);
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(49, 38, 29, 0.08);
+    }
+    .auth-card .card-body {
+      padding: 1.25rem;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="auth-shell">
+  <div class="mb-1">
+    <a href="{% url 'index' %}" class="text-muted text-decoration-none small">← Back</a>
+  </div>
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+      <li class="breadcrumb-item active">Registration successful</li>
+    </ol>
+  </nav>
+
+  <h1 class="mb-3">Registration successful</h1>
+  <div class="card auth-card">
+    <div class="card-body">
+      <p class="mb-0">Your account was created. Please send an email to <a href="mailto:loop@mintaka.arch.jhu.edu">loop@mintaka.arch.jhu.edu</a> with your username to be verified for site access.</p>
+    </div>
+  </div>
+  </div>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

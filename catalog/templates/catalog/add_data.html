@@ -1,0 +1,78 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>LOOP - Add Data</title>
+{% endblock %}
+
+{% block content %}
+<h1>Add Data</h1>
+<p class="lead">Select the type of data you want to add to the LOOP database.</p>
+
+<div class="mt-4">
+  <!-- Experimental Data -->
+  <a href="{% url 'upload_exp_data' %}" class="text-decoration-none d-block">
+    <div class="card mb-3 card-hover">
+      <div class="card-body d-flex">
+        <div class="fs-1 me-4">🧪</div>
+        <div>
+          <h5 class="card-title mb-1">Experimental Data</h5>
+          <p class="card-text text-muted small mb-2">Upload experimental results (composition, synthesis steps, outcomes):</p>
+          <ul class="small text-muted mb-0 ps-3">
+            <li>Optional XRD CSV with automatic plotting</li>
+            <li>Synthesis conditions (milling, temperature, atmosphere)</li>
+            <li>Success/failure outcomes and phase analysis</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </a>
+
+  <!-- Literature Data -->
+  <a href="{% url 'add_literature_data' %}" class="text-decoration-none d-block">
+    <div class="card mb-3 card-hover">
+      <div class="card-body d-flex">
+        <div class="fs-1 me-4">📚</div>
+        <div>
+          <h5 class="card-title mb-1">Literature Data</h5>
+          <p class="card-text text-muted small mb-2">Add references from published papers:</p>
+          <ul class="small text-muted mb-0 ps-3">
+            <li>DOI lookup (auto-fetches title, journal, year)</li>
+            <li>Synthesis conditions from paper</li>
+            <li>Link compositions to publications</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </a>
+
+  <!-- Computational Data -->
+  <a href="{% url 'add_computational_data' %}" class="text-decoration-none d-block">
+    <div class="card mb-3 card-hover">
+      <div class="card-body d-flex">
+        <div class="fs-1 me-4">💻</div>
+        <div>
+          <h5 class="card-title mb-1">Computational Data</h5>
+          <p class="card-text text-muted small mb-2">Add DFT calculations and ML predictions:</p>
+          <ul class="small text-muted mb-0 ps-3">
+            <li>Formation energy, hull distance</li>
+            <li>Bandgap calculations</li>
+            <li>Source database (mintaka, AFLOW, etc.)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </a>
+</div>
+
+<style>
+.card-hover {
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+
+{% endblock %}

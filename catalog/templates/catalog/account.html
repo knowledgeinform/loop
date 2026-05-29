@@ -1,0 +1,67 @@
+{% extends "base_generic.html" %}
+
+{% block title %}
+<title>LOOP - Account</title>
+{% endblock %}
+
+{% block content %}
+<div class="mb-1">
+    <a href="{% url 'index' %}" class="text-muted text-decoration-none small">← Back</a>
+</div>
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+        <li class="breadcrumb-item active">Account</li>
+    </ol>
+</nav>
+
+<h1 class="mb-3">Account</h1>
+<p class="text-muted mb-4">Basic details for your LOOP user profile.</p>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Username</dt>
+            <dd class="col-sm-9">{{ user.username }}</dd>
+
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9">{{ user.email|default:"—" }}</dd>
+
+            <dt class="col-sm-3">First name</dt>
+            <dd class="col-sm-9">{{ user.first_name|default:"—" }}</dd>
+
+            <dt class="col-sm-3">Last name</dt>
+            <dd class="col-sm-9">{{ user.last_name|default:"—" }}</dd>
+
+            <dt class="col-sm-3">Date joined</dt>
+            <dd class="col-sm-9">{{ user.date_joined }}</dd>
+
+            <dt class="col-sm-3">Last login</dt>
+            <dd class="col-sm-9">{{ user.last_login|default:"—" }}</dd>
+
+            <dt class="col-sm-3">Affiliations</dt>
+            <dd class="col-sm-9">
+                {% if selected_affiliations %}
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for aff in selected_affiliations %}
+                        <span class="badge org-badge org-badge-{{ aff|lower|slugify }}">{{ aff }}</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    —
+                {% endif %}
+            </dd>
+        </dl>
+
+        <hr>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <a href="{% url 'precursors_manage' %}" class="btn btn-outline-primary btn-sm">Manage saved precursors</a>
+            <a href="{% url 'protocols_manage' %}" class="btn btn-outline-primary btn-sm">Manage saved protocols</a>
+            <form method="post" action="{% url 'logout' %}" class="mb-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

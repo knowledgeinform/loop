@@ -1,0 +1,78 @@
+{% extends "base_generic.html" %}
+
+{% block title %}
+<title>LOOP — {{ label }}</title>
+{% endblock %}
+
+{% block content %}
+<div class="mb-2">
+  <a href="{% url 'data_management_index' %}" class="text-muted text-decoration-none small">← Data Management</a>
+</div>
+<h1>{{ label }}</h1>
+<p class="text-muted small"><code>{{ collection }}</code></p>
+
+{% if is_compositions %}
+<form method="get" class="row g-2 align-items-end mb-4">
+  <div class="col-md-4 col-lg-3">
+    <label for="dm-sf" class="form-label mb-0">Structure family</label>
+    <select name="structure_family" id="dm-sf" class="form-select">
+      <option value="">All</option>
+      {% for sf in structure_families %}
+      <option value="{{ sf }}" {% if filter_structure_family == sf %}selected{% endif %}>{{ sf|title }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-5 col-lg-4">
+    <label for="dm-q" class="form-label mb-0">Search <code>material_auid</code></label>
+    <input type="search" name="q" id="dm-q" class="form-control" value="{{ filter_q }}" placeholder="Substring…" autocomplete="off">
+  </div>
+  <div class="col-md-3 col-lg-2">
+    <button type="submit" class="btn btn-primary w-100">Apply</button>
+  </div>
+</form>
+{% endif %}
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>ObjectId</th>
+        <th>Preview</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in items %}
+      <tr>
+        <td><code class="small">{{ row.id }}</code></td>
+        <td>{{ row.preview }}</td>
+        <td class="text-end text-nowrap">
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'data_management_edit' collection=collection object_id=row.id %}?next={{ request.get_full_path|urlencode }}">Edit JSON</a>
+          <form method="post" action="{% url 'data_management_delete' collection=collection object_id=row.id %}" class="d-inline" onsubmit="return confirm('Delete this document permanently?');">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="text-muted">No documents.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav aria-label="Pagination">
+  <ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?{{ qs_prev }}">Previous</a></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?{{ qs_next }}">Next</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

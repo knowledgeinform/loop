@@ -1,0 +1,303 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>LOOP - Saved Precursors</title>
+{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <style>
+    .precursor-table input,
+    .precursor-table textarea {
+      font-size: 0.9rem;
+    }
+    .precursor-empty {
+      border: 1px dashed #dee2e6;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: #6c757d;
+    }
+    .cas-lookup-inline {
+      display: flex;
+      gap: 0.5rem;
+      align-items: stretch;
+    }
+    .cas-lookup-inline input { max-width: 180px; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="mb-1">
+  <a href="{% url 'account' %}" class="text-muted text-decoration-none small">← Back to account</a>
+</div>
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'account' %}">Account</a></li>
+    <li class="breadcrumb-item active">Saved Precursors</li>
+  </ol>
+</nav>
+
+<h1 class="mb-3">Saved Precursors</h1>
+<p class="text-muted mb-4">
+  Shared library for fast insertion of recurring precursors (e.g. <em>CuO 99.9%
+  from Sigma-Aldrich</em>) into the Weighing step of an experiment. Look up a
+  compound by CAS number to pre-fill the name and formula from PubChem.
+  {% if user_affiliations %}
+  Entries you add will be visible to everyone in
+  <strong>{{ user_affiliations|join:", " }}</strong>.
+  {% endif %}
+  You can only edit or delete your own entries.
+</p>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <strong>Add a precursor</strong>
+  </div>
+  <div class="card-body">
+    <form id="precursor-create-form" class="row g-2">
+      <div class="col-md-3">
+        <label class="form-label small mb-1">CAS number</label>
+        <div class="cas-lookup-inline">
+          <input type="text" class="form-control form-control-sm" id="new-cas" placeholder="e.g. 7440-50-8">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="new-cas-lookup">Lookup</button>
+        </div>
+        <div class="form-text small" id="new-cas-status">&nbsp;</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small mb-1">Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-sm" id="new-name" required placeholder="e.g. Copper(II) oxide">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Formula</label>
+        <input type="text" class="form-control form-control-sm" id="new-formula" placeholder="CuO">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Purity</label>
+        <input type="text" class="form-control form-control-sm" id="new-purity" placeholder="99.9%">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-1">Supplier</label>
+        <input type="text" class="form-control form-control-sm" id="new-supplier" placeholder="Sigma-Aldrich">
+      </div>
+      <div class="col-md-12">
+        <label class="form-label small mb-1">Notes</label>
+        <input type="text" class="form-control form-control-sm" id="new-notes" placeholder="Optional">
+      </div>
+      <div class="col-md-12 d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary btn-sm">Save precursor</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="precursor-list-container">
+  {% if precursors %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle precursor-table">
+      <thead>
+        <tr>
+          <th style="min-width: 140px;">CAS</th>
+          <th style="min-width: 180px;">Name</th>
+          <th style="min-width: 120px;">Formula</th>
+          <th style="min-width: 100px;">Purity</th>
+          <th style="min-width: 140px;">Supplier</th>
+          <th>Notes</th>
+          <th style="min-width: 120px;">Owner</th>
+          <th style="min-width: 140px;">Shared with</th>
+          <th style="width: 1%;"></th>
+        </tr>
+      </thead>
+      <tbody id="precursor-rows">
+        {% for p in precursors %}
+        <tr data-id="{{ p.id }}" data-mine="{{ p.is_mine|yesno:'1,0' }}">
+          <td><input type="text" class="form-control form-control-sm" data-field="cas_number" value="{{ p.cas_number }}" {% if not p.is_mine %}readonly{% endif %}></td>
+          <td><input type="text" class="form-control form-control-sm" data-field="name" value="{{ p.name }}" required {% if not p.is_mine %}readonly{% endif %}></td>
+          <td><input type="text" class="form-control form-control-sm" data-field="formula" value="{{ p.formula }}" {% if not p.is_mine %}readonly{% endif %}></td>
+          <td><input type="text" class="form-control form-control-sm" data-field="purity" value="{{ p.purity }}" {% if not p.is_mine %}readonly{% endif %}></td>
+          <td><input type="text" class="form-control form-control-sm" data-field="supplier" value="{{ p.supplier }}" {% if not p.is_mine %}readonly{% endif %}></td>
+          <td><input type="text" class="form-control form-control-sm" data-field="notes" value="{{ p.notes }}" {% if not p.is_mine %}readonly{% endif %}></td>
+          <td class="small text-muted">{{ p.uploaded_by_username|default:"—" }}{% if p.is_mine %} <span class="badge bg-secondary">you</span>{% endif %}</td>
+          <td class="small text-muted">{{ p.visibility_affiliations|join:", "|default:"—" }}</td>
+          <td class="text-nowrap">
+            {% if p.is_mine %}
+            <button type="button" class="btn btn-sm btn-outline-primary row-save">Save</button>
+            <button type="button" class="btn btn-sm btn-outline-danger row-delete">Delete</button>
+            {% else %}
+            <span class="small text-muted">read-only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="precursor-empty" id="precursor-empty">
+    No saved precursors yet. Add one above to get started.
+  </div>
+  {% endif %}
+</div>
+
+<form style="display:none;">{% csrf_token %}</form>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script type="module">
+    import { lookupCAS, savePrecursorWithConfirm, updatePrecursorWithConfirm, deletePrecursor } from "{% static 'js/precursors.js' %}";
+
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+    const rowsContainer = document.getElementById('precursor-rows');
+    const listContainer = document.getElementById('precursor-list-container');
+
+    function flashStatus(el, text, kind) {
+      el.textContent = text;
+      el.className = 'form-text small text-' + (kind || 'muted');
+      setTimeout(() => { el.textContent = '\u00a0'; el.className = 'form-text small'; }, 4000);
+    }
+
+    function buildRow(p) {
+      const tr = document.createElement('tr');
+      tr.dataset.id = p.id;
+      tr.dataset.mine = p.is_mine ? '1' : '0';
+      const fields = [
+        ['cas_number', p.cas_number],
+        ['name', p.name],
+        ['formula', p.formula],
+        ['purity', p.purity],
+        ['supplier', p.supplier],
+        ['notes', p.notes],
+      ];
+      fields.forEach(([field, value]) => {
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control form-control-sm';
+        input.dataset.field = field;
+        input.value = value || '';
+        if (field === 'name') input.required = true;
+        if (!p.is_mine) input.readOnly = true;
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      const ownerTd = document.createElement('td');
+      ownerTd.className = 'small text-muted';
+      ownerTd.textContent = p.uploaded_by_username || '—';
+      if (p.is_mine) {
+        ownerTd.insertAdjacentHTML('beforeend', ' <span class="badge bg-secondary">you</span>');
+      }
+      tr.appendChild(ownerTd);
+
+      const sharedTd = document.createElement('td');
+      sharedTd.className = 'small text-muted';
+      sharedTd.textContent = (p.visibility_affiliations || []).join(', ') || '—';
+      tr.appendChild(sharedTd);
+
+      const actionsTd = document.createElement('td');
+      actionsTd.className = 'text-nowrap';
+      if (p.is_mine) {
+        actionsTd.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary row-save">Save</button> ' +
+                              '<button type="button" class="btn btn-sm btn-outline-danger row-delete">Delete</button>';
+      } else {
+        actionsTd.innerHTML = '<span class="small text-muted">read-only</span>';
+      }
+      tr.appendChild(actionsTd);
+      return tr;
+    }
+
+    function rowToPayload(tr) {
+      const payload = {};
+      tr.querySelectorAll('[data-field]').forEach(el => {
+        payload[el.dataset.field] = el.value.trim();
+      });
+      return payload;
+    }
+
+    // Create form wiring
+    const createForm = document.getElementById('precursor-create-form');
+    const casInput = document.getElementById('new-cas');
+    const casStatus = document.getElementById('new-cas-status');
+
+    document.getElementById('new-cas-lookup').addEventListener('click', async () => {
+      const cas = casInput.value.trim();
+      if (!cas) { flashStatus(casStatus, 'Enter a CAS number first', 'danger'); return; }
+      flashStatus(casStatus, 'Looking up...', 'muted');
+      try {
+        const result = await lookupCAS(cas);
+        if (!result || !result.found) {
+          flashStatus(casStatus, 'No PubChem match for that CAS', 'warning');
+          return;
+        }
+        if (result.name) document.getElementById('new-name').value = result.name;
+        if (result.formula) document.getElementById('new-formula').value = result.formula;
+        flashStatus(casStatus, 'Loaded from PubChem', 'success');
+      } catch (exc) {
+        flashStatus(casStatus, 'Lookup failed: ' + exc.message, 'danger');
+      }
+    });
+
+    createForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        cas_number: casInput.value.trim(),
+        name: document.getElementById('new-name').value.trim(),
+        formula: document.getElementById('new-formula').value.trim(),
+        purity: document.getElementById('new-purity').value.trim(),
+        supplier: document.getElementById('new-supplier').value.trim(),
+        notes: document.getElementById('new-notes').value.trim(),
+      };
+      if (!payload.name) { flashStatus(casStatus, 'Name is required', 'danger'); return; }
+      try {
+        const saved = await savePrecursorWithConfirm(payload, csrfToken);
+        let tbody = document.getElementById('precursor-rows');
+        if (!tbody) {
+          listContainer.innerHTML = '<div class="table-responsive"><table class="table table-sm align-middle precursor-table">' +
+            '<thead><tr><th>CAS</th><th>Name</th><th>Formula</th><th>Purity</th><th>Supplier</th><th>Notes</th><th>Owner</th><th>Shared with</th><th></th></tr></thead>' +
+            '<tbody id="precursor-rows"></tbody></table></div>';
+          tbody = document.getElementById('precursor-rows');
+        }
+        tbody.appendChild(buildRow(saved));
+        createForm.reset();
+        flashStatus(casStatus, 'Saved', 'success');
+      } catch (exc) {
+        if (exc && exc.code === 'duplicate_cas') {
+          flashStatus(casStatus, 'Cancelled (duplicate CAS)', 'muted');
+        } else {
+          flashStatus(casStatus, 'Save failed: ' + exc.message, 'danger');
+        }
+      }
+    });
+
+    // Row edit / delete (event delegation)
+    document.addEventListener('click', async (e) => {
+      const saveBtn = e.target.closest('.row-save');
+      const deleteBtn = e.target.closest('.row-delete');
+      if (!saveBtn && !deleteBtn) return;
+      const tr = e.target.closest('tr[data-id]');
+      if (!tr) return;
+      const id = tr.dataset.id;
+      if (saveBtn) {
+        try {
+          await updatePrecursorWithConfirm(id, rowToPayload(tr), csrfToken);
+          saveBtn.textContent = 'Saved';
+          setTimeout(() => { saveBtn.textContent = 'Save'; }, 1500);
+        } catch (exc) {
+          if (!exc || exc.code !== 'duplicate_cas') {
+            alert('Save failed: ' + exc.message);
+          }
+        }
+      } else if (deleteBtn) {
+        if (!confirm('Delete this precursor?')) return;
+        try {
+          await deletePrecursor(id, csrfToken);
+          tr.remove();
+        } catch (exc) {
+          alert('Delete failed: ' + exc.message);
+        }
+      }
+    });
+  </script>
+{% endblock %}

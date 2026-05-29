@@ -1,0 +1,93 @@
+{% extends "base_generic.html" %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <style>
+    .auth-shell {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .auth-card {
+      border: 1px solid rgba(49, 38, 29, 0.12);
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(49, 38, 29, 0.08);
+    }
+    .auth-card .card-body {
+      padding: 1.25rem 1.25rem 1rem;
+    }
+    .auth-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      margin-top: 0.9rem;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="auth-shell">
+  <div class="mb-1">
+    <a href="{% url 'index' %}" class="text-muted text-decoration-none small">← Back</a>
+  </div>
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+      <li class="breadcrumb-item active">Log in</li>
+    </ol>
+  </nav>
+
+  <h1 class="mb-3">Log in</h1>
+  <p class="text-muted mb-4">Sign in to manage LOOP data and uploads.</p>
+
+  <div class="card auth-card">
+    <div class="card-body">
+      {% if next %}
+        {% if user.is_authenticated %}
+          <div class="alert alert-warning" role="alert">
+            Your account doesn't have access to this page. Please sign in with an account that has access.
+          </div>
+        {% else %}
+          <p class="text-muted">Please log in to a verified account to access this page.</p>
+        {% endif %}
+      {% endif %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger" role="alert">
+          {{ form.non_field_errors|join:" " }}
+        </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'login' %}" novalidate>
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+          {{ form.username }}
+          {% if form.username.errors %}
+            <div class="text-danger small mt-1">{{ form.username.errors|join:" " }}</div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+          {{ form.password }}
+          {% if form.password.errors %}
+            <div class="text-danger small mt-1">{{ form.password.errors|join:" " }}</div>
+          {% endif %}
+        </div>
+
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" class="btn btn-primary">Log in</button>
+      </form>
+
+      <div class="auth-links">
+        <a href="{% url 'password_reset' %}">Reset password</a>
+        <span class="text-muted">•</span>
+        <span>Need an account? <a href="{% url 'signup' %}">Register</a></span>
+      </div>
+    </div>
+  </div>
+  </div>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

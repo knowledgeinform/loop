@@ -1,0 +1,339 @@
+{% extends "base_generic.html" %}
+{% load static humanize %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/catalog-detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 px-xl-5 mt-3 mt-lg-4 composition-detail">
+    <div class="mb-2">
+        <a href="{% url 'browse_data' %}" class="text-muted text-decoration-none small">← Back to browse</a>
+    </div>
+
+    <div class="comp-hero-banner">
+        <p class="comp-hero-breadcrumb mb-2">
+            <a href="{% url 'index' %}">Home</a>
+            <span class="text-muted">/</span>
+            <a href="{% url 'browse_data' %}">Browse</a>
+            <span class="text-muted">→</span>
+            <span class="comp-hero-auid">{{ material_auid }}</span>
+        </p>
+        <div class="d-flex flex-wrap align-items-baseline gap-3 mb-2">
+            <span class="comp-hero-auid">{{ material_auid }}</span>
+            {% if structure_family %}
+            <span class="badge rounded-pill" style="background:var(--comp-accent)">{{ structure_family|title }}</span>
+            {% endif %}
+            <span class="text-muted">{{ num_elements }} element{{ num_elements|pluralize }}</span>
+        </div>
+        {% if annotation and annotation.display_name %}
+        <p class="mb-2 fw-semibold">{{ annotation.display_name }}</p>
+        {% endif %}
+
+        {% if elements %}
+        <div class="mb-2">
+            <span class="comp-hero-formula-label d-block mb-1">Nominal composition</span>
+            <p class="comp-hero-formula-line mb-0">
+                <span aria-label="Nominal composition formula">{{ nominal_composition_html|safe }}</span>
+                <details class="composition-stoich-details composition-stoich-inline ms-2">
+                    <summary>Full stoichiometry</summary>
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Element</th><th>Amount</th></tr></thead>
+                            <tbody>
+                                {% for el, amt in elements.items %}
+                                <tr><td><strong>{{ el }}</strong></td><td>{{ amt }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            </p>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-2">No element data.</p>
+        {% endif %}
+
+        <p class="comp-hero-stats mb-0">
+            <strong>{% if recipe_groups %}{{ recipe_groups|length }}{% else %}0{% endif %}</strong> synthesis route{{ recipe_groups|length|pluralize }} ·
+            <strong>{% if experiment_rows %}{{ experiment_rows|length }}{% else %}0{% endif %}</strong> trial{{ experiment_rows|length|pluralize }} ·
+            <strong>{{ visible_literature_count }}</strong> paper{{ visible_literature_count|pluralize }} ·
+            <strong>{% if computational_rows %}{{ computational_rows|length }}{% else %}0{% endif %}</strong> DFT
+            {% if ml_embeddings %} · <strong>{{ ml_embeddings|length }}</strong> ML embedding{{ ml_embeddings|length|pluralize }}{% endif %}
+        </p>
+
+        {% if annotation and annotation.notes %}
+        <details class="comp-hero-notes">
+            <summary>Curator notes</summary>
+            <p class="mb-0 mt-2" style="line-height: 1.5;">{{ annotation.notes }}</p>
+            {% if annotation.curator %}
+            <p class="mb-0 mt-2 small">— {{ annotation.curator }}</p>
+            {% endif %}
+        </details>
+        {% endif %}
+
+        {% if material_created_at %}
+        <div class="mt-2">
+            <small class="text-muted">Created {{ material_created_at|naturaltime }}</small>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="py-4">
+        <ul class="nav comp-detail-tabs border-bottom mb-0" id="compositionDetailTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-routes-btn" data-bs-toggle="tab" data-bs-target="#tab-comp-routes" type="button" role="tab" aria-controls="tab-comp-routes" aria-selected="true">Synthesis routes</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-trials-btn" data-bs-toggle="tab" data-bs-target="#tab-comp-trials" type="button" role="tab" aria-controls="tab-comp-trials" aria-selected="false">Experiments</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-lit-btn" data-bs-toggle="tab" data-bs-target="#tab-comp-lit" type="button" role="tab" aria-controls="tab-comp-lit" aria-selected="false">Literature</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-dft-btn" data-bs-toggle="tab" data-bs-target="#tab-comp-dft" type="button" role="tab" aria-controls="tab-comp-dft" aria-selected="false">DFT</button>
+            </li>
+            {% if ml_embeddings %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-ml-btn" data-bs-toggle="tab" data-bs-target="#tab-comp-ml" type="button" role="tab" aria-controls="tab-comp-ml" aria-selected="false">ML embeddings</button>
+            </li>
+            {% endif %}
+        </ul>
+
+        <div class="tab-content comp-tab-panel">
+            <div class="tab-pane fade show active" id="tab-comp-routes" role="tabpanel" aria-labelledby="tab-routes-btn">
+                <div class="comp-tab-toolbar">
+                    <h2>Synthesis routes</h2>
+                </div>
+                {% if recipe_groups %}
+                {% for group in recipe_groups %}
+                <div class="comp-route-card">
+                    <div class="d-flex justify-content-between flex-wrap gap-2">
+                        <div>
+                            {% if group.recipe_auid %}
+                            <a class="route-link" href="{% url 'recipe_detail' recipe_id=group.recipe_auid %}">Open recipe</a>
+                            <div class="route-auid">{{ group.recipe_auid }}</div>
+                            {% else %}
+                            <span class="text-muted">Literature-only (no recipe id)</span>
+                            {% endif %}
+                        </div>
+                        <span class="text-muted small">
+                            {% with sc=group.synthesis_step_count tc=group.trial_count lc=group.literature_count %}
+                            {% if tc %}{{ tc }} trial{{ tc|pluralize }}{% endif %}
+                            {% if lc %}{% if tc %} · {% endif %}{{ lc }} paper{{ lc|pluralize }}{% endif %}
+                            {% if sc %}{% if tc or lc %} · {% endif %}{{ sc }} step{{ sc|pluralize }}{% endif %}
+                            {% endwith %}
+                        </span>
+                    </div>
+                    {% if group.step_highlights %}
+                    <p class="route-meta mb-0">{{ group.step_highlights|join:", " }}</p>
+                    {% endif %}
+                    {% if group.steps_preview %}
+                    <p class="route-preview mb-0" title="{{ group.steps_preview|escape }}">{{ group.steps_preview }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="comp-tab-empty">No synthesis routes linked to this material yet.</p>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="tab-comp-trials" role="tabpanel" aria-labelledby="tab-trials-btn">
+                <div class="comp-tab-toolbar">
+                    <h2>Experimental trials</h2>
+                    <a href="{% url 'upload_exp_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add experiment</a>
+                </div>
+                {% if experiment_rows %}
+                <div class="table-responsive w-100">
+                    <table class="table table-hover comp-data-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Organization</th>
+                                <th>Trial ID</th>
+                                <th>Date</th>
+                                <th>Result</th>
+                                <th>Experimenter</th>
+                                <th>Raw data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in experiment_rows %}
+                            {% with exp=row.exp %}
+                            <tr class="row-clickable" data-href="{% url 'trial_detail' recipe_id=row.recipe_auid trial_id=row.trial_id %}">
+                                <td>
+                                    {% if row.organizations %}
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for org in row.organizations %}
+                                        <span class="badge org-badge org-badge-{{ org|lower|slugify }}">{{ org }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'trial_detail' recipe_id=row.recipe_auid trial_id=row.trial_id %}" class="text-decoration-none">{{ exp.trial_id }}</a>
+                                </td>
+                                <td>{{ exp.trial_date|date:"Y-m-d" }}</td>
+                                <td>
+                                    {% if exp.phase_status == 'single_phase' %}
+                                    <span class="badge text-bg-success">Single phase</span>
+                                    {% elif exp.phase_status == 'multi_phase' %}
+                                    <span class="badge text-bg-danger">Multi-phase</span>
+                                    {% elif exp.phase_status == 'not_confirmed' %}
+                                    <span class="badge text-bg-secondary">Not confirmed</span>
+                                    {% elif exp.success %}
+                                    <span class="badge text-bg-success">Success</span>
+                                    {% elif exp.success == False %}
+                                    <span class="badge text-bg-danger">Failed</span>
+                                    {% else %}
+                                    <span class="badge text-bg-secondary">Not confirmed</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ exp.experimenter|default:"—" }}</td>
+                                <td>
+                                    {% if exp.raw_data_link %}
+                                    <a href="{{ exp.raw_data_link }}" target="_blank" rel="noopener">{{ exp.raw_data_type|upper }}</a>
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                            </tr>
+                            {% endwith %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="comp-tab-empty mb-0">No experimental trials yet.</p>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="tab-comp-lit" role="tabpanel" aria-labelledby="tab-lit-btn">
+                <div class="comp-tab-toolbar">
+                    <h2>Literature</h2>
+                    <a href="{% url 'add_literature_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add reference</a>
+                </div>
+                {% if visible_literature_rows %}
+                <div class="table-responsive w-100">
+                    <table class="table table-hover comp-data-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Year</th>
+                                <th>Journal</th>
+                                <th>DOI</th>
+                                <th>Synthesis</th>
+                                <th class="text-end"> </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lit_row in visible_literature_rows %}
+                            {% with lit=lit_row.literature %}
+                            <tr class="row-clickable" data-href="{% url 'literature_detail' recipe_id=lit_row.recipe_auid lit_id=lit_row.lit_id %}">
+                                <td class="lit-title-cell">{{ lit.title|default:"Untitled" }}</td>
+                                <td>{% if lit.year %}{{ lit.year }}{% else %}—{% endif %}</td>
+                                <td>{{ lit.journal|default:"—" }}</td>
+                                <td><a href="https://doi.org/{{ lit.doi }}" target="_blank" rel="noopener">{{ lit.doi }}</a></td>
+                                <td>
+                                    {% if lit.synthesis_successful %}
+                                    <span class="badge text-bg-success">Reported</span>
+                                    {% elif lit.synthesis_successful == False %}
+                                    <span class="badge text-bg-secondary">Not rep.</span>
+                                    {% else %}
+                                    <span class="badge text-bg-light border">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end"><a href="{% url 'literature_detail' recipe_id=lit_row.recipe_auid lit_id=lit_row.lit_id %}">View</a></td>
+                            </tr>
+                            {% endwith %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="comp-tab-empty mb-0">No literature references yet.</p>
+                {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="tab-comp-dft" role="tabpanel" aria-labelledby="tab-dft-btn">
+                <div class="comp-tab-toolbar">
+                    <h2>Computational (DFT)</h2>
+                    <a href="{% url 'add_computational_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add DFT</a>
+                </div>
+                {% if computational_rows %}
+                <div class="table-responsive w-100">
+                    <table class="table table-hover comp-data-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Formation (eV)</th>
+                                <th>Hull (eV)</th>
+                                <th>Bandgap (eV)</th>
+                                <th>Uploader / tags</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in computational_rows %}
+                            <tr class="row-clickable" data-href="{% url 'computational_detail' material_auid=material_auid comp_auid=row.comp_auid %}">
+                                <td>
+                                    <a href="{% url 'computational_detail' material_auid=material_auid comp_auid=row.comp_auid %}" class="text-decoration-none">{{ row.dft_source|default:"—" }}</a>
+                                </td>
+                                <td>{{ row.dft_formation_energy_ev|default_if_none:"—" }}</td>
+                                <td>{{ row.dft_hull_distance_ev|default_if_none:"—" }}</td>
+                                <td>{{ row.dft_bandgap_ev|default_if_none:"—" }}</td>
+                                <td>
+                                    {% if row.organizations %}
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for org in row.organizations %}
+                                        <span class="badge org-badge org-badge-{{ org|lower|slugify }}">{{ org }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% elif row.uploaded_by %}{{ row.uploaded_by }}{% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="comp-tab-empty mb-0">No DFT results yet.</p>
+                {% endif %}
+            </div>
+
+            {% if ml_embeddings %}
+            <div class="tab-pane fade" id="tab-comp-ml" role="tabpanel" aria-labelledby="tab-ml-btn">
+                <div class="comp-tab-toolbar">
+                    <h2>ML embeddings</h2>
+                </div>
+                <div class="p-3 pt-0">
+                    {% for emb in ml_embeddings %}
+                    <p class="mb-2 text-muted"><strong class="text-body">{{ emb.scope }}</strong>{% if emb.model_version %} · {{ emb.model_version }}{% endif %}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if can_delete_material %}
+    <div class="d-flex justify-content-end mt-2 mb-5">
+        <form method="post" action="{% url 'delete_material' material_auid=material_auid %}" onsubmit="return confirm('Delete every recipe for this material? This cannot be undone.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger">Delete material</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.row-clickable').forEach(function (row) {
+        row.addEventListener('click', function (event) {
+            if (event.target.closest('a, button, input, select, textarea, label')) return;
+            const href = row.dataset.href;
+            if (href) window.location.href = href;
+        });
+    });
+});
+</script>
+{% endblock %}

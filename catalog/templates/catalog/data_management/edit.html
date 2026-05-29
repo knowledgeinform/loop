@@ -1,0 +1,31 @@
+{% extends "base_generic.html" %}
+
+{% block title %}
+<title>LOOP — Edit document</title>
+{% endblock %}
+
+{% block content %}
+<div class="mb-2">
+  <a href="{% if next_url %}{{ next_url }}{% else %}{% url 'data_management_collection' collection=collection %}{% endif %}" class="text-muted text-decoration-none small">← {{ label }}</a>
+</div>
+<h1>Edit document</h1>
+<p class="text-muted small"><code>{{ object_id }}</code></p>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  {% if next_url %}
+  <input type="hidden" name="next" value="{{ next_url }}">
+  {% endif %}
+  <div class="mb-3">
+    <label for="payload" class="form-label">BSON as JSON (<code>bson.json_util</code>)</label>
+    <textarea name="payload" id="payload" class="form-control font-monospace" rows="24" required>{{ payload }}</textarea>
+    <div class="form-text">Keep <code>_id</code> consistent with this document. Invalid JSON or schema violations will be rejected by MongoDB.</div>
+  </div>
+  <button type="submit" class="btn btn-primary">Save</button>
+  <a class="btn btn-outline-secondary" href="{% if next_url %}{{ next_url }}{% else %}{% url 'data_management_collection' collection=collection %}{% endif %}">Cancel</a>
+</form>
+{% endblock %}

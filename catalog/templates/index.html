@@ -1,0 +1,84 @@
+{% extends "base_generic.html" %}
+
+{% block title %}
+<title>LOOP · Learning and Optimization Platform</title>
+{% endblock %}
+
+{% block content %}
+<h1>LOOP · Learning and Optimization Platform</h1>
+<p class="lead">
+  Manage materials science data for high-entropy materials research—linking experimental results,
+  literature references, and computational predictions.
+</p>
+
+<div class="row mt-4 g-3">
+  <div class="col-md-3">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h2 class="h5">Materials</h2>
+        <p class="display-6 mb-0">{{ material_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h2 class="h5">Literature</h2>
+        <p class="display-6 mb-0">{{ literature_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h2 class="h5">Experiments</h2>
+        <p class="display-6 mb-0">{{ experiment_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h2 class="h5">Computational</h2>
+        <p class="display-6 mb-0">{{ computational_count }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-4">
+  <a href="{% url 'browse_data' %}" class="text-decoration-none d-block">
+    <div class="card mb-3 card-hover">
+      <div class="card-body d-flex align-items-center">
+        <div class="fs-1 me-4">🔎</div>
+        <div>
+          <h5 class="card-title mb-1">Browse Materials</h5>
+          <p class="card-text text-muted mb-0">Search materials by AUID, trials, literature, and computational records.</p>
+        </div>
+      </div>
+    </div>
+  </a>
+
+  <a href="{% url 'add_data' %}" class="text-decoration-none d-block">
+    <div class="card mb-3 card-hover">
+      <div class="card-body d-flex align-items-center">
+        <div class="fs-1 me-4">➕</div>
+        <div>
+          <h5 class="card-title mb-1">Add Data</h5>
+          <p class="card-text text-muted mb-0">Submit experiment, literature, or computational data to MongoDB.</p>
+        </div>
+      </div>
+    </div>
+  </a>
+</div>
+
+<style>
+.card-hover {
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}

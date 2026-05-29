@@ -1,0 +1,142 @@
+{# Shared hero for catalog subpages. Expects detail_kind: recipe | trial | literature | computational #}
+<div class="mb-2">
+  <a href="{% url 'browse_data' %}" class="text-muted text-decoration-none small">← Back to browse</a>
+</div>
+<div class="comp-hero-banner">
+  <p class="comp-hero-breadcrumb mb-2">
+    <a href="{% url 'index' %}">Home</a>
+    <span class="text-muted">/</span>
+    <a href="{% url 'browse_data' %}">Browse</a>
+    <span class="text-muted">/</span>
+    <a href="{% url 'composition_detail' material_auid=material_auid %}"><span class="comp-hero-auid">{{ material_auid }}</span></a>
+    {% if detail_kind == 'trial' or detail_kind == 'literature' %}
+      {% if recipe_id %}
+      <span class="text-muted">/</span>
+      <a href="{% url 'recipe_detail' recipe_id=recipe_id %}"><span class="comp-hero-auid">{{ recipe_id }}</span></a>
+      {% endif %}
+    {% endif %}
+    {% if detail_kind == 'recipe' %}
+    <span class="text-muted">→</span>
+    <span class="comp-hero-auid">{{ recipe_id }}</span>
+    {% elif detail_kind == 'trial' %}
+    <span class="text-muted">→</span>
+    <span class="comp-hero-auid">Trial {{ trial_id }}</span>
+    {% elif detail_kind == 'literature' %}
+    <span class="text-muted">→</span>
+    <span class="comp-hero-auid">Literature</span>
+    {% elif detail_kind == 'computational' %}
+    <span class="text-muted">→</span>
+    <span class="comp-hero-auid">{{ comp_auid }}</span>
+    {% endif %}
+  </p>
+
+  {% if detail_kind == 'recipe' %}
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-2">
+    <div class="d-flex flex-wrap align-items-baseline gap-3">
+      <span class="comp-hero-auid">{{ recipe_id }}</span>
+      {% if structure_family %}
+      <span class="badge structure-badge structure-badge-{{ structure_family|lower }}">{{ structure_family|title }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <p class="comp-hero-stats mb-0">
+    <strong>{{ synthesis_steps_display|length }}</strong> synthesis step{{ synthesis_steps_display|length|pluralize }} ·
+    <strong>{{ trials|length }}</strong> trial{{ trials|length|pluralize }} ·
+    <strong>{{ literature|length }}</strong> paper{{ literature|length|pluralize }}
+  </p>
+
+  {% elif detail_kind == 'trial' %}
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-2">
+    <div>
+      <div class="d-flex flex-wrap align-items-baseline gap-3 mb-1">
+        <span class="comp-hero-auid">Trial {{ record.trial_id }}</span>
+        {% if structure_family %}
+        <span class="badge structure-badge structure-badge-{{ structure_family|lower }}">{{ structure_family|title }}</span>
+        {% endif %}
+        {% if record.phase_status == 'single_phase' %}
+        <span class="badge text-bg-success">Single phase</span>
+        {% elif record.phase_status == 'multi_phase' %}
+        <span class="badge text-bg-danger">Multi-phase / failed</span>
+        {% elif record.phase_status == 'not_confirmed' %}
+        <span class="badge text-bg-secondary">Phase not yet confirmed</span>
+        {% elif record.success %}
+        <span class="badge text-bg-success">Success</span>
+        {% elif record.success == False %}
+        <span class="badge text-bg-danger">Failed</span>
+        {% else %}
+        <span class="badge text-bg-secondary">Phase not yet confirmed</span>
+        {% endif %}
+      </div>
+      <p class="text-muted small mb-0">Recipe <a class="comp-hero-auid text-decoration-none" style="font-size:0.95rem" href="{% url 'recipe_detail' recipe_id=recipe_id %}">{{ recipe_id }}</a></p>
+    </div>
+    <div class="hero-actions flex-shrink-0">
+      <a href="{% url 'composition_detail' material_auid=material_auid %}" class="btn btn-outline-secondary btn-sm">Back to material</a>
+    </div>
+  </div>
+  <p class="comp-hero-stats mb-0">
+    <strong>{{ record.trial_date|date:"Y-m-d H:i" }}</strong>
+    {% if record.experimenter %} · {{ record.experimenter }}{% endif %}
+    {% if record.raw_data_link %} · <a href="{{ record.raw_data_link }}" target="_blank" rel="noopener">Raw {{ record.raw_data_type|upper }}</a>{% endif %}
+  </p>
+
+  {% elif detail_kind == 'literature' %}
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-2">
+    <div class="flex-grow-1" style="min-width: 12rem;">
+      <h1 class="h4 mb-2 fw-semibold" style="color: var(--comp-ink, #1a1510); line-height: 1.35;">{{ record.title|default:"Untitled Literature Entry" }}</h1>
+      <div class="d-flex flex-wrap align-items-baseline gap-2 mb-1">
+        <span class="comp-hero-auid" style="font-size: 0.95rem;">DOI {{ doi }}</span>
+        {% if structure_family %}
+        <span class="badge structure-badge structure-badge-{{ structure_family|lower }}">{{ structure_family|title }}</span>
+        {% endif %}
+        {% if record.synthesis_successful %}
+        <span class="badge text-bg-success">Successful</span>
+        {% else %}
+        <span class="badge text-bg-danger">Not successful</span>
+        {% endif %}
+      </div>
+      {% if recipe_id %}
+      <p class="text-muted small mb-0">Recipe <a class="comp-hero-auid text-decoration-none" style="font-size:0.95rem" href="{% url 'recipe_detail' recipe_id=recipe_id %}">{{ recipe_id }}</a></p>
+      {% endif %}
+    </div>
+    <div class="hero-actions flex-shrink-0">
+      <a href="{% url 'composition_detail' material_auid=material_auid %}" class="btn btn-outline-secondary btn-sm">Back to material</a>
+    </div>
+  </div>
+  <p class="comp-hero-stats mb-0">
+    {% if record.journal %}<strong>{{ record.journal }}</strong>{% else %}<span class="text-muted">Journal unknown</span>{% endif %}
+    {% if record.year %} · {{ record.year }}{% endif %}
+    {% if record.authors %} · {{ record.authors|join:", " }}{% endif %}
+  </p>
+
+  {% elif detail_kind == 'computational' %}
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-2">
+    <div>
+      <div class="d-flex flex-wrap align-items-baseline gap-3 mb-1">
+        <span class="comp-hero-auid">{{ comp_auid }}</span>
+        {% if structure_family %}
+        <span class="badge structure-badge structure-badge-{{ structure_family|lower }}">{{ structure_family|title }}</span>
+        {% endif %}
+      </div>
+      <p class="mb-0 fw-semibold" style="color: var(--comp-ink, #1a1510);">Computational (DFT)</p>
+    </div>
+    <div class="hero-actions flex-shrink-0">
+      <a href="{% url 'composition_detail' material_auid=material_auid %}" class="btn btn-outline-secondary btn-sm">Back to material</a>
+    </div>
+  </div>
+  <p class="comp-hero-stats mb-0">
+    {% if record.dft_formation_energy_ev is not None %}
+    <strong>{{ record.dft_formation_energy_ev }}</strong> eV/atom formation
+    {% else %}
+    <span class="text-muted">Formation energy —</span>
+    {% endif %}
+    {% if record.dft_bandgap_ev is not None %}
+    · <strong>{{ record.dft_bandgap_ev }}</strong> eV bandgap
+    {% else %}
+    · <span class="text-muted">Bandgap —</span>
+    {% endif %}
+    {% if record.dft_hull_distance_ev is not None %}
+    · Hull <strong>{{ record.dft_hull_distance_ev }}</strong> eV/atom
+    {% endif %}
+  </p>
+  {% endif %}
+</div>
