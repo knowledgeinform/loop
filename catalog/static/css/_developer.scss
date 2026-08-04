@@ -1,0 +1,228 @@
+// =============================================================================
+// Developer Center — portal, integration guide, and API-key pages.
+// Token-native restyle of the templates ported from the api-v1 branch.
+// Includes a *scoped* mini-grid so those templates' legacy row/col markup
+// lays out correctly without resurrecting Bootstrap globally.
+// =============================================================================
+
+.developer-docs {
+  max-width: 1120px;
+  margin: 0 auto;
+
+  // --- Scoped legacy grid -------------------------------------------------
+  // Column widths subtract each column's exact share of the gaps so rows
+  // fill the full width with no leftover slack.
+  .row {
+    --grid-gap: var(--sp-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--grid-gap);
+    > * { flex: 1 1 100%; min-width: 0; }
+  }
+  .row.g-4 { --grid-gap: var(--sp-4); }
+
+  @media (min-width: 768px) {
+    .col-md-4 { flex: 0 0 calc((100% - 2 * var(--grid-gap)) / 3); }
+  }
+  @media (min-width: 992px) {
+    .col-lg-3 { flex: 0 0 calc(25% - var(--grid-gap) * 3 / 4); }
+    .col-lg-4 { flex: 0 0 calc((100% - 2 * var(--grid-gap)) / 3); }
+    .col-lg-5 { flex: 0 0 calc(41.666% - var(--grid-gap) * 7 / 12); }
+    .col-lg-9 { flex: 0 0 calc(75% - var(--grid-gap) / 4); }
+  }
+
+  // --- Scoped spacing / flex helpers the templates rely on -----------------
+  .d-flex { display: flex; }
+  .flex-wrap { flex-wrap: wrap; }
+  .gap-2 { gap: var(--sp-2); }
+  .h-100 { height: 100%; }
+  .mb-0 { margin-bottom: 0; }
+  .mb-2 { margin-bottom: var(--sp-2); }
+  .mb-3 { margin-bottom: var(--sp-3); }
+  .mb-4 { margin-bottom: var(--sp-4); }
+  .mb-5 { margin-bottom: var(--sp-5); }
+  .mt-1 { margin-top: var(--sp-1); }
+  .mt-2 { margin-top: var(--sp-2); }
+  .mt-3 { margin-top: var(--sp-3); }
+  .mt-4 { margin-top: var(--sp-4); }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+  .card-body { padding: var(--sp-3); }
+
+  // text-wrap: pretty balances short paragraphs into ragged half-width
+  // columns inside narrow cards; let them use the full card width.
+  .card-body p { text-wrap: initial; }
+
+  .sticky-lg-top { position: sticky; top: var(--sp-4); }
+}
+
+// --- Tab bar (Documentation / API Keys / API Reference) ---------------------
+.developer-api-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--sp-1);
+  border-bottom: 2px solid var(--line-2);
+  margin-bottom: var(--sp-4);
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.6rem 1rem;
+    margin-bottom: -2px;             // sit on the bar's border
+    border-bottom: 3px solid transparent;
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
+    color: var(--ink-2);
+    font-size: var(--fs-body);
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover { background: var(--navy-tint); color: var(--navy); }
+    &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+    &[aria-current="page"] {
+      color: var(--navy);
+      border-bottom-color: var(--navy);
+      background: var(--navy-tint);
+    }
+
+    // External Swagger reference opens a new tab — say so visually.
+    &[target="_blank"]::after { content: "↗"; font-size: var(--fs-sm); }
+  }
+}
+
+// --- Hero + section rhythm ---------------------------------------------------
+.developer-docs-hero {
+  max-width: 780px;
+
+  h1 { margin-bottom: var(--sp-2); }
+}
+
+.developer-docs-section {
+  scroll-margin-top: 5rem;
+  margin-bottom: var(--sp-4);
+
+  h2 { margin-bottom: var(--sp-2); }
+  h3 { border-bottom: none; color: var(--navy); }
+}
+
+// In-page section nav (left rail) — scrollspy highlights the section in
+// view with a navy indicator bar over the rail's hairline.
+.developer-docs-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-left: 2px solid var(--info-border);
+  padding-left: var(--sp-3);
+
+  a {
+    position: relative;
+    color: var(--ink-2);
+    font-size: var(--fs-body);
+    text-decoration: none;
+    &:hover { color: var(--navy); text-decoration: underline; }
+
+    &.active {
+      color: var(--navy);
+      font-weight: 600;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: calc(-1 * var(--sp-3) - 2px);
+        top: 0.1rem;
+        bottom: 0.1rem;
+        width: 2px;
+        background: var(--navy);
+      }
+    }
+  }
+}
+
+// Step badges inside the three-up cards (original api-v1 design).
+.developer-docs .badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--r-sm);
+  background: var(--navy-tint);
+  border: 1px solid var(--line);
+  color: var(--navy);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+}
+
+.developer-docs-workflow {
+  border-left: 3px solid var(--sky);
+  margin: var(--sp-3) 0;
+  padding: var(--sp-1) 0 var(--sp-1) var(--sp-3);
+}
+
+// --- Code samples: real copy-paste blocks ------------------------------------
+// Light, archival look: navy-tinted surface + hairline border, matching the
+// paper-and-ink system instead of a dark slab.
+.developer-docs-code {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--navy);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: var(--lh-body);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  overflow-x: auto;
+  tab-size: 2;
+
+  code {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    white-space: pre;
+  }
+}
+
+// JS wraps every non-empty <pre> in .code-block and anchors the copy button
+// to the wrapper, so the button never scrolls with (or scrolls!) the code.
+.code-block {
+  position: relative;
+
+  pre { margin: 0; }
+
+  // The button floats over the corner (solid background keeps it legible if
+  // a long line scrolls beneath); reserving padding for it left an ugly gap.
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  color: var(--navy);
+  background: var(--paper);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+
+  &:hover { background: var(--navy-tint); border-color: var(--navy); }
+  &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  &.copied {
+    color: var(--success-ink);
+    background: var(--success-bg);
+    border-color: var(--success-border);
+  }
+}

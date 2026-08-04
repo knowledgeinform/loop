@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title> Entropy for Energy — Dev </title>
+<style>
+/* Palette and display face from entropy4energy.ai/css/main.css:
+   Heritage Blue #002d72, Spirit Blue #68ace5, Sable #31261d, Lato.
+   Inlined so this page cannot break when the main site changes. */
+@import "https://fonts.googleapis.com/css?family=Lato:300,400,600,700";
+
+:root {
+  --navy:  #002d72;
+  --navy-deep: #001c47;
+  --spirit: #68ace5;
+  --sable: #31261d;
+  --rule:  #dde3ec;
+  --wash:  #f5f8fc;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-color: #fff;
+  color: var(--sable);
+  display: flex;
+  flex-direction: column;
+  font-family: Lato, "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  min-width: 320px;
+}
+
+/* --- masthead ------------------------------------------------------- */
+.masthead {
+  align-items: center;
+  background-color: var(--navy);
+  color: #fff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 18px 28px;
+}
+.wordmark { font-size: 1.35rem; font-weight: 300; letter-spacing: .01em; }
+.wordmark b { font-weight: 700; }
+.chip {
+  background-color: var(--spirit);
+  border-radius: 3px;
+  color: var(--navy);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .14em;
+  padding: 3px 9px;
+}
+
+/* --- intro ---------------------------------------------------------- */
+main { flex: 1; margin: 0 auto; max-width: 62rem; padding: 56px 28px 40px; width: 100%; }
+
+.eyebrow {
+  color: var(--spirit);
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .18em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+h1 {
+  color: var(--navy);
+  font-size: clamp(1.9rem, 4.4vw, 2.7rem);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  margin: 0 0 12px;
+}
+.standfirst { color: #5d6470; font-size: 1.02rem; margin: 0 0 40px; max-width: 34rem; }
+
+/* --- the two doors -------------------------------------------------- */
+.doors { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+
+.door {
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 15.5rem;
+  overflow: hidden;
+  text-decoration: none;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.door:hover { box-shadow: 0 10px 26px rgba(0, 45, 114, .16); transform: translateY(-3px); }
+.door:focus-visible { outline: 3px solid var(--spirit); outline-offset: 3px; }
+
+.door-head { display: flex; align-items: baseline; gap: 10px; padding: 22px 24px 0; }
+.door-name { font-size: 1.5rem; font-weight: 700; letter-spacing: -.01em; }
+.door-kind { font-size: .78rem; letter-spacing: .04em; }
+.door-note { font-size: .92rem; margin: 8px 24px 0; }
+/* Opening a new tab without signposting it is a small betrayal, so the host
+   line carries the arrow that says so. */
+.door-host {
+  align-items: center;
+  display: flex;
+  font-family: var(--mono);
+  font-size: .76rem;
+  gap: 7px;
+  margin-top: auto;
+  padding: 18px 24px 20px;
+}
+.door-host::after { content: "\2197"; font-size: .95em; }
+
+/* LOOP: a light card carrying a miniature catalogue record. */
+.door--loop { background-color: #fff; border: 1px solid var(--rule); color: var(--sable); }
+.door--loop .door-name { color: var(--navy); }
+.door--loop .door-kind,
+.door--loop .door-note { color: #5d6470; }
+.door--loop .door-host { color: #8a93a1; }
+.record {
+  background-color: var(--wash);
+  border-top: 1px solid var(--rule);
+  margin-top: 18px;
+  padding: 14px 24px;
+}
+/* The branch name is the single most useful fact on this card: it answers "what
+   am I actually looking at?" before anyone clicks through. */
+.branch {
+  background-color: var(--wash);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  color: var(--navy);
+  font-family: var(--mono);
+  font-size: .82em;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+.door-build { font-size: .86rem; margin: 6px 24px 0; }
+.door--loop .door-build { color: #5d6470; }
+/* The subject is filled in by the poller, so it must not reserve space when
+   empty or the card jumps on first load. */
+.build-subject { display: block; font-size: .92em; margin-top: 4px; opacity: .85; }
+.build-subject:empty { display: none; }
+.build-when { display: block; font-size: .88em; margin-top: 2px; opacity: .7; }
+.build-when:empty { display: none; }
+.record-doi { color: var(--navy); font-family: var(--mono); font-size: .74rem; }
+.elements { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.elements span {
+  background-color: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  color: var(--navy);
+  font-family: var(--mono);
+  font-size: .7rem;
+  padding: 2px 7px;
+}
+
+/* CHAOS: a dark card carrying a prompt. */
+.door--chaos { background-color: var(--navy); color: #fff; }
+.door--chaos .door-name { color: #fff; }
+.door--chaos .door-kind,
+.door--chaos .door-note { color: #b9cfe8; }
+.door--chaos .door-host { color: #7f9dc4; }
+.terminal {
+  background-color: var(--navy-deep);
+  font-family: var(--mono);
+  font-size: .76rem;
+  line-height: 1.7;
+  margin-top: 18px;
+  padding: 14px 24px;
+}
+.terminal .ask { color: #dce8f6; }
+.terminal .sig { color: var(--spirit); margin-right: 7px; }
+.cursor {
+  background-color: var(--spirit);
+  display: inline-block;
+  height: .95em;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  width: .5em;
+  animation: blink 1.15s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cursor { animation: none; }
+  .door { transition: none; }
+}
+
+footer {
+  border-top: 1px solid var(--rule);
+  color: #8a93a1;
+  font-size: .84rem;
+  padding: 18px 28px;
+}
+footer b { color: var(--navy); }
+
+/* --- deploy banner ---------------------------------------------------
+   Shown while a deployment is in flight. Hidden by default so the page is
+   correct with JavaScript disabled, rather than flashing a false "deploying". */
+#deploy {
+  align-items: center;
+  background-color: var(--navy-deep);
+  color: #dce8f6;
+  display: none;
+  font-size: .9rem;
+  gap: 11px;
+  padding: 12px 28px;
+}
+#deploy.on { display: flex; }
+#deploy .spin {
+  animation: spin .9s linear infinite;
+  border: 2px solid rgba(220, 232, 246, .28);
+  border-radius: 50%;
+  border-top-color: var(--spirit);
+  height: 15px;
+  width: 15px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#deploy .what { font-family: var(--mono); font-size: .82em; opacity: .8; }
+@media (prefers-reduced-motion: reduce) {
+  #deploy .spin { animation-duration: 3s; }
+}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <span class="wordmark">Entropy for <b>Energy</b></span>
+  <span class="chip">Dev</span>
+</div>
+
+<div id="deploy" role="status" aria-live="polite">
+  <span class="spin" aria-hidden="true"></span>
+  <span id="deploy-msg">Deploying…</span>
+  <span class="what" id="deploy-what"></span>
+</div>
+
+<main>
+  <p class="eyebrow">Internal</p>
+  <h1>Development environment</h1>
+  <p class="standfirst">
+    Staging copies of the lab's two services. Changes made here stay here.
+  </p>
+
+  <div class="doors">
+
+    <a class="door door--loop" href="/loop/" target="_blank" rel="noopener">
+      <div class="door-head">
+        <span class="door-name">LOOP</span>
+        <span class="door-kind">Catalogue</span>
+      </div>
+      <p class="door-note">
+        Browse, upload, and batch-import synthesis records.
+      </p>
+      <p class="door-build">
+        Running <span class="branch" id="build-branch">__BRANCH__</span>
+        at <span class="branch" id="build-commit">__COMMIT__</span>
+        <span class="build-subject" id="build-subject"></span>
+        <span class="build-when" id="build-when"></span>
+      </p>
+      <div class="record">
+        <div class="record-doi">10.1111/jace.18588</div>
+        <div class="elements">
+          <span>Y</span><span>Ti</span><span>Zr</span><span>Hf</span>
+          <span>Nb</span><span>Ta</span><span>O</span>
+        </div>
+      </div>
+      <div class="door-host">/loop</div>
+    </a>
+
+    <a class="door door--chaos" href="__CHAOS_URL__" target="_blank" rel="noopener">
+      <div class="door-head">
+        <span class="door-name">CHAOS</span>
+        <span class="door-kind">Agent</span>
+      </div>
+      <p class="door-note">Ask the materials database questions in plain English.</p>
+      <div class="terminal">
+        <span class="sig">&gt;</span><span class="ask">which pyrochlores are stable above 1600 C</span><span class="cursor"></span>
+      </div>
+      <div class="door-host">agent</div>
+    </a>
+
+  </div>
+</main>
+
+<footer>
+  <b>Not production.</b> Data here is a copy and may be replaced without notice.
+</footer>
+
+<script>
+// Poll a status file the deploy scripts write. Two behaviours matter:
+//
+//  1. A failed fetch counts as "deploying", not as an error. The landing server
+//     is itself restarted mid-deploy, so the request genuinely cannot succeed
+//     during the window we most want to report.
+//  2. Going from not-ready to ready reloads the page, so whoever is watching
+//     lands on the new build without thinking about it.
+(function () {
+  var banner = document.getElementById('deploy');
+  var msg    = document.getElementById('deploy-msg');
+  var what   = document.getElementById('deploy-what');
+  var wasBusy = false;
+  var misses  = 0;
+
+  // "3 minutes ago" answers "is this current?" faster than a timestamp, but the
+  // absolute time is what you need when comparing against a deploy log, so both
+  // are shown. Falls back to the raw string if the date cannot be parsed.
+  function describeWhen(committed, deployed) {
+    if (!committed) { return ''; }
+    var d = new Date(committed);
+    if (isNaN(d.getTime())) { return String(committed); }
+    var secs = Math.round((Date.now() - d.getTime()) / 1000);
+    var rel;
+    if (secs < 60) { rel = 'just now'; }
+    else if (secs < 3600) { rel = Math.floor(secs / 60) + ' min ago'; }
+    else if (secs < 86400) { rel = Math.floor(secs / 3600) + ' h ago'; }
+    else { rel = Math.floor(secs / 86400) + ' d ago'; }
+    var stamp = d.toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    var out = 'committed ' + rel + ' \u00b7 ' + stamp;
+    if (deployed) {
+      var dep = new Date(deployed);
+      if (!isNaN(dep.getTime())) {
+        out += ' \u00b7 deployed ' + dep.toLocaleTimeString(undefined,
+                 { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+    return out;
+  }
+
+  function show(text, detail) {
+    msg.textContent = text;
+    what.textContent = detail || '';
+    banner.classList.add('on');
+    wasBusy = true;
+  }
+
+  function hide() {
+    if (wasBusy) { location.reload(); return; }   // finished while we watched
+    banner.classList.remove('on');
+  }
+
+  function poll() {
+    fetch('status.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (s) {
+        misses = 0;
+        // Keep the card's build line honest between deploys.
+        var b = document.getElementById('build-branch');
+        var c = document.getElementById('build-commit');
+        var t = document.getElementById('build-subject');
+        if (b && s.branch) { b.textContent = s.branch; }
+        if (c && s.commit) { c.textContent = s.commit; }
+        if (t) { t.textContent = s.subject || ''; }
+        var w = document.getElementById('build-when');
+        if (w) { w.textContent = describeWhen(s.committed, s.updated); }
+        if (s.state === 'ready') { hide(); }
+        else {
+          show(s.state === 'deploying' ? 'Deploying…' : 'Starting services…',
+               [s.branch, s.commit].filter(Boolean).join(' @ '));
+        }
+      })
+      .catch(function () {
+        // No status file at all (never deployed via the scripts) should stay
+        // quiet; a file that was there and vanished means a restart is underway.
+        if (++misses > 1 || wasBusy) { show('Deploying…', 'server restarting'); }
+      });
+  }
+
+  poll();
+  setInterval(poll, 2000);
+})();
+</script>
+
+</body>
+</html>

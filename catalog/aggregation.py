@@ -27,6 +27,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional
 
+from django.core.cache import cache
 from mongoengine.connection import get_db
 
 from . import search as search_mod
@@ -408,14 +409,20 @@ def browse_materials(
 ) -> BrowseMaterialsResult:
     """Return one summary row per material matching the filters.
 
-    When ``material_auid_in`` is provided, rows are re-sorted in Python to
-    match that order (semantic search). Server-side ``skip``/``limit`` are
-    ignored in that case so ordering stays correct.
+    Fast path (no has_* filters, paginated, no semantic AUID list):
+        sort by the denormalized ``latest_trial_date`` field → paginate →
+        ``$lookup`` only the page's documents.  O(page_size) joins instead of
+        O(collection_size).
 
-    When ``skip`` and ``limit`` are set and ``material_auid_in`` is None, uses
-    ``$facet`` to return one page and a total count in one round-trip.
+    Fallback path (has_* filters or non-paginated):
+        ``$lookup`` first (needed for visibility-aware counts), then filter,
+        sort, and paginate via ``$facet``.
+
+    When ``material_auid_in`` is provided, rows are re-sorted in Python to
+    match the semantic-search order.
     """
     db = get_db()
+    coll = Material._meta["collection"]
 
     prefilter_stages = search_mod.combine_match_stages(
         search_mod.element_match_stage(elements),
@@ -443,6 +450,71 @@ def browse_materials(
     skip_n = max(0, int(skip)) if skip is not None else 0
     limit_n = min(max(1, int(limit)), BROWSE_MATERIALS_MAX_LIMIT) if limit is not None else 0
 
+    addfields_stage: Dict[str, Any] = {
+        "$addFields": {
+            "has_experiments": {"$gt": ["$trial_count", 0]},
+            "has_literature": {"$gt": ["$literature_count", 0]},
+            "has_computational": {"$gt": ["$computational_count", 0]},
+        }
+    }
+
+    # Fast path: sort by the stored latest_trial_date index before doing $lookup.
+    # Only applies when no has_* filter is requested (those require visibility-aware
+    # counts from _recipes, which need $lookup before filtering).
+    can_sort_early = (
+        use_facet
+        and limit_n > 0
+        and has_experiments is None
+        and has_literature is None
+        and has_computational is None
+    )
+
+    if can_sort_early:
+        sort_stage: Dict[str, Any] = {
+            "$sort": {"latest_trial_date": -1, "created_at": -1, "_id": 1}
+        }
+
+        # Count: prefilter only — no $lookup needed, just count matching materials.
+        count_pipeline = list(prefilter_stages) + [{"$count": "total"}]
+        count_result = list(db[coll].aggregate(count_pipeline, allowDiskUse=True))
+        total_count = count_result[0]["total"] if count_result else 0
+
+        # Data: sort → paginate → $lookup on only limit_n documents → project.
+        # latest_trial_date is read from the stored field, not recomputed from _recipes.
+        data_pipeline: List[Dict[str, Any]] = list(prefilter_stages) + [
+            sort_stage,
+            {"$skip": skip_n},
+            {"$limit": limit_n},
+            _recipes_lookup_stage(slim=True),
+            {
+                "$project": {
+                    "_id": 0,
+                    "material_auid": "$_id",
+                    "elements": 1,
+                    "element_symbols": 1,
+                    "structure_family": 1,
+                    "num_elements": 1,
+                    "display_name": 1,
+                    "default_visibility_affiliations": 1,
+                    "trial_count": _trial_count_expr(
+                        is_public_user=is_public_user, user_tags=user_tags
+                    ),
+                    "literature_count": _literature_count_expr(
+                        is_public_user=is_public_user, user_tags=user_tags
+                    ),
+                    "computational_count": {"$size": {"$ifNull": ["$dft_calculations", []]}},
+                    "recipe_count": {"$size": "$_recipes"},
+                    "latest_trial_date": 1,
+                    "created_at": 1,
+                }
+            },
+            addfields_stage,
+        ]
+        rows = list(db[coll].aggregate(data_pipeline, allowDiskUse=True))
+        return BrowseMaterialsResult(rows=rows, total_count=total_count)
+
+    # Fallback path: $lookup before sort (required when has_* filters are active,
+    # since visibility-aware counts determine which materials pass the filter).
     pipeline: List[Dict[str, Any]] = list(prefilter_stages) + [
         _recipes_lookup_stage(slim=True),
         {
@@ -469,13 +541,7 @@ def browse_materials(
                 "created_at": 1,
             }
         },
-        {
-            "$addFields": {
-                "has_experiments": {"$gt": ["$trial_count", 0]},
-                "has_literature": {"$gt": ["$literature_count", 0]},
-                "has_computational": {"$gt": ["$computational_count", 0]},
-            }
-        },
+        addfields_stage,
     ]
 
     if has_experiments is not None:
@@ -496,14 +562,14 @@ def browse_materials(
                 "data": [{"$skip": skip_n}, {"$limit": limit_n}],
             }
         })
-        raw = list(db[Material._meta["collection"]].aggregate(pipeline))
+        raw = list(db[coll].aggregate(pipeline, allowDiskUse=True))
         if not raw:
             return BrowseMaterialsResult([], 0)
         facet = raw[0]
         total_count = facet["meta"][0]["total"] if facet.get("meta") else 0
         rows = facet.get("data") or []
     else:
-        rows = list(db[Material._meta["collection"]].aggregate(pipeline))
+        rows = list(db[coll].aggregate(pipeline, allowDiskUse=True))
         total_count = len(rows)
 
     if auid_order:
@@ -631,7 +697,7 @@ def browse_literature_flat(
     ]
 
     db = get_db()
-    rows = list(db[Material._meta["collection"]].aggregate(pipeline))
+    rows = list(db[Material._meta["collection"]].aggregate(pipeline, allowDiskUse=True))
 
     # Backfill lit_id for rows whose embedded doc predates the field.
     for row in rows:
@@ -706,7 +772,7 @@ def browse_computational_flat(
     ]
 
     db = get_db()
-    rows = list(db[Material._meta["collection"]].aggregate(pipeline))
+    rows = list(db[Material._meta["collection"]].aggregate(pipeline, allowDiskUse=True))
 
     auid_order: Dict[str, int] = {}
     if material_auid_in is not None:
@@ -739,12 +805,21 @@ def synthesis_steps_search_text(steps: Any) -> str:
 # =============================================================================
 
 
+_LANDING_TOTALS_CACHE_KEY = "catalog_landing_page_totals"
+_LANDING_TOTALS_TTL = 300  # seconds
+
+
 def catalog_landing_page_totals() -> Dict[str, int]:
     """Counts across the whole LOOP database (no per-user visibility filter).
 
     Used on the landing page so visitors see how large the catalog is even when
     Browse and detail pages only show rows matching their organization access.
+    Cached for 5 minutes to avoid repeated full-collection scans.
     """
+    cached = cache.get(_LANDING_TOTALS_CACHE_KEY)
+    if cached is not None:
+        return cached
+
     db = get_db()
 
     material_count = db[Material._meta["collection"]].count_documents({})
@@ -761,7 +836,7 @@ def catalog_landing_page_totals() -> Dict[str, int]:
             }
         }
     ]
-    embedded = list(db[Recipe._meta["collection"]].aggregate(pipeline))
+    embedded = list(db[Recipe._meta["collection"]].aggregate(pipeline, allowDiskUse=True))
     trial_count = embedded[0]["trials"] if embedded else 0
     literature_count = embedded[0]["literature"] if embedded else 0
 
@@ -774,10 +849,10 @@ def catalog_landing_page_totals() -> Dict[str, int]:
             }
         }
     ]
-    dft = list(db[Material._meta["collection"]].aggregate(dft_pipeline))
+    dft = list(db[Material._meta["collection"]].aggregate(dft_pipeline, allowDiskUse=True))
     dft_count = dft[0]["total"] if dft else 0
 
-    return {
+    result = {
         "composition_count": material_count,
         "material_count": material_count,
         "recipe_count": recipe_count,
@@ -785,6 +860,8 @@ def catalog_landing_page_totals() -> Dict[str, int]:
         "experiment_count": trial_count,
         "computational_count": dft_count,
     }
+    cache.set(_LANDING_TOTALS_CACHE_KEY, result, _LANDING_TOTALS_TTL)
+    return result
 
 
 def catalog_stats() -> Dict[str, int]:

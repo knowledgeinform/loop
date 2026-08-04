@@ -5,9 +5,6 @@
 {% endblock %}
 
 {% block content %}
-<div class="mb-1">
-    <a href="{% url 'index' %}" class="text-muted text-decoration-none small">← Back</a>
-</div>
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb mb-0">
         <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
@@ -57,6 +54,7 @@
         <div class="d-flex flex-wrap gap-2 align-items-center">
             <a href="{% url 'precursors_manage' %}" class="btn btn-outline-primary btn-sm">Manage saved precursors</a>
             <a href="{% url 'protocols_manage' %}" class="btn btn-outline-primary btn-sm">Manage saved protocols</a>
+            <a href="{% url 'developer_keys' %}" class="btn btn-outline-primary btn-sm">Manage API keys</a>
             <form method="post" action="{% url 'logout' %}" class="mb-0">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>

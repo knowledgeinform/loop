@@ -14,16 +14,7 @@ from catalog import aggregation as aggregation_mod
 from catalog.documents import ExpCondition, Material, Recipe, EmbeddedTrial
 
 
-def _mongo_reachable() -> bool:
-    if os.environ.get("SKIP_MONGO_TESTS", "").lower() in ("1", "true", "yes"):
-        return False
-    try:
-        from mongoengine.connection import get_db
-
-        get_db().command("ping")
-        return True
-    except Exception:
-        return False
+from catalog.tests.mongo_guard import mongo_reachable as _mongo_reachable
 
 
 def _embedded_item_visible_mongo_rules(

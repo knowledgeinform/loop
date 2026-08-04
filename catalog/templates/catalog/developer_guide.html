@@ -1,0 +1,162 @@
+{% extends "base_generic.html" %}
+
+{% block title %}<title>LOOP - Integration Guide</title>{% endblock %}
+
+{% block content %}
+<div class="developer-docs">
+  {% include "catalog/partials/_developer_api_nav.html" %}
+
+  <div class="page-head">
+    <div class="breadcrumb-row">
+      <a href="{% url 'developer_portal' %}">Documentation</a>
+      <span class="sep">/</span>
+      <span>Integration guide</span>
+    </div>
+  </div>
+
+  <section class="developer-docs-hero mb-5">
+    <p class="text-uppercase text-muted small fw-bold mb-2">LOOP API v1</p>
+    <h1>LOOP integration guide</h1>
+    <p class="lead mb-4">A practical guide for moving from a materials-data workflow to a reliable LOOP integration. Use it when you need more context than an endpoint reference provides.</p>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-primary" href="#read-materials">Start with a read request</a>
+      <a class="btn btn-outline-primary" href="{% url 'developer_keys' %}">Create an API key</a>
+    </div>
+  </section>
+
+  <div class="row g-4">
+    <aside class="col-lg-3">
+      <nav class="developer-docs-nav sticky-lg-top" aria-label="Integration guide sections">
+        <span class="text-uppercase text-muted small fw-bold">On this page</span>
+        <a href="#before-you-build">Before you build</a>
+        <a href="#tested-examples">Tested examples</a>
+        <a href="#read-materials">Read materials</a>
+        <a href="#experimental-data">Add experimental data</a>
+        <a href="#reusable-libraries">Reuse precursors and protocols</a>
+        <a href="#validate-import">Validate and import</a>
+        <a href="#operate">Operate safely</a>
+        <a href="#next-steps">Next steps</a>
+      </nav>
+    </aside>
+
+    <div class="col-lg-9">
+      <section id="before-you-build" class="developer-docs-section">
+        <h2>Before you build</h2>
+        <p>LOOP’s API uses the same validation and storage paths as the website’s Add Data screens. An API client does not create a separate catalog: material AUIDs, records, and access rules remain the same.</p>
+        <div class="alert alert-info"><strong>Base URL:</strong> <code>{{ api_base_url }}</code></div>
+        <div class="row g-3">
+          <div class="col-md-4"><div class="card h-100"><div class="card-body"><h3 class="h5">1. Make a key</h3><p class="small mb-0">Create one named key per notebook, script, or service. Copy the secret once and put it in an environment variable or secret manager.</p></div></div></div>
+          <div class="col-md-4"><div class="card h-100"><div class="card-body"><h3 class="h5">2. Start read-only</h3><p class="small mb-0">Use <code>data:read</code> first. Add write scopes only when a tested workflow needs them.</p></div></div></div>
+          <div class="col-md-4"><div class="card h-100"><div class="card-body"><h3 class="h5">3. Validate before writing</h3><p class="small mb-0">Test one record or run a dry import before committing an entire batch.</p></div></div></div>
+        </div>
+      </section>
+
+      <section id="read-materials" class="developer-docs-section">
+        <h2>Read materials</h2>
+        <p>Start by querying known compositions. This lets you confirm access, learn the response shape, and avoid duplicating data that is already in LOOP.</p>
+        <pre class="developer-docs-code"><code>curl --request GET \
+  "{{ materials_url }}?elements=Ti,Zr,O&amp;structure_family=fluorite" \
+  --header "X-API-Key: $LOOP_API_KEY"</code></pre>
+        <p>The response contains a <code>data</code> array and list metadata. Use <code>GET /materials/{material_auid}/</code> when you already know a material AUID. For every available filter and returned field, open the <a href="{% url 'api-v1-docs' %}" target="_blank" rel="noopener">API Reference</a>.</p>
+      </section>
+
+      <section id="tested-examples" class="developer-docs-section">
+        <h2>Tested examples</h2>
+        <p>These requests are exercised by LOOP’s API integration tests. Set <code>LOOP_API_KEY</code> through your shell or secret manager; do not paste it into a command history, source file, or chat.</p>
+        <h3>1. Check the service</h3>
+        <pre class="developer-docs-code"><code>curl --fail-with-body "{{ api_base_url }}health/"</code></pre>
+        <h3>2. Validate a detailed synthesis route without writing</h3>
+        <p>This requires <code>data:write</code>, but does not create a record.</p>
+        <pre class="developer-docs-code"><code>curl --fail-with-body --request POST "{{ api_base_url }}records/validate/" \
+  --header "X-API-Key: $LOOP_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{{ documented_validation_json }}'</code></pre>
+        <h3>3. Create the validated experimental record</h3>
+        <p>Only send this after validation succeeds and you intend to add the record. It requires <code>data:write</code>.</p>
+        <pre class="developer-docs-code"><code>curl --fail-with-body --request POST "{{ api_base_url }}experiments/" \
+  --header "X-API-Key: $LOOP_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{{ documented_experiment_json }}'</code></pre>
+        <details class="border rounded p-3 mt-3">
+          <summary class="fw-semibold">Tested literature example</summary>
+          <p class="mt-3">This requires <code>data:write</code>. Replace the example DOI with the DOI of the paper you are adding before creating a real record.</p>
+          <pre class="developer-docs-code"><code>curl --fail-with-body --request POST "{{ api_base_url }}literature/" \
+  --header "X-API-Key: $LOOP_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{{ documented_literature_json }}'</code></pre>
+        </details>
+        <details class="border rounded p-3 mt-3">
+          <summary class="fw-semibold">Tested computational example</summary>
+          <p class="mt-3">This requires <code>data:write</code>. Replace the example source and calculation values with your actual computational result.</p>
+          <pre class="developer-docs-code"><code>curl --fail-with-body --request POST "{{ api_base_url }}computational/" \
+  --header "X-API-Key: $LOOP_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{{ documented_computational_json }}'</code></pre>
+        </details>
+        <details class="border rounded p-3 mt-3">
+          <summary class="fw-semibold">Tested reusable precursor and protocol examples</summary>
+          <p class="mt-3 mb-2">These are separate shared libraries. A <strong>precursor</strong> is one reusable chemical entry. A <strong>protocol</strong> is an ordered reusable synthesis route; its weighing step contains a snapshot of the precursor details needed to execute that route.</p>
+          <pre class="developer-docs-code"><code>curl --fail-with-body --request POST "{{ api_base_url }}precursors/" \
+  --header "X-API-Key: $LOOP_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{{ documented_precursor_json }}'
+
+curl --fail-with-body --request POST "{{ api_base_url }}protocols/" \
+  --header "X-API-Key: $LOOP_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{{ documented_protocol_json }}'</code></pre>
+        </details>
+      </section>
+
+      <section id="experimental-data" class="developer-docs-section">
+        <h2>Add experimental data with a synthesis route</h2>
+        <p>An experimental record describes what was done in order. Put each operation in <code>synthesis_steps</code>, from precursor weighing through characterization. This is how a detailed synthesis route—rather than just a final material label—enters LOOP.</p>
+        <div class="developer-docs-workflow">
+          <h3>Ball milling and heat treatment</h3>
+          <p>Use a <code>ball_milling</code> step for milling time, RPM, ball-to-powder ratio, and atmosphere. Follow it with steps such as pelletizing, heat treatment, annealing, quenching, grinding, or XRD measurement as appropriate to the experiment.</p>
+        </div>
+        <pre class="developer-docs-code"><code>{{ documented_experiment_json }}</code></pre>
+        <p class="mb-0">Send this JSON to <code>POST /experiments/</code> with <code>data:write</code>. To attach an XRD CSV, use multipart form data with <code>record</code> containing the JSON and <code>csv_file</code> containing the file; that request needs both <code>data:write</code> and <code>files:write</code>. Once stored, a permitted reader can retrieve the original CSV at <code>GET /recipes/{recipe_auid}/trials/{trial_id}/xrd/</code>, parsed metadata at <code>/xrd/metadata/</code>, or a generated preview at <code>/xrd/preview/</code>.</p>
+      </section>
+
+      <section id="reusable-libraries" class="developer-docs-section">
+        <h2>Reuse precursors and protocols</h2>
+        <p>These are helpers for building experimental routes; neither is an experimental, literature, or computational result.</p>
+        <div class="table-responsive"><table class="table"><thead><tr><th>Library</th><th>Purpose</th><th>Website use</th><th>API</th></tr></thead><tbody>
+          <tr><td><strong>Saved precursor</strong></td><td>One recurring reagent: CAS, name, formula, purity, supplier, and notes.</td><td>Insert it into a <code>weighing</code> step.</td><td><code>GET</code>, <code>POST /precursors/</code>; <code>GET</code>, <code>PATCH</code>, <code>DELETE /precursors/{id}/</code></td></tr>
+          <tr><td><strong>Saved protocol</strong></td><td>An ordered template of synthesis steps, including precursor snapshots on weighing steps.</td><td>Load it to replace the current experiment steps, or save the current steps as a template.</td><td><code>GET</code>, <code>POST /protocols/</code>; <code>GET</code>, <code>PATCH</code>, <code>DELETE /protocols/{id}/</code></td></tr>
+        </tbody></table></div>
+        <p>A saved protocol does not link to a mutable precursor record. It preserves the values selected when the protocol was saved, so later edits to a library precursor do not silently rewrite a historical route. Both libraries are visible to the owner and their shared affiliations; only the uploader can change or delete an entry.</p>
+        <p class="mb-0">All reusable-library operations require an authenticated key with <code>data:read</code> for reads or <code>data:write</code> for creates and edits. <code>GET /precursors/cas-lookup/?cas=13463-67-7</code> can prefill a precursor from a CAS number.</p>
+      </section>
+
+      <section id="validate-import" class="developer-docs-section">
+        <h2>Validate and import data safely</h2>
+        <p>Use <code>POST /records/validate/</code> to normalize one record without storing it. For a collection of records, send JSON or JSONL to <code>POST /imports/</code> with <code>dry_run=true</code> first. LOOP reports each row independently, so you can correct only the rows that fail before committing.</p>
+        <div class="alert alert-warning mb-0"><strong>Recommended workflow:</strong> validate one representative record → run a dry import → review row errors → import the corrected batch. Batch imports require <code>imports:write</code>.</div>
+      </section>
+
+      <section id="operate" class="developer-docs-section">
+        <h2>Operate safely</h2>
+        <div class="table-responsive"><table class="table"><thead><tr><th>Situation</th><th>What to do</th></tr></thead><tbody>
+          <tr><td>Key is exposed or no longer needed</td><td>Revoke it from <a href="{% url 'developer_keys' %}">API Keys</a>; create a replacement rather than sharing a key.</td></tr>
+          <tr><td><code>401</code> or <code>403</code></td><td>Check that the key is current, the account is approved, and the requested scope is present.</td></tr>
+          <tr><td><code>422</code></td><td>Read the field errors in the problem response, correct the record, then validate again.</td></tr>
+          <tr><td><code>429</code></td><td>Pause and honor the <code>Retry-After</code> header before retrying.</td></tr>
+        </tbody></table></div>
+        <h3>Production use</h3>
+        <p class="mb-0">Use the deployed HTTPS API base URL, verify the health endpoint with an authenticated account, and begin with a short-lived read-only key. LOOP operators manage deployment and data retention separately.</p>
+      </section>
+
+      <section id="next-steps" class="developer-docs-section">
+        <h2>Next steps</h2>
+        <p>Once the workflow is clear, use the reference for exact fields and response schemas. The shorter Markdown guide and <code>llms.txt</code> are maintained for generated clients and agents, not as required reading for a human integration.</p>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-primary" href="{% url 'api-v1-docs' %}" target="_blank" rel="noopener">Open API Reference</a>
+          <a class="btn btn-outline-primary" href="{% url 'developer_keys' %}">Manage API Keys</a>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

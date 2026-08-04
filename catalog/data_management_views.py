@@ -23,10 +23,15 @@ from mongoengine.connection import get_db
 
 from .documents import (
     AFFILIATION_VALUES,
+    AFLOWCache,
     DOIMapping,
     Material,
     MLEmbedding,
+    ModelFeedback,
+    ModelRetrainJob,
+    ModelVersion,
     Recipe,
+    SynthesisPrediction,
     STRUCTURE_FAMILY_VALUES,
     UserAffiliation,
     upsert_user_affiliations,
@@ -39,18 +44,31 @@ PAGE_SIZE = 25
 COLLECTIONS = {
     "materials": (Material, "Materials"),
     "recipes": (Recipe, "Recipes"),
+    "synthesis_predictions": (SynthesisPrediction, "Synthesis predictions"),
     "ml_embeddings": (MLEmbedding, "ML embeddings"),
+    "model_versions": (ModelVersion, "EFA/DEED model versions"),
+    "model_feedback": (ModelFeedback, "Model rewards and flags"),
+    "model_retrain_jobs": (ModelRetrainJob, "Model retraining jobs"),
+    "aflow_cache": (AFLOWCache, "AFLOW query cache"),
     "doi_mappings": (DOIMapping, "DOI mappings"),
     "user_affiliations": (UserAffiliation, "User affiliations"),
     "raw_files": (RawFile, "Raw files (backup DB)"),
 }
 
 # Collections whose primary key is a string AUID / hash, not an ObjectId.
-_STRING_ID_COLLECTIONS = {"materials", "recipes", "raw_files"}
+_STRING_ID_COLLECTIONS = {
+    "materials",
+    "recipes",
+    "synthesis_predictions",
+    "raw_files",
+    "model_versions",
+    "model_feedback",
+    "aflow_cache",
+}
 
 # Collections that carry material_auid + structure_family and support the
 # material-search filter toolbar.
-_MATERIAL_FILTER_COLLECTIONS = {"materials", "recipes"}
+_MATERIAL_FILTER_COLLECTIONS = {"materials", "recipes", "synthesis_predictions"}
 
 
 def superuser_required(view_func):

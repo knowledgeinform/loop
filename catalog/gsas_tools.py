@@ -27,6 +27,7 @@ try:
         set_project_cycles,
         write_temp_xye,
     )
+    from .numpy_compat import trapezoid
     from .utils import render_overlay_plot, xrd_parse
 except ImportError:
     from gsas_runtime import (  # type: ignore
@@ -40,6 +41,7 @@ except ImportError:
         set_project_cycles,
         write_temp_xye,
     )
+    from numpy_compat import trapezoid  # type: ignore
     from utils import render_overlay_plot, xrd_parse
 
 
@@ -322,7 +324,7 @@ def _local_peak_area(theta: np.ndarray, residual: np.ndarray, index: int, radius
     segment_residual = np.clip(residual[left : right + 1], 0.0, None)
     if segment_theta.size < 2:
         return max(float(segment_residual[0]) if segment_residual.size else 0.0, 0.0)
-    return float(np.trapz(segment_residual, segment_theta))
+    return float(trapezoid(segment_residual, segment_theta))
 
 
 def find_local_peaks(

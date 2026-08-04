@@ -15,95 +15,68 @@
   {% include "catalog/partials/_detail_hero.html" with detail_kind="trial" %}
 
   <div class="py-4">
+    {# ------------------------------------------------ Experimental summary #}
     <div class="detail-section-panel">
       <div class="comp-tab-toolbar">
         <h2>Experimental summary</h2>
       </div>
       <div class="detail-section-body">
-        <div class="row">
-          <div class="col-lg-7">
-            {% if plot_b64 %}
-            <img src="data:image/png;base64,{{ plot_b64 }}" alt="XRD Plot for {{ record.trial_id }}" class="xrd-plot">
-            {% if plot_notice %}
-            <div class="small text-muted mt-2">{{ plot_notice }}</div>
-            {% endif %}
+        <div class="trial-summary-grid">
+          <div class="trial-summary-plot">
+            {% if plot_url %}
+            <img src="{{ plot_url }}" alt="XRD Plot for {{ record.trial_id }}" class="xrd-plot">
+            {% if plot_notice %}<p class="section-hint mt-2">{{ plot_notice }}</p>{% endif %}
             {% if detected_peaks %}
-            <div class="table-responsive mt-3">
-              <table class="table table-sm table-bordered meta-table">
-                <thead>
-                  <tr>
-                    <th>2θ</th>
-                    <th>Intensity</th>
-                    <th>Area</th>
-                  </tr>
-                </thead>
+            <div class="table-wrap mt-3">
+              <table class="table table-sm mb-0">
+                <thead><tr><th class="num">2θ</th><th class="num">Intensity</th><th class="num">Area</th></tr></thead>
                 <tbody>
                   {% for peak in detected_peaks %}
-                  <tr>
-                    <td>{{ peak.two_theta|floatformat:4 }}</td>
-                    <td>{{ peak.intensity|floatformat:2 }}</td>
-                    <td>{{ peak.area|floatformat:2 }}</td>
-                  </tr>
+                  <tr><td class="num">{{ peak.two_theta|floatformat:4 }}</td><td class="num">{{ peak.intensity|floatformat:2 }}</td><td class="num">{{ peak.area|floatformat:2 }}</td></tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
             {% endif %}
             {% else %}
-            <div class="text-muted">No plottable XRD data found for this trial.</div>
+            <div class="empty-state"><p>No plottable XRD data found for this trial.</p></div>
             {% endif %}
           </div>
-          <div class="col-lg-5">
-            <dl class="row">
-              <dt class="col-5">Date</dt>
-              <dd class="col-7">{{ record.trial_date|date:"Y-m-d H:i" }}</dd>
+          <div class="trial-summary-facts">
+            <dl class="trial-facts">
+              <dt>Date</dt>
+              <dd>{{ record.trial_date|date:"Y-m-d H:i" }}</dd>
 
-              <dt class="col-5">Result</dt>
-              <dd class="col-7">
-                {% if record.phase_status == 'single_phase' %}
-                <span class="badge text-bg-success">Single phase</span>
-                {% elif record.phase_status == 'multi_phase' %}
-                <span class="badge text-bg-danger">Multi-phase / failed</span>
-                {% elif record.phase_status == 'not_confirmed' %}
-                <span class="badge text-bg-secondary">Phase not yet confirmed</span>
-                {% elif record.success %}
-                <span class="badge text-bg-success">Success</span>
-                {% elif record.success == False %}
-                <span class="badge text-bg-danger">Failed</span>
-                {% else %}
-                <span class="badge text-bg-secondary">Phase not yet confirmed</span>
-                {% endif %}
+              <dt>Human result</dt>
+              <dd>
+                <span class="badge {{ human_phase_meta.badge_class }}">{{ human_phase_meta.label }}</span>
               </dd>
 
-              <dt class="col-5">Experimenter</dt>
-              <dd class="col-7">{{ record.experimenter|default:"—" }}</dd>
+              <dt>Experimenter</dt>
+              <dd>{{ record.experimenter|default:"—" }}</dd>
 
-              <dt class="col-5">Raw Data</dt>
-              <dd class="col-7">
+              <dt>Raw data</dt>
+              <dd>
                 {% if record.raw_data_link %}
                 <a href="{{ record.raw_data_link }}" target="_blank" rel="noopener">Open {{ record.raw_data_type|upper }} file</a>
-                {% else %}
-                —
-                {% endif %}
+                {% else %}—{% endif %}
               </dd>
 
-              <dt class="col-5">Full GSAS-II</dt>
-              <dd class="col-7">
-                {% if has_xrd_csv %}
-                  {% if full_gsas_applied %}
-                    <span class="small text-success">This plot and peak table used full GSAS-II refinement.</span>
-                  {% else %}
-                    <a href="{{ request.path }}?refine_gsas=1" class="btn btn-outline-secondary btn-sm">Run full GSAS-II refinement</a>
-                    <span class="small text-muted d-block mt-1">Runs a full fit in the browser request — often minutes. The page reloads when it finishes.</span>
-                  {% endif %}
-                {% else %}
-                  <span class="text-muted small">No local XRD CSV found for this trial.</span>
-                {% endif %}
+              <dt>Space group</dt>
+              <dd>{{ record.spacegroup|default:"—" }}</dd>
+
+              {% if record.element_sites %}
+              <dt>Element sites</dt>
+              <dd>
+                <div class="trial-sites">
+                  {% for sym, site in record.element_sites.items %}<span class="site-token"><strong>{{ sym }}</strong>{{ site }}</span>{% endfor %}
+                </div>
               </dd>
+              {% endif %}
 
               {% if record.notes %}
-              <dt class="col-5">Notes</dt>
-              <dd class="col-7">{{ record.notes }}</dd>
+              <dt>Notes</dt>
+              <dd>{{ record.notes }}</dd>
               {% endif %}
             </dl>
           </div>
@@ -111,19 +84,123 @@
       </div>
     </div>
 
-    <div class="detail-section-panel">
+    <div class="detail-section-panel" data-xrd-analysis-card
+         data-submit-url="{{ latest_analysis.submit_url }}"
+         data-status-url="{{ latest_analysis.status_url|default:'' }}"
+         data-detail-url="{{ latest_analysis.detail_url|default:'' }}"
+         data-has-job="{% if latest_analysis.job %}1{% else %}0{% endif %}"
+         data-job-status="{{ latest_analysis.job.status|default:'' }}">
       <div class="comp-tab-toolbar">
-        <h2>Synthesis process</h2>
+        <h2>XRD analysis</h2>
       </div>
       <div class="detail-section-body">
-        {% if synthesis_steps_display %}
+        <div class="trial-summary-grid">
+          <div class="trial-summary-facts">
+            <dl class="trial-facts mb-0">
+              <dt>Target structure</dt>
+              <dd>
+                {% for label, value in target_structure_rows %}
+                <div><strong>{{ label }}:</strong> {{ value }}</div>
+                {% endfor %}
+              </dd>
+
+              <dt>Human result</dt>
+              <dd><span class="badge {{ human_phase_meta.badge_class }}">{{ human_phase_meta.label }}</span></dd>
+
+              <dt>Automated status</dt>
+              <dd>
+                <span class="badge {{ latest_analysis.status_meta.badge_class }}" data-xrd-status-badge>{{ latest_analysis.status_meta.label }}</span>
+                <span class="section-hint d-block mt-1" data-xrd-status-message>
+                  {% if latest_analysis.job %}
+                    {{ latest_analysis.job.progress_message|default:"The latest persisted analysis status is shown here." }}
+                  {% else %}
+                    No automated XRD phase-analysis run has been recorded for this trial yet.
+                  {% endif %}
+                </span>
+              </dd>
+
+              <dt>Analysis ID</dt>
+              <dd data-xrd-analysis-id>{{ latest_analysis.job.analysis_id|default:"—" }}</dd>
+
+              <dt>Selected model</dt>
+              <dd>{{ latest_analysis.summary.selected_model_type|default:"—" }}</dd>
+
+              <dt>Automated phase state</dt>
+              <dd>
+                {% if latest_analysis.phase_state_meta %}
+                <span class="badge {{ latest_analysis.phase_state_meta.badge_class }}">{{ latest_analysis.phase_state_meta.label }}</span>
+                {% else %}—{% endif %}
+              </dd>
+
+              <dt>Evidence score</dt>
+              <dd>{{ latest_analysis.summary.evidence_score|default:"—" }}</dd>
+
+              <dt>Warnings</dt>
+              <dd>
+                {% if latest_analysis.summary.warning_count %}
+                {{ latest_analysis.summary.warning_count }} warning{{ latest_analysis.summary.warning_count|pluralize }}
+                {% else %}—{% endif %}
+              </dd>
+
+              <dt>Latest expert review</dt>
+              <dd>
+                {% if latest_analysis.active_review %}
+                <strong>{{ latest_analysis.active_review.review_status }}</strong>
+                {% if latest_analysis.active_review.reviewed_phase_state %}
+                <span class="section-hint d-block">{{ latest_analysis.active_review.reviewed_phase_state }}</span>
+                {% endif %}
+                {% if latest_analysis.active_review.reviewer_display_name %}
+                <span class="section-hint d-block">by {{ latest_analysis.active_review.reviewer_display_name }}</span>
+                {% endif %}
+                {% else %}—{% endif %}
+              </dd>
+            </dl>
+          </div>
+          <div class="trial-summary-facts">
+            <div class="empty-state h-100 d-flex flex-column justify-content-between">
+              <div>
+                <p class="mb-2">The automated XRD pipeline now runs through the background job and persisted-analysis path.</p>
+                <p class="section-hint mb-3">This panel keeps the human-entered trial result, the intended target structure, and the automated analysis result separate.</p>
+              </div>
+              <div>
+                {% if has_xrd_csv %}
+                  {% if latest_analysis.detail_url %}
+                  <a href="{{ latest_analysis.detail_url }}" class="btn btn-outline-secondary btn-sm mb-2" data-xrd-detail-link>Open analysis detail</a>
+                  {% else %}
+                  <a href="#" class="btn btn-outline-secondary btn-sm mb-2 disabled" aria-disabled="true" data-xrd-detail-link>Open analysis detail</a>
+                  {% endif %}
+                  {% if latest_analysis.can_submit %}
+                  <button type="button"
+                          class="btn btn-primary btn-sm"
+                          data-xrd-submit-button
+                          {% if not latest_analysis.allow_submit_now %}disabled{% endif %}>
+                    Analyze XRD pattern
+                  </button>
+                  {% else %}
+                  <p class="section-hint mb-0">Approved access is required to submit automated XRD analysis.</p>
+                  {% endif %}
+                {% else %}
+                <p class="section-hint mb-0">No local XRD raw file is available for automated analysis on this trial.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ------------------------------- Synthesis procedure (inherited, demoted) #}
+    {% if synthesis_steps_display %}
+    <details class="detail-section-panel synthesis-fold">
+      <summary class="comp-tab-toolbar synthesis-fold-summary">
+        <h2>Synthesis procedure <span class="synthesis-fold-note">from route</span></h2>
+        <a class="route-open-link" href="{% url 'recipe_detail' recipe_id=recipe_id %}" data-noexpand>View full route&nbsp;&rarr;</a>
+      </summary>
+      <div class="detail-section-body">
         <div class="synthesis-timeline">
           {% for step in synthesis_steps_display %}
           <div class="synthesis-step-card">
-            <h5 class="mb-2 step-title">
-              Step {{ step.step_number }}
-              <span class="step-type-inline">- {{ step.step_type_label }}</span>
-            </h5>
+            <h5 class="step-title mb-2">Step {{ step.step_number }} <span class="step-type-inline">— {{ step.step_type_label }}</span></h5>
             {% if step.details or step.precursors_list %}
             <div>
               {% for detail in step.details %}
@@ -136,28 +213,20 @@
               <div class="step-details-row">
                 <div class="step-details-label">Precursors</div>
                 <div class="step-details-value">
-                  <table class="table table-sm table-bordered mb-0">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Formula</th>
-                        <th>CAS</th>
-                        <th>Purity</th>
-                        <th>Supplier</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% for p in step.precursors_list %}
-                      <tr>
-                        <td>{{ p.name|default:"—" }}</td>
-                        <td>{{ p.formula|default:"—" }}</td>
-                        <td>{{ p.cas_number|default:"—" }}</td>
-                        <td>{{ p.purity|default:"—" }}</td>
-                        <td>{{ p.supplier|default:"—" }}</td>
-                      </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
+                  <div class="table-wrap">
+                    <table class="table table-sm mb-0">
+                      <thead><tr><th>Name</th><th>Formula</th><th>CAS</th><th>Purity</th><th>Supplier</th></tr></thead>
+                      <tbody>
+                        {% for p in step.precursors_list %}
+                        <tr>
+                          <td>{{ p.name|default:"—" }}</td><td>{{ p.formula|default:"—" }}</td>
+                          <td>{{ p.cas_number|default:"—" }}</td><td>{{ p.purity|default:"—" }}</td>
+                          <td>{{ p.supplier|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
               {% endif %}
@@ -168,75 +237,64 @@
           </div>
           {% endfor %}
         </div>
-        {% else %}
-        <p class="text-muted mb-0">No structured synthesis steps recorded.</p>
-        {% endif %}
       </div>
-    </div>
+    </details>
+    {% endif %}
 
+    {# ---------------------------------------------------- Additional info #}
+    {% if additional_notes %}
     <div class="detail-section-panel">
-      <div class="comp-tab-toolbar">
-        <h2>Additional information</h2>
-      </div>
+      <div class="comp-tab-toolbar"><h2>Additional information</h2></div>
       <div class="detail-section-body">
-        {% if additional_notes %}
-        <div class="table-responsive">
-          <table class="table table-sm table-bordered table-hover meta-table mb-0">
+        <div class="table-wrap">
+          <table class="table meta-table mb-0">
             <tbody>
               {% for key, value in additional_notes %}
-              <tr>
-                <th class="text-muted">{{ key }}</th>
-                <td>{{ value }}</td>
-              </tr>
+              <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
-        {% else %}
-        <p class="text-muted mb-0 fs-6">No additional information provided.</p>
-        {% endif %}
       </div>
     </div>
+    {% endif %}
 
+    {# ------------------------------------------------------- CSV metadata #}
+    {% if metadata_rows %}
     <div class="detail-section-panel">
-      <div class="comp-tab-toolbar">
-        <h2>CSV metadata</h2>
-      </div>
+      <div class="comp-tab-toolbar"><h2>CSV metadata</h2></div>
       <div class="detail-section-body">
-        {% if metadata_rows %}
-        <div class="table-responsive">
-          <table class="table table-sm table-bordered table-hover meta-table mb-0">
+        <div class="table-wrap">
+          <table class="table meta-table mb-0">
             <tbody>
               {% for key, value in metadata_rows %}
-              <tr>
-                <th class="text-muted">{{ key }}</th>
-                <td>{{ value|default:"—" }}</td>
-              </tr>
+              <tr><th>{{ key }}</th><td>{{ value|default:"—" }}</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
-        {% else %}
-        <p class="text-muted mb-0">No metadata found.</p>
-        {% endif %}
       </div>
     </div>
+    {% endif %}
 
     {% if can_modify_trial or can_delete_trial %}
-    <div class="d-flex justify-content-between align-items-center mt-4">
+    <div class="trial-action-row">
       {% if can_modify_trial %}
-      <a href="{% url 'upload_exp_data' %}?material_auid={{ material_auid }}&edit_recipe_id={{ recipe_id }}&edit_trial_id={{ trial_id }}" class="btn btn-outline-primary">Modify Trial</a>
-      {% else %}
-      <span></span>
-      {% endif %}
+      <a href="{% url 'upload_exp_data' %}?material_auid={{ material_auid }}&edit_recipe_id={{ recipe_id }}&edit_trial_id={{ trial_id }}" class="btn btn-outline-primary btn-sm">Modify trial</a>
+      {% else %}<span></span>{% endif %}
       {% if can_delete_trial %}
       <form method="post" action="{% url 'delete_trial' recipe_id=recipe_id trial_id=trial_id %}" onsubmit="return confirm('Delete this trial? This cannot be undone.');">
         {% csrf_token %}
-        <button type="submit" class="btn btn-outline-danger">Delete Trial</button>
+        <button type="submit" class="btn btn-outline-danger btn-sm">Delete trial</button>
       </form>
       {% endif %}
     </div>
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script src="{% static 'js/xrd_analysis.js' %}" defer></script>
 {% endblock %}

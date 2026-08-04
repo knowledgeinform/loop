@@ -1,0 +1,94 @@
+{% extends "base_generic.html" %}
+
+{% block title %}
+<title>LOOP - Confirm deletion</title>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'my_literature' %}">My literature records</a></li>
+    <li class="breadcrumb-item active">Confirm deletion</li>
+  </ol>
+</nav>
+
+<h1 class="mb-3">Confirm deletion</h1>
+
+<div class="alert alert-warning">
+  <strong>{{ plan.total_removed }} record{{ plan.total_removed|pluralize }} will be permanently deleted.</strong>
+  This cannot be undone.
+</div>
+
+{% if plan.cascade %}
+  {% comment %}
+    The DOI match is inherited from the single-record delete. Saying so here is
+    the difference between a surprise and an informed choice.
+  {% endcomment %}
+  <div class="alert alert-danger">
+    <strong>{{ plan.cascade|length }} additional record{{ plan.cascade|length|pluralize }}
+    will also be removed</strong> because they share a DOI with something you selected.
+    Deletion matches on DOI as well as record id, so duplicates of the same paper
+    within a recipe go together.
+  </div>
+{% endif %}
+
+{% if plan.denied %}
+  <div class="alert alert-secondary">
+    <strong>{{ plan.denied|length }} record{{ plan.denied|length|pluralize }} will be skipped</strong>
+    because they were uploaded by someone else:
+    <ul class="mb-0 mt-2">
+      {% for note in plan.denied %}<li>{{ note }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+{% if plan.missing %}
+  <div class="alert alert-secondary">
+    {{ plan.missing|length }} selected record{{ plan.missing|length|pluralize }}
+    no longer exist and will be ignored.
+  </div>
+{% endif %}
+
+<div class="table-responsive mb-3">
+  <table class="table table-sm table-bordered align-middle">
+    <thead class="table-light">
+      <tr><th>DOI</th><th>Title</th><th>Material</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for row in plan.rows %}
+      <tr>
+        <td class="text-nowrap"><code>{{ row.doi }}</code></td>
+        <td>{{ row.title|default:"(untitled)"|truncatechars:60 }}</td>
+        <td class="text-nowrap"><code class="small">{{ row.material_auid }}</code></td>
+        <td class="text-muted small">selected</td>
+      </tr>
+      {% endfor %}
+      {% for row in plan.cascade %}
+      <tr class="table-danger">
+        <td class="text-nowrap"><code>{{ row.doi }}</code></td>
+        <td>{{ row.title|default:"(untitled)"|truncatechars:60 }}</td>
+        <td class="text-nowrap"><code class="small">{{ row.material_auid }}</code></td>
+        <td class="text-muted small">same DOI</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<form method="post" action="{% url 'bulk_delete_literature' %}" class="d-flex gap-2">
+  {% csrf_token %}
+  {% comment %}
+    Re-posting the ids rather than a token: the server rebuilds the plan from
+    these, so a stale or edited form cannot widen the deletion.
+  {% endcomment %}
+  {% for row in plan.rows %}
+    <input type="hidden" name="selected" value="{{ row.token }}">
+  {% endfor %}
+  <input type="hidden" name="confirm" value="yes">
+  <button type="submit" class="btn btn-danger">
+    Delete {{ plan.total_removed }} record{{ plan.total_removed|pluralize }}
+  </button>
+  <a href="{% url 'my_literature' %}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+{% endblock %}

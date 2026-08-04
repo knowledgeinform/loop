@@ -1,0 +1,5 @@
+<nav class="developer-api-nav mb-4" aria-label="LOOP API navigation">
+    <a href="{% url 'developer_portal' %}" {% if request.resolver_match.url_name == 'developer_portal' or request.resolver_match.url_name == 'developer_guide' %}aria-current="page"{% endif %}>Documentation</a>
+    <a href="{% url 'developer_keys' %}" {% if request.resolver_match.url_name == 'developer_keys' %}aria-current="page"{% endif %}>API Keys</a>
+    <a href="{% url 'api-v1-docs' %}" target="_blank" rel="noopener">API Reference</a>
+</nav>

@@ -5,141 +5,11 @@
 {% block extra_css %}
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'css/periodic-table.css' %}">
-  <style>
-    .synthesis-step {
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      background: #f8f9fa;
-      position: relative;
-      cursor: pointer;
-    }
-    .synthesis-step.active {
-      border-color: #002d72;
-      background: #fff;
-      cursor: default;
-    }
-    .synthesis-step:not(.active):hover {
-      border-color: #adb5bd;
-      background: #f1f3f5;
-    }
-    .step-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-right: 2rem;
-      min-height: 38px;
-      cursor: pointer;
-    }
-    .synthesis-step.active .step-header {
-      margin-bottom: 0.75rem;
-    }
-    .step-header:hover {
-      opacity: 0.8;
-    }
-    .step-header-left {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .step-move-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
-    .step-move-btns button { display: block; background: none; border: none; padding: 0 3px; line-height: 1; font-size: 0.55rem; color: #adb5bd; cursor: pointer; }
-    .step-move-btns button:not(:disabled):hover { color: #002d72; }
-    .step-move-btns button:disabled { opacity: 0.25; cursor: default; }
-    .step-number {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      background: #002d72;
-      color: #fff;
-      border-radius: 50%;
-      font-weight: 600;
-      font-size: 0.9rem;
-      flex-shrink: 0;
-    }
-    .step-type-select {
-      font-weight: 600;
-    }
-    .step-arrow {
-      color: #6c757d;
-      font-size: 0.75rem;
-      transition: transform 0.2s;
-    }
-    .synthesis-step.active .step-arrow {
-      transform: rotate(180deg);
-    }
-    .step-content {
-      display: none;
-    }
-    .synthesis-step.active .step-content {
-      display: block;
-    }
-    .remove-step {
-      position: absolute;
-      top: 50%;
-      right: 0.5rem;
-      transform: translateY(-50%);
-      z-index: 10;
-    }
-    .synthesis-step.active .remove-step {
-      top: 0.75rem;
-      transform: none;
-    }
-    .add-step-btn {
-      border: 2px dashed #dee2e6;
-      background: transparent;
-      width: 100%;
-      padding: 1rem;
-      border-radius: 8px;
-      color: #6c757d;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .add-step-btn:hover {
-      border-color: #002d72;
-      color: #002d72;
-    }
-    .step-type-select {
-      font-weight: 600;
-    }
-    .xrd-preview-inline {
-      max-width: 640px;
-      width: 100%;
-      max-height: 260px;
-      object-fit: contain;
-      background: #fff;
-    }
-    .precursor-row {
-      display: grid;
-      grid-template-columns: 110px 1.3fr 0.8fr 0.7fr 1fr auto;
-      gap: 0.4rem;
-      align-items: center;
-      margin-bottom: 0.4rem;
-    }
-    .precursor-row input {
-      font-size: 0.85rem;
-      padding: 0.25rem 0.5rem;
-    }
-    .precursor-row .precursor-row-actions {
-      display: flex;
-      gap: 0.25rem;
-    }
-    .precursor-row-empty {
-      color: #6c757d;
-      font-size: 0.85rem;
-      padding: 0.5rem 0;
-    }
-  </style>
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 <div>
-    <div class="mb-1">
-        <a href="{% if existing_material_auid %}{% url 'composition_detail' material_auid=existing_material_auid %}{% else %}{% url 'add_data' %}{% endif %}" class="text-muted text-decoration-none small">← Back</a>
-    </div>
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb mb-0">
             <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
@@ -173,9 +43,9 @@
             <h2>1. Raw data file <span class="text-muted small">(optional)</span></h2>
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label for="csv_file" class="form-label">XRD CSV</label>
-                    <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv">
-                    <div class="form-text">Optional: CSV with 2θ/intensity data for automatic plotting and local backup</div>
+                    <label for="csv_file" class="form-label">XRD data file</label>
+                    <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv,.txt,.asc,.xy,.raw">
+                    <div class="form-text">Optional: CSV, TXT, or Bruker RAW with 2θ/intensity data for automatic plotting and local backup</div>
                     {% if plot_image %}
                     <div class="mt-3">
                         <div class="small fw-semibold mb-2">XRD Preview</div>
@@ -189,14 +59,17 @@
                         {% for rdt in raw_data_types %}
                         <option value="{{ rdt }}" {% if post_form_state.raw_data_type == rdt %}selected{% endif %}>{{ rdt|upper }}</option>
                         {% endfor %}
+                        <option value="unknown" {% if post_form_state.raw_data_type == "unknown" %}selected{% endif %}>Unknown</option>
+                        <option value="na" {% if post_form_state.raw_data_type == "na" %}selected{% endif %}>N/A</option>
                     </select>
                 </div>
             </div>
         </section>
 
-        <!-- Composition Selection -->
+        <!-- Composition & Site Assignments -->
         <section class="upload-section">
-            <h2>2. Composition</h2>
+            <h2>2. Composition &amp; Site Assignments</h2>
+
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label for="structure_family" class="form-label">Structure Family <span class="text-danger">*</span></label>
@@ -209,22 +82,42 @@
                     <input type="hidden" name="structure_family" value="{{ locked_structure_family }}">
                     {% endif %}
                 </div>
+                <div class="col-md-6">
+                    <label for="spacegroup" class="form-label">Space Group</label>
+                    <select name="spacegroup" id="spacegroup"
+                        data-initial-value="{{ post_form_state.spacegroup|default:existing_spacegroup|default:'' }}">
+                    </select>
+                </div>
             </div>
 
             <input type="hidden" name="elements" id="composition-json" value="{% if existing_material_auid %}{{ locked_elements_json|escapejs }}{% elif post_form_state.elements_json %}{{ post_form_state.elements_json|escapejs }}{% else %}{}{% endif %}">
+            <input type="hidden" name="element_sites" id="element-sites-json"
+                value="{{ post_form_state.element_sites_json|default:existing_element_sites_json|default:'{}' }}">
+
             {% if existing_material_auid %}
-            <div class="alert alert-light border mb-0">
-                <div class="small text-muted mb-2"><strong>Composition locked from <span class="text-monospace">{{ existing_material_auid }}</span></strong></div>
+            {# Locked composition — table with inline site assignment column #}
+            <div class="rounded border bg-light p-3">
+                <p class="small text-muted mb-2">
+                    Composition locked from
+                    <a href="{% url 'composition_detail' material_auid=existing_material_auid %}" class="text-monospace text-decoration-none">{{ existing_material_auid }}</a>
+                    ({{ locked_structure_family|title }}).
+                    Assign crystallographic sites below.
+                </p>
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr><th>Element</th><th>Ratio</th></tr>
+                    <table class="table table-sm table-borderless align-middle mb-0" id="locked-composition-table">
+                        <thead class="small text-muted border-bottom">
+                            <tr>
+                                <th style="width:3.5rem">Elem</th>
+                                <th style="width:5rem">Ratio</th>
+                                <th>Crystallographic Site</th>
+                            </tr>
                         </thead>
                         <tbody>
                             {% for item in locked_elements_display %}
-                            <tr>
-                                <td>{{ item.0 }}</td>
-                                <td>{{ item.1 }}</td>
+                            <tr data-sym="{{ item.0 }}">
+                                <td><span class="badge text-bg-secondary fs-6 px-2">{{ item.0 }}</span></td>
+                                <td class="text-muted">{{ item.1 }}</td>
+                                <td class="site-cell"></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -232,7 +125,7 @@
                 </div>
             </div>
             {% else %}
-            {% include "_periodic_table.html" with ptable_wrap_class="ptable-upload" %}
+            {% include "_periodic_table.html" with ptable_wrap_class="ptable-upload" comp_label="Composition Ratios & Site Assignments" comp_hint="Click elements to add them, enter ratios, then assign each to a crystallographic site." %}
             {% endif %}
         </section>
 
@@ -272,6 +165,8 @@
                                 <option value="grinding">Grinding / Polishing</option>
                                 <option value="xrd_measurement">XRD Measurement</option>
                                 <option value="other">Other</option>
+                                <option value="unknown">Unknown</option>
+                                <option value="na">N/A</option>
                             </select>
                         </div>
                         <span class="step-arrow">▼</span>
@@ -302,6 +197,8 @@
                                         <option value="nitrogen">Nitrogen</option>
                                         <option value="air">Air</option>
                                         <option value="vacuum">Vacuum</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                             </div>
@@ -314,6 +211,8 @@
                                         <option value="zirconia">Zirconia</option>
                                         <option value="agate">Agate</option>
                                         <option value="plastic">Plastic</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -323,6 +222,8 @@
                                         <option value="tungsten_carbide">Tungsten Carbide</option>
                                         <option value="zirconia">Zirconia</option>
                                         <option value="ysz">YSZ (Yttria-Stabilized Zirconia)</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -375,6 +276,8 @@
                                         <option value="mortar_pestle">Mortar & Pestle</option>
                                         <option value="tumbler">Tumbler</option>
                                         <option value="vortex">Vortex Mixer</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                             </div>
@@ -426,6 +329,8 @@
                                         <option value="hydrogen">H₂/Ar (Reducing)</option>
                                         <option value="oxygen">Oxygen</option>
                                         <option value="vacuum">Vacuum</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                             </div>
@@ -437,6 +342,8 @@
                                         <option value="tube">Tube Furnace</option>
                                         <option value="muffle">Muffle Furnace</option>
                                         <option value="sps">SPS/FAST</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -463,6 +370,8 @@
                                         <option value="air">Air</option>
                                         <option value="argon">Argon</option>
                                         <option value="vacuum">Vacuum</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                             </div>
@@ -484,6 +393,8 @@
                                     <select name="step_1_hearth" class="form-select">
                                         <option value="copper">Water-cooled Copper</option>
                                         <option value="graphite">Graphite</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
@@ -491,6 +402,8 @@
                                     <select name="step_1_arc_atmosphere" class="form-select">
                                         <option value="argon">Argon</option>
                                         <option value="argon_hydrogen">Ar + H₂</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                             </div>
@@ -506,6 +419,8 @@
                                         <option value="oil">Oil</option>
                                         <option value="liquid_nitrogen">Liquid Nitrogen</option>
                                         <option value="air">Air (rapid)</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -524,6 +439,8 @@
                                         <option value="furnace_cool">Furnace Cool (in furnace)</option>
                                         <option value="air_cool">Air Cool (removed from furnace)</option>
                                         <option value="controlled">Controlled Rate</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -542,6 +459,8 @@
                                         <option value="mortar">Agate Mortar & Pestle</option>
                                         <option value="ball_mill">Ball Mill (short)</option>
                                         <option value="polishing">Mechanical Polishing</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -560,6 +479,8 @@
                                         <option value="cu_ka">Cu Kα</option>
                                         <option value="co_ka">Co Kα</option>
                                         <option value="mo_ka">Mo Kα</option>
+                                        <option value="unknown">Unknown</option>
+                                        <option value="na">N/A</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
@@ -643,7 +564,12 @@
 
         <div class="upload-actions">
             <a href="{% if existing_material_auid %}{% url 'composition_detail' material_auid=existing_material_auid %}{% else %}{% url 'add_data' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary">{% if edit_trial_id %}Save Trial Changes{% else %}Submit Experiment{% endif %}</button>
+            {% if edit_trial_id %}
+            <button type="submit" class="btn btn-primary">Save Trial Changes</button>
+            {% else %}
+            <button type="button" id="batch-save-btn" class="btn btn-outline-primary d-none">Save</button>
+            <button type="submit" id="primary-submit-btn" class="btn btn-primary"><span id="primary-submit-label">Save &amp; Upload</span></button>
+            {% endif %}
         </div>
     </form>
 
@@ -657,6 +583,11 @@
     window.LOCK_COMPOSITION = true;
   </script>
   {% endif %}
+  <script>
+    window.STRUCTURE_FAMILY_SPACEGROUPS = {{ structure_family_spacegroups|safe }};
+    window.STRUCTURE_FAMILY_SITES = {{ structure_family_sites|safe }};
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   <script type="module" src="{% static 'js/upload_form.js' %}"></script>
   {% if existing_material_auid %}
   <script>

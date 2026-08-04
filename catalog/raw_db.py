@@ -68,6 +68,12 @@ class RawFile(Document):
     notes = StringField()
     tags = ListField(StringField())
 
+    # Processed artifacts derived from this raw file (pattern/overlay/peaks).
+    derived_files = ListField(DictField())
+    # RAW_UPLOADS_ROOT-relative archive folder for this upload, so lazily-built
+    # derived artifacts can be back-filled into a self-contained snapshot.
+    archive_folder = StringField()
+
     meta = {
         "db_alias": RAW_DB_ALIAS,
         "collection": "raw_files",
@@ -104,6 +110,7 @@ def record_raw_file(
     structure_family: Optional[str] = None,
     notes: Optional[str] = None,
     tags: Optional[list] = None,
+    archive_folder: Optional[str] = None,
 ) -> None:
     """Idempotently upsert a ``raw_files`` row keyed by ``file_hash``.
 
@@ -140,6 +147,8 @@ def record_raw_file(
         set_fields["set__notes"] = notes
     if tags is not None:
         set_fields["set__tags"] = list(tags)
+    if archive_folder is not None:
+        set_fields["set__archive_folder"] = archive_folder
 
     RawFile.objects(id=file_hash).update_one(
         set_on_insert__uploaded_at=_utc_now(),
@@ -148,4 +157,80 @@ def record_raw_file(
     )
 
 
-__all__ = ["RAW_DB_ALIAS", "RawFile", "record_raw_file"]
+def record_derived_file(
+    *,
+    file_hash: str,
+    kind: str,
+    variant: Optional[str],
+    stored_path: str,
+    url: str,
+    size_bytes: int,
+    sha256: str,
+    generated_at: str,
+    content_type: Optional[str] = None,
+    artifact_type: Optional[str] = None,
+    parent_file_hash: Optional[str] = None,
+    analysis_id: Optional[str] = None,
+    algorithm_version: Optional[str] = None,
+    configuration_version: Optional[str] = None,
+    content_hash: Optional[str] = None,
+    relative_path: Optional[str] = None,
+) -> None:
+    """Idempotently record one processed artifact under a raw file's manifest row.
+
+    Deduped by ``(kind, variant, analysis_id)`` so rebuilding one cached artifact
+    or one persisted analysis replaces only that logical entry.
+    ``kind`` is one of ``"pattern"``, ``"overlay"``, ``"peaks"``; ``variant`` is
+    ``None`` for the variant-independent pattern.
+    """
+    if not file_hash:
+        raise ValueError("file_hash is required to record a derived file")
+
+    entry = {
+        "kind": kind,
+        "variant": variant,
+        "stored_path": stored_path,
+        "url": url,
+        "size_bytes": size_bytes,
+        "sha256": sha256,
+        "generated_at": generated_at,
+    }
+    if content_type is not None:
+        entry["content_type"] = content_type
+    if artifact_type is not None:
+        entry["artifact_type"] = artifact_type
+    if parent_file_hash is not None:
+        entry["parent_file_hash"] = parent_file_hash
+    if analysis_id is not None:
+        entry["analysis_id"] = analysis_id
+    if algorithm_version is not None:
+        entry["algorithm_version"] = algorithm_version
+    if configuration_version is not None:
+        entry["configuration_version"] = configuration_version
+    if content_hash is not None:
+        entry["content_hash"] = content_hash
+    if relative_path is not None:
+        entry["relative_path"] = relative_path
+    row = RawFile.objects(id=file_hash).first()
+    if row is None:
+        RawFile.objects(id=file_hash).update_one(
+            set_on_insert__uploaded_at=_utc_now(), upsert=True
+        )
+        row = RawFile.objects(id=file_hash).first()
+    if row is None:
+        raise RuntimeError(f"Failed to read back RawFile {file_hash} after upsert")
+
+    kept = [
+        d for d in (row.derived_files or [])
+        if not (
+            d.get("kind") == kind
+            and d.get("variant") == variant
+            and d.get("analysis_id") == analysis_id
+        )
+    ]
+    kept.append(entry)
+    row.derived_files = kept
+    row.save()
+
+
+__all__ = ["RAW_DB_ALIAS", "RawFile", "record_raw_file", "record_derived_file"]

@@ -4,13 +4,11 @@
 {% block extra_css %}
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'css/periodic-table.css' %}">
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 <div>
-    <div class="mb-1">
-        <a href="{% if existing_material_auid %}{% url 'composition_detail' material_auid=existing_material_auid %}{% else %}{% url 'add_data' %}{% endif %}" class="text-muted text-decoration-none small">← Back</a>
-    </div>
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb mb-0">
             <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
@@ -41,7 +39,8 @@
 
         <!-- Composition Selection -->
         <section class="upload-section">
-            <h2>1. Composition</h2>
+            <h2>1. Composition &amp; Site Assignments</h2>
+
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label for="structure_family" class="form-label">Structure Family <span class="text-danger">*</span></label>
@@ -54,22 +53,41 @@
                     <input type="hidden" name="structure_family" value="{{ locked_structure_family }}">
                     {% endif %}
                 </div>
+                <div class="col-md-6">
+                    <label for="spacegroup" class="form-label">Space Group</label>
+                    <select name="spacegroup" id="spacegroup"
+                        data-initial-value="{{ existing_spacegroup|default:'' }}">
+                    </select>
+                </div>
             </div>
 
             <input type="hidden" name="elements" id="composition-json" value="{% if existing_material_auid %}{{ locked_elements_json|escapejs }}{% else %}{}{% endif %}">
+            <input type="hidden" name="element_sites" id="element-sites-json"
+                value="{{ existing_element_sites_json|default:'{}' }}">
+
             {% if existing_material_auid %}
-            <div class="alert alert-light border mb-0">
-                <div class="small text-muted mb-2"><strong>Composition locked from <span class="text-monospace">{{ existing_material_auid }}</span></strong></div>
+            <div class="rounded border bg-light p-3">
+                <p class="small text-muted mb-2">
+                    Composition locked from
+                    <a href="{% url 'composition_detail' material_auid=existing_material_auid %}" class="text-monospace text-decoration-none">{{ existing_material_auid }}</a>
+                    ({{ locked_structure_family|title }}).
+                    Assign crystallographic sites below.
+                </p>
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr><th>Element</th><th>Ratio</th></tr>
+                    <table class="table table-sm table-borderless align-middle mb-0" id="locked-composition-table">
+                        <thead class="small text-muted border-bottom">
+                            <tr>
+                                <th style="width:3.5rem">Elem</th>
+                                <th style="width:5rem">Ratio</th>
+                                <th>Crystallographic Site</th>
+                            </tr>
                         </thead>
                         <tbody>
                             {% for item in locked_elements_display %}
-                            <tr>
-                                <td>{{ item.0 }}</td>
-                                <td>{{ item.1 }}</td>
+                            <tr data-sym="{{ item.0 }}">
+                                <td><span class="badge text-bg-secondary fs-6 px-2">{{ item.0 }}</span></td>
+                                <td class="text-muted">{{ item.1 }}</td>
+                                <td class="site-cell"></td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -77,7 +95,7 @@
                 </div>
             </div>
             {% else %}
-            {% include "_periodic_table.html" with ptable_wrap_class="ptable-upload" %}
+            {% include "_periodic_table.html" with ptable_wrap_class="ptable-upload" comp_label="Composition Ratios & Site Assignments" comp_hint="Select elements, enter ratios, then assign each to a crystallographic site." %}
             {% endif %}
         </section>
 
@@ -109,6 +127,8 @@
                         {% for src in dft_sources %}
                         <option value="{{ src }}" {% if existing_comp_record and existing_comp_record.dft_source == src %}selected{% endif %}>{{ src }}</option>
                         {% endfor %}
+                        <option value="unknown" {% if existing_comp_record and existing_comp_record.dft_source == "unknown" %}selected{% endif %}>Unknown</option>
+                        <option value="na" {% if existing_comp_record and existing_comp_record.dft_source == "na" %}selected{% endif %}>N/A</option>
                     </select>
                 </div>
             </div>
@@ -125,6 +145,8 @@
                         {% for cm in calc_methods %}
                         <option value="{{ cm }}">{{ cm }}</option>
                         {% endfor %}
+                        <option value="unknown">Unknown</option>
+                        <option value="na">N/A</option>
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -134,6 +156,8 @@
                         {% for fn in functionals %}
                         <option value="{{ fn }}">{{ fn }}</option>
                         {% endfor %}
+                        <option value="unknown">Unknown</option>
+                        <option value="na">N/A</option>
                     </select>
                 </div>
                 <div class="col-md-4">
@@ -156,15 +180,145 @@
             </div>
         </section>
 
+        <!-- Electronic Properties -->
+        <section class="upload-section">
+            <h2>4. Electronic &amp; Magnetic Properties (Optional)</h2>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="bandgap_type" class="form-label">Bandgap Type</label>
+                    <input type="text" name="bandgap_type" id="bandgap_type" class="form-control"
+                           placeholder="e.g. metal, insulator, semiconductor"
+                           value="{% if existing_comp_record %}{{ existing_comp_record.bandgap_type|default:'' }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="bandgap_fit_ev" class="form-label">Bandgap Fit (eV)</label>
+                    <input type="number" step="0.0001" name="bandgap_fit_ev" id="bandgap_fit_ev" class="form-control"
+                           placeholder="e.g. 1.23"
+                           value="{% if existing_comp_record and existing_comp_record.bandgap_fit_ev is not None %}{{ existing_comp_record.bandgap_fit_ev }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="spin_atom" class="form-label">Spin per Atom (μB)</label>
+                    <input type="number" step="0.0001" name="spin_atom" id="spin_atom" class="form-control"
+                           placeholder="e.g. 0.0"
+                           value="{% if existing_comp_record and existing_comp_record.spin_atom is not None %}{{ existing_comp_record.spin_atom }}{% endif %}">
+                </div>
+            </div>
+        </section>
+
+        <!-- Elastic Properties -->
+        <section class="upload-section">
+            <h2>5. Elastic Properties (Optional)</h2>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="bulk_modulus_vrh" class="form-label">Bulk Modulus VRH (GPa)</label>
+                    <input type="number" step="0.001" name="bulk_modulus_vrh" id="bulk_modulus_vrh" class="form-control"
+                           placeholder="e.g. 180.5"
+                           value="{% if existing_comp_record and existing_comp_record.bulk_modulus_vrh is not None %}{{ existing_comp_record.bulk_modulus_vrh }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="shear_modulus_vrh" class="form-label">Shear Modulus VRH (GPa)</label>
+                    <input type="number" step="0.001" name="shear_modulus_vrh" id="shear_modulus_vrh" class="form-control"
+                           placeholder="e.g. 90.2"
+                           value="{% if existing_comp_record and existing_comp_record.shear_modulus_vrh is not None %}{{ existing_comp_record.shear_modulus_vrh }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="youngs_modulus_vrh" class="form-label">Young's Modulus VRH (GPa)</label>
+                    <input type="number" step="0.001" name="youngs_modulus_vrh" id="youngs_modulus_vrh" class="form-control"
+                           placeholder="e.g. 230.0"
+                           value="{% if existing_comp_record and existing_comp_record.youngs_modulus_vrh is not None %}{{ existing_comp_record.youngs_modulus_vrh }}{% endif %}">
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-4">
+                    <label for="poisson_ratio" class="form-label">Poisson Ratio</label>
+                    <input type="number" step="0.0001" name="poisson_ratio" id="poisson_ratio" class="form-control"
+                           placeholder="e.g. 0.28"
+                           value="{% if existing_comp_record and existing_comp_record.poisson_ratio is not None %}{{ existing_comp_record.poisson_ratio }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="elastic_anisotropy" class="form-label">Elastic Anisotropy</label>
+                    <input type="number" step="0.0001" name="elastic_anisotropy" id="elastic_anisotropy" class="form-control"
+                           placeholder="e.g. 1.05"
+                           value="{% if existing_comp_record and existing_comp_record.elastic_anisotropy is not None %}{{ existing_comp_record.elastic_anisotropy }}{% endif %}">
+                </div>
+            </div>
+        </section>
+
+        <!-- Thermal Properties -->
+        <section class="upload-section">
+            <h2>6. Thermal Properties (Optional)</h2>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="debye_temperature" class="form-label">Debye Temperature (K)</label>
+                    <input type="number" step="0.1" name="debye_temperature" id="debye_temperature" class="form-control"
+                           placeholder="e.g. 350.0"
+                           value="{% if existing_comp_record and existing_comp_record.debye_temperature is not None %}{{ existing_comp_record.debye_temperature }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="thermal_conductivity_300k" class="form-label">Thermal Conductivity 300K (W/m/K)</label>
+                    <input type="number" step="0.001" name="thermal_conductivity_300k" id="thermal_conductivity_300k" class="form-control"
+                           placeholder="e.g. 12.5"
+                           value="{% if existing_comp_record and existing_comp_record.thermal_conductivity_300k is not None %}{{ existing_comp_record.thermal_conductivity_300k }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="gruneisen_parameter" class="form-label">Grüneisen Parameter</label>
+                    <input type="number" step="0.0001" name="gruneisen_parameter" id="gruneisen_parameter" class="form-control"
+                           placeholder="e.g. 1.8"
+                           value="{% if existing_comp_record and existing_comp_record.gruneisen_parameter is not None %}{{ existing_comp_record.gruneisen_parameter }}{% endif %}">
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-4">
+                    <label for="thermal_expansion_300k" class="form-label">Thermal Expansion 300K (1/K)</label>
+                    <input type="number" step="0.000001" name="thermal_expansion_300k" id="thermal_expansion_300k" class="form-control"
+                           placeholder="e.g. 1.2e-5"
+                           value="{% if existing_comp_record and existing_comp_record.thermal_expansion_300k is not None %}{{ existing_comp_record.thermal_expansion_300k }}{% endif %}">
+                </div>
+            </div>
+        </section>
+
+        <!-- Structural Properties -->
+        <section class="upload-section">
+            <h2>7. Structural Properties (Optional)</h2>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="pearson_symbol" class="form-label">Pearson Symbol</label>
+                    <input type="text" name="pearson_symbol" id="pearson_symbol" class="form-control"
+                           placeholder="e.g. cF8"
+                           value="{% if existing_comp_record %}{{ existing_comp_record.pearson_symbol|default:'' }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="crystal_system" class="form-label">Crystal System</label>
+                    <input type="text" name="crystal_system" id="crystal_system" class="form-control"
+                           placeholder="e.g. cubic"
+                           value="{% if existing_comp_record %}{{ existing_comp_record.crystal_system|default:'' }}{% endif %}">
+                </div>
+                <div class="col-md-4">
+                    <label for="crystal_family" class="form-label">Crystal Family</label>
+                    <input type="text" name="crystal_family" id="crystal_family" class="form-control"
+                           placeholder="e.g. cubic"
+                           value="{% if existing_comp_record %}{{ existing_comp_record.crystal_family|default:'' }}{% endif %}">
+                </div>
+            </div>
+        </section>
+
         <!-- ML Predictions -->
         <section class="upload-section">
-            <h2>4. ML Predictions (Optional)</h2>
+            <h2>8. ML Predictions (Optional)</h2>
             <div class="row g-3">
                 <div class="col-12">
                     <label for="ml_predictions" class="form-label">ML Predictions (JSON)</label>
                     <textarea name="ml_predictions" id="ml_predictions" class="form-control" rows="3"
                               placeholder='{"predicted_stability": 0.85, "model": "MEGNet_v1.0"}'>{% if existing_comp_record and existing_comp_record.ml_predictions %}{{ existing_comp_record.ml_predictions|safe }}{% endif %}</textarea>
                     <div class="form-text">Enter ML model predictions as JSON object</div>
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    <label for="extended_data" class="form-label">Additional Properties (JSON)</label>
+                    <textarea name="extended_data" id="extended_data" class="form-control" rows="3"
+                              placeholder='{"agl_gruneisen": 1.8, "bader_net_charges": [...]}'>{% if existing_comp_record and existing_comp_record.extended_data %}{{ existing_comp_record.extended_data|safe }}{% endif %}</textarea>
+                    <div class="form-text">Any additional AFLOW-format properties as a JSON object</div>
                 </div>
             </div>
         </section>
@@ -184,6 +338,11 @@
     window.LOCK_COMPOSITION = true;
   </script>
   {% endif %}
+  <script>
+    window.STRUCTURE_FAMILY_SPACEGROUPS = {{ structure_family_spacegroups|safe }};
+    window.STRUCTURE_FAMILY_SITES = {{ structure_family_sites|safe }};
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   <script type="module" src="{% static 'js/upload_form.js' %}"></script>
   {% if existing_material_auid %}
   <script>

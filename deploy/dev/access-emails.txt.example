@@ -1,0 +1,9 @@
+# Cloudflare Access allow-list for the dev environment. One email per line.
+#
+# Copy this to access-emails.txt (gitignored) and edit. Only these addresses can
+# reach the dev host; everything else is refused at Cloudflare's edge.
+#
+# Apply changes with:  deploy/dev/access-policy.sh
+#
+# you@example.com
+# collaborator@jhu.edu

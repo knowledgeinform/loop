@@ -1,0 +1,265 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'add_data' %}#batch">Add Data</a></li>
+      <li class="breadcrumb-item active">Batch Upload Experimental Data</li>
+    </ol>
+  </nav>
+  <h1 class="mb-2">Batch Upload Experimental Data</h1>
+
+  <p class="text-muted">
+    Upload a manifest CSV together with a ZIP of experiment folders. Each manifest
+    row is matched to a folder (e.g. <code>SP15M-001</code>) and committed through the
+    same path as the manual add form &mdash; so duplicate raw files are detected by
+    hash automatically. You can also upload only a ZIP to generate a manifest template.
+  </p>
+
+  <form method="post" enctype="multipart/form-data" class="upload-form mb-4">
+    {% csrf_token %}
+
+    <section class="upload-section">
+      <h2>1. Choose Upload Mode</h2>
+      <div class="row g-3 mode-selector">
+        {% for radio in form.upload_mode %}
+          <div class="col-md-4 col-sm-6">
+            {{ radio.tag }}
+            <label class="form-tile w-100 h-100 p-3 d-flex flex-column gap-1" for="{{ radio.id_for_label }}">
+              {% if radio.data.value == 'with_manifest' %}
+                <span class="fw-bold">Manifest + XRD ZIP</span>
+                <span class="small text-muted">
+                  Import experiments with full metadata from your manifest file.
+                </span>
+              {% elif radio.data.value == 'zip_only' %}
+                <span class="fw-bold">XRD ZIP only</span>
+                <span class="small text-muted">
+                  Just generate a manifest template from your folders — fill it in and come back to import.
+                </span>
+              {% else %}
+                <span class="fw-bold">Completed manifest</span>
+                <span class="small text-muted">
+                  Already downloaded and filled a template? Upload just the manifest — LOOP reuses the ZIP from this session.
+                </span>
+              {% endif %}
+            </label>
+          </div>
+        {% endfor %}
+      </div>
+      {{ form.upload_mode.errors }}
+    </section>
+
+    <section class="upload-section">
+      <h2>2. Upload Files</h2>
+
+      <div id="manifest-files" class="mb-4">
+        <label class="form-label fw-bold">Manifest (CSV or Excel)</label>
+        <div id="manifest-dropzone" class="batch-dropzone border border-2 border-secondary-subtle rounded p-4 text-center text-muted mb-2"
+             data-input="id_manifest" data-label="manifest-filename"
+             style="border-style: dashed !important; cursor: pointer;">
+          <div class="dropzone-prompt">
+            Drag &amp; drop your manifest (<code>.csv</code> or <code>.xlsx</code>) here, or click to browse.
+          </div>
+          <div id="manifest-filename" class="dropzone-file mt-1"></div>
+        </div>
+        {{ form.manifest }}
+        <div class="form-text">
+          Required for import mode; leave empty to upload a ZIP only and generate a template.
+          <strong>Required columns:</strong> <code>Batch ID</code> and <code>Target composition</code>.
+        </div>
+        {{ form.manifest.errors }}
+
+        <div class="alert alert-light border small mt-2 mb-2 py-2">
+          <span>
+            <strong>Batch ID</strong> is simply the name of an experiment's folder inside your XRD ZIP.
+            A folder named <code>SP15M-001</code> has Batch ID <code>SP15M-001</code> &mdash; that's how
+            each manifest row gets matched to its files.
+          </span>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mt-3 mb-1">
+          <span class="form-label fw-bold mb-0" id="manifest-preview-caption">Example rows</span>
+          <span class="badge text-bg-light border" id="manifest-preview-count">example only</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-1" style="max-width: 40rem;">
+            <thead class="table-light">
+              <tr><th>Batch ID</th><th>Target composition</th></tr>
+            </thead>
+            <tbody id="manifest-preview-body" data-state="example" data-key-column="Batch ID">
+              <tr class="text-muted fst-italic"><td><code>SP15M-001</code></td><td><code>(Co0.2Cu0.2Mg0.2Ni0.2Zn0.2)O</code></td></tr>
+              <tr class="text-muted fst-italic"><td><code>SP15M-002</code></td><td><code>(CrFeMnNiCo)3O4</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="form-text mb-0" id="manifest-preview-hint">
+          These are just examples &mdash; choose a manifest above and its rows will appear here.
+          Need a starting point? Download a filled example:
+          <a href="{% static 'sample_data/example_experiment_manifest.csv' %}" download>CSV</a>
+          &middot;
+          <a href="{% static 'sample_data/example_experiment_manifest.xlsx' %}" download>Excel</a>
+        </div>
+      </div>
+
+      <div id="archive-files" class="mb-3">
+        <label class="form-label fw-bold">XRD Folder ZIP</label>
+        <div id="archive-dropzone" class="batch-dropzone border border-2 border-secondary-subtle rounded p-4 text-center text-muted mb-2"
+             data-input="id_archive" data-label="archive-filename"
+             style="border-style: dashed !important; cursor: pointer;">
+          <div class="dropzone-prompt">
+            Drag &amp; drop your ZIP here, or click to browse.
+          </div>
+          <div id="archive-filename" class="dropzone-file mt-1"></div>
+        </div>
+        {{ form.archive }}
+        <div class="form-text">
+          ZIP should contain experiment folders such as SP15M-001, SP15M-002, SP15M-024.
+          XRD patterns may be <code>.csv</code>, <code>.txt</code>, <code>.asc</code>,
+          <code>.xrdml</code>, or Bruker <code>.raw</code> files.
+        </div>
+        {{ form.archive.errors }}
+      </div>
+    </section>
+
+    <section class="upload-section">
+      <h2>3. Defaults</h2>
+      <label class="form-label">Default Structure Family</label>
+      {{ form.structure_family }}
+      <div class="form-text">Used when a manifest row does not provide a Structure Family.</div>
+      {{ form.structure_family.errors }}
+    </section>
+
+    <div class="upload-actions">
+      <button type="submit" class="btn btn-primary">Scan / Preview Batch</button>
+    </div>
+  </form>
+
+  {% if preview %}
+    <hr>
+
+    {% if zip_only %}
+      <h2>ZIP Scan Result</h2>
+      <div class="alert alert-info">
+        LOOP found {{ preview.total_folders }} experiment folders.
+        Download the manifest template, fill in the missing metadata,
+        then upload the completed manifest below.
+      </div>
+      <a href="{% url 'download_batch_manifest_template' %}" class="btn btn-success mb-3">
+        Download Manifest Template
+      </a>
+
+      <div class="card mb-4">
+        <div class="card-header">
+          Upload Completed Manifest for This ZIP
+        </div>
+
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <input type="hidden" name="upload_mode" value="with_existing_zip">
+
+            <div class="mb-3">
+              <label class="form-label">Completed Manifest CSV</label>
+              <input type="file" name="manifest" class="form-control" required>
+              <div class="form-text">
+                Upload the completed manifest template. LOOP will reuse the ZIP you already uploaded.
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Default Structure Family</label>
+              {{ form.structure_family }}
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              Preview Import with Completed Manifest
+            </button>
+          </form>
+        </div>
+      </div>
+    {% else %}
+      <h2>Dry-Run Preview</h2>
+      <div class="alert {% if preview.error_count %}alert-warning{% else %}alert-info{% endif %} d-flex gap-3 flex-wrap">
+        <span><strong>{{ preview.total_rows }}</strong> rows</span>
+        <span><strong>{{ preview.total_folders }}</strong> folders</span>
+        <span class="text-success"><strong>{{ preview.valid_count }}</strong> ready</span>
+        <span class="text-warning"><strong>{{ preview.warning_count }}</strong> with warnings</span>
+        <span class="text-danger"><strong>{{ preview.error_count }}</strong> with errors</span>
+      </div>
+    {% endif %}
+
+    <table class="table table-bordered table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Batch ID</th>
+          <th>Composition</th>
+          <th>Synthesis</th>
+          <th>Primary File</th>
+          <th>All Files</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in preview.items %}
+          <tr class="{% if item.errors %}table-danger{% elif item.warnings %}table-warning{% endif %}">
+            <td><strong>{{ item.batch_id }}</strong></td>
+            <td>
+              {% if item.manifest %}{{ item.manifest.target_composition }}
+              {% else %}<span class="text-muted">Template needed</span>{% endif %}
+            </td>
+            <td>
+              {% if item.manifest and item.manifest.synthesis_route %}
+                {{ item.manifest.synthesis_route|truncatechars:120 }}
+              {% elif zip_only %}<span class="text-muted">Template needed</span>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td>
+              {% if item.primary_file %}<strong>{{ item.primary_file.filename }}</strong>
+              {% else %}<span class="text-muted">None</span>{% endif %}
+            </td>
+            <td>
+              {% for file in item.files %}
+                <div>
+                  {% if item.primary_file and file.zip_path == item.primary_file.zip_path %}<span class="badge text-bg-primary">primary</span> {% endif %}
+                  {{ file.filename }} <span class="text-muted">({{ file.extension }})</span>
+                </div>
+              {% empty %}<span class="text-muted">No files</span>{% endfor %}
+            </td>
+            <td>
+              {% if item.errors %}
+                <div class="text-danger fw-bold">Error</div>
+                <ul class="mb-0">{% for error in item.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% elif item.warnings %}
+                <div class="text-warning fw-bold">Warning</div>
+                <ul class="mb-0">{% for warning in item.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+              {% else %}
+                <span class="text-success fw-bold">Ready</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if ready_to_confirm %}
+      <form method="post" action="{% url 'confirm_batch_upload_exp_data' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Confirm Import</button>
+      </form>
+    {% elif not zip_only %}
+      <div class="alert alert-warning">Fix errors before confirming this batch import.</div>
+    {% endif %}
+  {% endif %}
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+        crossorigin="anonymous"></script>
+
+<script src="{% static 'js/batch_upload.js' %}"></script>
+{% endblock %}

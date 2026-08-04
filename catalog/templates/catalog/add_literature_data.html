@@ -8,36 +8,11 @@
 {% block extra_css %}
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'css/periodic-table.css' %}">
-  <style>
-    .synthesis-step { border: 1px solid #dee2e6; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f8f9fa; position: relative; cursor: pointer; }
-    .synthesis-step.active { border-color: #002d72; background: #fff; cursor: default; }
-    .synthesis-step:not(.active):hover { border-color: #adb5bd; background: #f1f3f5; }
-    .step-header { display: flex; justify-content: space-between; align-items: center; padding-right: 2rem; min-height: 38px; cursor: pointer; }
-    .synthesis-step.active .step-header { margin-bottom: 0.75rem; }
-    .step-header:hover { opacity: 0.8; }
-    .step-header-left { display: flex; align-items: center; gap: 0.5rem; }
-    .step-move-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
-    .step-move-btns button { display: block; background: none; border: none; padding: 0 3px; line-height: 1; font-size: 0.55rem; color: #adb5bd; cursor: pointer; }
-    .step-move-btns button:not(:disabled):hover { color: #002d72; }
-    .step-move-btns button:disabled { opacity: 0.25; cursor: default; }
-    .step-number { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: #002d72; color: #fff; border-radius: 50%; font-weight: 600; font-size: 0.9rem; flex-shrink: 0; }
-    .step-type-select { font-weight: 600; }
-    .step-arrow { color: #6c757d; font-size: 0.75rem; transition: transform 0.2s; }
-    .synthesis-step.active .step-arrow { transform: rotate(180deg); }
-    .step-content { display: none; }
-    .synthesis-step.active .step-content { display: block; }
-    .remove-step { position: absolute; top: 50%; right: 0.5rem; transform: translateY(-50%); z-index: 10; }
-    .synthesis-step.active .remove-step { top: 0.75rem; transform: none; }
-    .add-step-btn { border: 2px dashed #dee2e6; background: transparent; width: 100%; padding: 1rem; border-radius: 8px; color: #6c757d; cursor: pointer; transition: all 0.2s; }
-    .add-step-btn:hover { border-color: #002d72; color: #002d72; }
-  </style>
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 <div>
-  <div class="mb-1">
-    <a href="{% url 'add_data' %}" class="text-muted text-decoration-none small">← Back</a>
-  </div>
   <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb mb-0">
       <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
@@ -114,47 +89,71 @@
     </section>
 
     <section class="upload-section mb-4">
-      <h2>2. Composition</h2>
-      <p class="text-muted">Select elements and specify ratios from the paper.</p>
-      <div class="mb-3 col-lg-8">
-        <label for="{{ form.structure_family.id_for_label }}" class="form-label">Structure Family <span class="text-danger">*</span></label>
-        <select
-          name="structure_family"
-          id="{{ form.structure_family.id_for_label }}"
-          class="form-select"
-          required
-          {% if existing_material_auid %}disabled{% endif %}
-        >
-          {% for value, label in form.structure_family.field.choices %}
-            <option
-              value="{{ value }}"
-              {% if locked_structure_family and locked_structure_family == value %}selected{% elif form.structure_family.value == value %}selected{% endif %}
-            >
-              {{ label }}
-            </option>
-          {% endfor %}
-        </select>
-        {% if existing_material_auid %}
-          <input type="hidden" name="structure_family" value="{{ locked_structure_family }}">
-        {% endif %}
-        {% if form.structure_family.errors %}<div class="text-danger small">{{ form.structure_family.errors }}</div>{% endif %}
+      <h2>2. Composition &amp; Site Assignments</h2>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label for="structure_family" class="form-label">Structure Family <span class="text-danger">*</span></label>
+          <select
+            name="structure_family"
+            id="structure_family"
+            class="form-select"
+            required
+            {% if existing_material_auid %}disabled{% endif %}
+          >
+            {% for value in structure_families %}
+              <option
+                value="{{ value }}"
+                {% if locked_structure_family and locked_structure_family == value %}selected{% elif form.structure_family.value == value %}selected{% endif %}
+              >
+                {{ value|title }}
+              </option>
+            {% endfor %}
+          </select>
+          {% if existing_material_auid %}
+            <input type="hidden" name="structure_family" value="{{ locked_structure_family }}">
+          {% endif %}
+          {% if form.structure_family.errors %}<div class="text-danger small">{{ form.structure_family.errors }}</div>{% endif %}
+        </div>
+        <div class="col-md-6">
+          <label for="spacegroup" class="form-label">Space Group</label>
+          <select name="spacegroup" id="spacegroup"
+              data-initial-value="{{ existing_spacegroup|default:'' }}">
+          </select>
+        </div>
       </div>
+
       <div class="visually-hidden" aria-hidden="true">
         {{ form.element_order }}
       </div>
+
+      <input type="hidden" name="element_sites" id="element-sites-json"
+          value="{{ existing_element_sites_json|default:'{}' }}">
+
       {% if existing_material_auid %}
-        <div class="alert alert-light border mb-0">
-          <div class="small text-muted mb-2"><strong>Composition values locked from <span class="text-monospace">{{ existing_material_auid }}</span></strong></div>
+        <input type="hidden" id="composition-json" value="{{ locked_elements_json|escapejs }}">
+        <div class="rounded border bg-light p-3">
+          <p class="small text-muted mb-2">
+            Composition locked from
+            <a href="{% url 'composition_detail' material_auid=existing_material_auid %}" class="text-monospace text-decoration-none">{{ existing_material_auid }}</a>
+            ({{ locked_structure_family|title }}).
+            Assign crystallographic sites below.
+          </p>
           <div class="table-responsive">
-            <table class="table table-sm mb-0">
-              <thead>
-                <tr><th>Element</th><th>Ratio</th></tr>
+            <table class="table table-sm table-borderless align-middle mb-0" id="locked-composition-table">
+              <thead class="small text-muted border-bottom">
+                <tr>
+                  <th style="width:3.5rem">Elem</th>
+                  <th style="width:5rem">Ratio</th>
+                  <th>Crystallographic Site</th>
+                </tr>
               </thead>
               <tbody>
                 {% for item in locked_elements_display %}
-                <tr>
-                  <td>{{ item.0 }}</td>
-                  <td>{{ item.1 }}</td>
+                <tr data-sym="{{ item.0 }}">
+                  <td><span class="badge text-bg-secondary fs-6 px-2">{{ item.0 }}</span></td>
+                  <td class="text-muted">{{ item.1 }}</td>
+                  <td class="site-cell"></td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -162,9 +161,9 @@
           </div>
         </div>
       {% else %}
-        {# Required for periodic.js: syncs selected elements to POST field "elements" (same as upload/computational forms). #}
+        {# Required for periodic.js: syncs selected elements to POST field "elements". #}
         <input type="hidden" name="elements" id="composition-json" value="[]">
-        {% include "_periodic_table.html" with ptable_wrap_class="ptable-upload" %}
+        {% include "_periodic_table.html" with ptable_wrap_class="ptable-upload" comp_label="Composition Ratios & Site Assignments" comp_hint="Select elements from the periodic table, enter ratios, then assign each to a crystallographic site." %}
       {% endif %}
     </section>
 
@@ -203,6 +202,8 @@
                           <option value="grinding">Grinding / Polishing</option>
                           <option value="xrd_measurement">Diffraction Measurement</option>
                           <option value="other">Other</option>
+                          <option value="unknown">Unknown</option>
+                          <option value="na">N/A</option>
                       </select>
                   </div>
                   <span class="step-arrow">▼</span>
@@ -233,6 +234,8 @@
                                   <option value="nitrogen">Nitrogen</option>
                                   <option value="air">Air</option>
                                   <option value="vacuum">Vacuum</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                       </div>
@@ -244,6 +247,8 @@
                                   <option value="tungsten_carbide">Tungsten Carbide</option>
                                   <option value="zirconia">Zirconia</option>
                                   <option value="agate">Agate</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                           <div class="col-md-4">
@@ -252,6 +257,8 @@
                                   <option value="stainless_steel">Stainless Steel</option>
                                   <option value="tungsten_carbide">Tungsten Carbide</option>
                                   <option value="zirconia">Zirconia</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                           <div class="col-md-4">
@@ -288,6 +295,8 @@
                                   <option value="mortar_pestle">Mortar & Pestle</option>
                                   <option value="tumbler">Tumbler</option>
                                   <option value="vortex">Vortex Mixer</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                       </div>
@@ -339,6 +348,8 @@
                                   <option value="hydrogen">H₂/Ar (Reducing)</option>
                                   <option value="oxygen">Oxygen</option>
                                   <option value="vacuum">Vacuum</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                       </div>
@@ -350,6 +361,8 @@
                                   <option value="tube">Tube Furnace</option>
                                   <option value="muffle">Muffle Furnace</option>
                                   <option value="sps">SPS/FAST</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                           <div class="col-md-4">
@@ -376,6 +389,8 @@
                                   <option value="air">Air</option>
                                   <option value="argon">Argon</option>
                                   <option value="vacuum">Vacuum</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                       </div>
@@ -397,6 +412,8 @@
                               <select name="step_1_hearth" class="form-select">
                                   <option value="copper">Water-cooled Copper</option>
                                   <option value="graphite">Graphite</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                           <div class="col-md-3">
@@ -404,6 +421,8 @@
                               <select name="step_1_arc_atmosphere" class="form-select">
                                   <option value="argon">Argon</option>
                                   <option value="argon_hydrogen">Ar + H₂</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                       </div>
@@ -419,6 +438,8 @@
                                   <option value="oil">Oil</option>
                                   <option value="liquid_nitrogen">Liquid Nitrogen</option>
                                   <option value="air">Air (rapid)</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                           <div class="col-md-4">
@@ -437,6 +458,8 @@
                                   <option value="furnace_cool">Furnace Cool (in furnace)</option>
                                   <option value="air_cool">Air Cool (removed from furnace)</option>
                                   <option value="controlled">Controlled Rate</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                           <div class="col-md-4">
@@ -455,6 +478,8 @@
                                   <option value="mortar">Agate Mortar & Pestle</option>
                                   <option value="ball_mill">Ball Mill (short)</option>
                                   <option value="polishing">Mechanical Polishing</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                           <div class="col-md-4">
@@ -473,6 +498,8 @@
                                   <option value="cu_ka">Cu Kα</option>
                                   <option value="co_ka">Co Kα</option>
                                   <option value="mo_ka">Mo Kα</option>
+                                  <option value="unknown">Unknown</option>
+                                  <option value="na">N/A</option>
                               </select>
                           </div>
                           <div class="col-md-3">
@@ -533,7 +560,8 @@
       {% elif edit_lit_id %}
       <button type="submit" class="btn btn-primary">Save Literature Changes</button>
       {% else %}
-      <button type="submit" class="btn btn-primary">Submit Literature</button>
+      <button type="button" id="batch-save-btn" class="btn btn-outline-primary d-none">Save</button>
+      <button type="submit" id="primary-submit-btn" class="btn btn-primary"><span id="primary-submit-label">Save &amp; Upload</span></button>
       {% endif %}
     </div>
 
@@ -549,6 +577,11 @@
   {% if existing_material_auid %}
   <script>window.LOCK_COMPOSITION = true;</script>
   {% endif %}
+  <script>
+    window.STRUCTURE_FAMILY_SPACEGROUPS = {{ structure_family_spacegroups|safe }};
+    window.STRUCTURE_FAMILY_SITES = {{ structure_family_sites|safe }};
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   <script type="module" src="{% static 'js/upload_form.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -872,6 +905,45 @@
           });
           renumberSteps();
         }
+      }
+
+      // Reverse of mapStoredKeyToFieldSuffix — used to serialize steps for batch save.
+      function mapFieldSuffixToStoredKey(stepType, suffix) {
+        const mapping = {
+          ball_milling: { milling_time: 'milling_time_hours', milling_rpm: 'milling_rpm', bpr: 'ball_powder_ratio', atmosphere: 'atmosphere', jar_material: 'jar_material', ball_material: 'ball_material', pca: 'process_control_agent', notes: 'notes' },
+          weighing:     { total_mass: 'total_mass_g', precursors: 'precursors', notes: 'notes' },
+          mixing:       { mixing_time: 'mixing_time_min', mixing_method: 'mixing_method', notes: 'notes' },
+          pelletizing:  { press_pressure: 'pressure_mpa', press_time: 'hold_time_min', die_diameter: 'die_diameter_mm', lubricant: 'lubricant', notes: 'notes' },
+          heat_treatment: { max_temp: 'max_temp_c', ramp_rate: 'ramp_rate_c_min', hold_time: 'hold_time_hours', heat_atmosphere: 'atmosphere', furnace_type: 'furnace_type', o2_pressure: 'o2_partial_pressure_bar', notes: 'notes' },
+          annealing:    { anneal_temp: 'temperature_c', anneal_time: 'duration_hours', anneal_atmosphere: 'atmosphere', notes: 'notes' },
+          arc_melting:  { arc_current: 'current_a', remelts: 'number_of_remelts', hearth: 'hearth_material', arc_atmosphere: 'atmosphere', notes: 'notes' },
+          quenching:    { quench_medium: 'quenching_medium', quench_temp: 'medium_temperature_c', notes: 'notes' },
+          cooling:      { cool_method: 'cooling_method', cool_rate: 'cooling_rate_c_min', notes: 'notes' },
+          grinding:     { grind_method: 'grinding_method', particle_size: 'final_particle_size', notes: 'notes' },
+          xrd_measurement: { xrd_radiation: 'radiation', xrd_range: 'two_theta_range', xrd_step: 'step_size_deg', xrd_speed: 'scan_speed_deg_min', notes: 'notes' },
+          other:        { other_desc: 'description', notes: 'notes' },
+        };
+        return (mapping[stepType] && mapping[stepType][suffix]) || null;
+      }
+
+      function collectStepsFromForm() {
+        const steps = [];
+        container.querySelectorAll('.synthesis-step').forEach((step, index) => {
+          const stepNum = index + 1;
+          const typeSelect = step.querySelector('.step-type-select');
+          const stepType = typeSelect ? typeSelect.value : 'other';
+          const stepData = { step_number: stepNum, step_type: stepType };
+          step.querySelectorAll(`[name^="step_${stepNum}_"]`).forEach(input => {
+            const suffix = input.name.replace(`step_${stepNum}_`, '');
+            if (!suffix || suffix === 'type') return;
+            const val = (input.value || '').trim();
+            if (!val) return;
+            const storedKey = mapFieldSuffixToStoredKey(stepType, suffix);
+            if (storedKey) stepData[storedKey] = val;
+          });
+          steps.push(stepData);
+        });
+        return steps;
       }
     });
   </script>

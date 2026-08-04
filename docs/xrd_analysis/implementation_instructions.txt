@@ -1,0 +1,735 @@
+LOOP XRD PHASE-ANALYSIS IMPLEMENTATION INSTRUCTIONS
+
+PURPOSE
+
+Add an automated XRD analysis pipeline to LOOP that uses the XRD pattern, composition, instrument metadata, and synthesis record for a specific trial to determine whether the crystalline signal is:
+
+1. Likely single-phase
+2. Likely multiphase
+3. Unresolved
+4. Insufficient-quality data
+
+The result must be uncertainty-aware and evidence-based. Do not treat a poor single-phase fit as proof of multiple phases. Do not assign every observed peak to exactly one phase because reflections may overlap.
+
+The first implementation must support no more than two crystalline phases.
+
+Do not add CNN training, active learning, next-experiment recommendations, unknown-structure discovery, or absolute amorphous quantification in this phase.
+
+
+DATA INTERPRETATION RULES
+
+Keep the following fields separate:
+
+- Target structure family, such as Rocksalt
+- Human-entered trial result, such as Multi-phase
+- Automated XRD analysis result
+
+Treat the target structure as an intended or expected structure, not as ground truth.
+
+Do not provide the human-entered result to the automated analysis. Use it only after analysis for evaluation and expert review.
+
+Attach each automated analysis to a specific trial and XRD measurement. Do not attach it only to the general material record.
+
+
+AVAILABLE INPUTS
+
+Build the analysis input from existing LOOP records.
+
+From the material record, use:
+
+- material_auid
+- nominal formula
+- element list
+- exact stoichiometric amounts
+- target structure family
+- expected space group, if available
+- expected site assignments, if available
+
+From the recipe record, use:
+
+- recipe_auid
+- ordered synthesis steps
+- precursor names
+- precursor formulas
+- temperatures
+- ramp rates
+- hold times
+- atmosphere
+- furnace type
+- preparation notes
+
+From the trial record, use:
+
+- trial_id
+- raw XRD file reference
+- experiment date
+- experimenter
+- organization
+- measurement-specific metadata
+
+From the XRD measurement step, use:
+
+- radiation source
+- wavelength
+- two-theta range
+- step size
+- scan speed
+- instrument profile parameters
+- any available geometry or sample-holder information
+
+Use composition and instrument metadata directly in the physical analysis.
+
+Use synthesis information only to rank candidate phases. Do not let synthesis expectations override strong diffraction evidence.
+
+
+CODE ORGANIZATION
+
+Do not add more unrelated top-level files to catalog.
+
+Create one focused package:
+
+catalog/
+    xrd_analysis/
+        __init__.py
+        schemas.py
+        pattern.py
+        candidates.py
+        pipeline.py
+        decision.py
+        reporting.py
+
+Use existing files as adapters.
+
+catalog/gsas_runtime.py
+
+Purpose:
+- Configure and launch GSAS-II
+- Manage temporary workspaces
+- Handle process execution and environment setup
+
+catalog/gsas_tools.py
+
+Purpose:
+- Hold low-level GSAS-II helper functions
+- Avoid business logic and database access
+
+catalog/rietveld_refinement.py
+
+Purpose:
+- Perform GSAS-II refinement steps
+- Extract refinement results
+- Return structured outputs to xrd_analysis
+
+catalog/xrd_store.py
+
+Purpose:
+- Retrieve raw XRD files
+- Save derived analysis artifacts
+- Link artifacts to file hashes and analysis IDs
+
+catalog/reference_phases/
+
+Purpose:
+- Store curated and versioned reference CIFs
+- Store reference-phase metadata
+- Avoid placing generated temporary files here
+
+Responsibilities inside catalog/xrd_analysis:
+
+schemas.py
+- Define typed analysis inputs
+- Define intermediate stage outputs
+- Define warnings
+- Define phase hypotheses
+- Define final analysis results
+
+pattern.py
+- Parse CSV and TXT files
+- Validate columns and metadata
+- Convert between two-theta, d-spacing, and Q
+- Run quality checks
+- Estimate background and noise
+- Propose peak regions with SciPy
+
+candidates.py
+- Build the candidate-phase pool
+- Apply chemistry filters
+- Use nominal stoichiometry for ranking
+- Remove or cluster duplicate candidates
+- Simulate and pre-rank reference patterns
+
+pipeline.py
+- Expose one main orchestration function
+- Run stages in a fixed order
+- Stop when a required stage fails
+- Collect warnings and provenance
+
+decision.py
+- Compare one-phase and two-phase models
+- Apply model-complexity penalties
+- Assign the final phase-state label
+- Compute an evidence score or analysis confidence
+
+reporting.py
+- Build serializable JSON output
+- Prepare plot data
+- Prepare download metadata
+- Build the reproducibility manifest
+
+Do not place scientific calculations in:
+
+- views.py
+- models.py
+- API handlers
+- templates
+- signals.py
+
+Do not create one file for every small helper. Keep related functions together.
+
+Do not refactor the existing GSAS-II files until regression tests confirm that existing behavior is preserved.
+
+
+STEP 1: DOCUMENT THE CURRENT PEAK-FITTING FLOW
+
+Before changing code:
+
+1. Find the current public entry point for general peak fitting.
+2. Trace how it obtains material_auid, recipe_auid, trial_id, and the raw XRD file.
+3. Trace how gsas_runtime.py, gsas_tools.py, and rietveld_refinement.py interact.
+4. Record all currently accepted XRD file formats.
+5. Record the current peak-fit output format.
+6. Add regression tests for:
+   - one clean pattern
+   - one noisy or messy pattern
+7. Confirm that the current tests pass before adding phase analysis.
+
+Do not rewrite the existing peak fitter before these tests exist.
+
+
+STEP 2: DEFINE ONE ANALYSIS INPUT SCHEMA
+
+Create an XRDAnalysisInput schema with these fields:
+
+- material_auid
+- recipe_auid
+- trial_id
+- raw_file_hash
+- raw_file_path or readable file handle
+- nominal_composition
+- elements
+- stoichiometric_amounts
+- structure_family
+- expected_space_group
+- expected_site_assignments
+- radiation_source
+- wavelength_angstrom
+- coordinate_type
+- coordinate_column
+- intensity_column
+- scan_min
+- scan_max
+- step_size
+- scan_speed
+- instrument_profile
+- synthesis_context
+- algorithm_version
+- configuration_version
+
+Allow fields to be optional only when LOOP does not store them.
+
+Generate explicit warnings for missing important metadata.
+
+Do not pass full Django model instances or MongoDB documents into the scientific pipeline. Convert database records into XRDAnalysisInput first.
+
+
+STEP 3: PARSE XRD FILES INTO ONE INTERNAL FORMAT
+
+Support CSV and TXT through the same parser interface.
+
+For each file:
+
+1. Identify the coordinate column.
+2. Identify the intensity column.
+3. Determine whether the coordinate is two-theta, d-spacing, or Q.
+4. Convert data to numeric arrays.
+5. Remove invalid and non-finite rows.
+6. Sort by coordinate.
+7. Combine duplicate coordinate values using a deterministic rule.
+8. Preserve the original intensity values.
+9. Calculate two-theta, d-spacing, and Q representations when wavelength is available.
+10. Compare the file range with the recorded scan range.
+11. Compare the measured spacing with the recorded step size.
+12. Record warnings when file contents and metadata disagree.
+
+Use the original two-theta pattern for GSAS-II refinement.
+
+Use normalized Q-space or d-spacing representations for preliminary comparison across different instruments or wavelengths.
+
+Do not require users to convert TXT files to CSV manually.
+
+
+STEP 4: RUN QUALITY CONTROL BEFORE PHASE SEARCH
+
+Calculate:
+
+- number of usable points
+- measured range
+- median step size
+- step-size variation
+- approximate signal-to-noise ratio
+- number of detectable peak regions
+- missing intervals
+- repeated coordinates
+- negative intensities
+- saturated or clipped intensities
+- consistency with radiation and scan metadata
+
+Keep all quality thresholds in one versioned configuration object.
+
+Return Insufficient-quality data and stop before candidate search when the pattern cannot support meaningful phase analysis.
+
+Do not continue only to force a phase label.
+
+
+STEP 5: USE SCIPY AND GSAS-II FOR DIFFERENT PURPOSES
+
+Use SciPy for:
+
+- approximate background estimation
+- noise estimation
+- robust peak-region detection
+- initial peak positions
+- initial peak widths
+- identifying structured residual regions
+- generating starting values
+
+Use GSAS-II for:
+
+- expected reflection positions
+- profile-aware fitting
+- lattice refinement
+- phase scale factors
+- joint one-phase and two-phase refinement
+- whole-pattern residual calculation
+
+Do not treat the SciPy peak list as the final structural interpretation.
+
+Do not permanently remove the estimated background before final GSAS-II fitting.
+
+Do not permanently subtract one fitted phase before testing another phase.
+
+
+STEP 6: BUILD THE PRIMARY SINGLE-PHASE HYPOTHESIS
+
+If LOOP stores a target structure family, expected space group, or site assignments, build that candidate first.
+
+For a rocksalt example:
+
+- use the stored nominal composition
+- use the Rocksalt structure family
+- use Fm-3m when supported by the record
+- use the stored cation and anion site assignments
+- use nominal occupancies only through a validated structure-building method
+
+Do not assume the target structure is correct.
+
+Allow unrelated single-phase candidates to compete.
+
+Do not generate a CIF from a label alone unless symmetry, coordinates, occupancies, and composition handling are validated.
+
+
+STEP 7: BUILD A CONTROLLED CANDIDATE POOL
+
+Build candidates in this order:
+
+1. Intended structure candidates from the LOOP record
+2. Curated CIFs from catalog/reference_phases
+3. CIFs attached to the material, recipe, trial, or literature record
+4. Structures from linked DFT records
+5. Candidates from a versioned external structure database snapshot
+
+Filter candidates using the nominal chemical system.
+
+Allow one candidate phase to contain only a subset of the supplied elements. In a multiphase sample, each phase does not need to contain every element.
+
+Use nominal stoichiometry to prioritize candidates, not as an absolute exclusion rule.
+
+Use synthesis conditions only as a separate contextual ranking score.
+
+Do not perform live database searches inside a web request.
+
+Record for every candidate:
+
+- source
+- source identifier
+- formula
+- element set
+- space group
+- CIF hash
+- database snapshot version
+- contextual ranking score
+- diffraction ranking score
+
+
+STEP 8: PRE-RANK CANDIDATES BEFORE FULL REFINEMENT
+
+For each candidate:
+
+1. Simulate its pattern using the uploaded wavelength and measured range.
+2. Permit only a limited global position shift.
+3. Permit controlled peak broadening.
+4. Compare predicted and observed peak positions.
+5. Reward explained observed intensity.
+6. Penalize strong predicted peaks that are absent.
+7. Penalize strong observed regions that remain unexplained.
+8. Give exact intensity agreement less weight because preferred orientation can distort intensities.
+9. Cluster or remove near-duplicate candidate structures.
+10. Keep only a configurable top set for GSAS-II refinement.
+
+Do not run full GSAS-II refinement on every available database structure.
+
+Store pre-ranking settings in the versioned configuration.
+
+
+STEP 9: REFINE THE BEST SINGLE-PHASE CANDIDATES
+
+Use a conservative refinement sequence:
+
+1. Refine background.
+2. Refine scale.
+3. Refine zero shift or sample displacement.
+4. Refine lattice parameters.
+5. Refine bounded profile parameters.
+6. Refine crystallite size or microstrain only when justified.
+7. Refine preferred orientation only when clear evidence supports it.
+
+Initially keep these fixed:
+
+- atomic coordinates
+- occupancies
+- displacement parameters
+
+For every single-phase hypothesis, save:
+
+- convergence status
+- Rwp
+- Rp
+- goodness-of-fit
+- refined lattice parameters
+- refined scale factor
+- calculated pattern
+- background
+- difference pattern
+- expected reflections
+- significant unexplained regions
+- strong predicted reflections that are absent
+- refinement warnings
+- parameters that reached bounds
+- runtime
+
+
+STEP 10: SEARCH FOR A SECOND PHASE ONLY WHEN NEEDED
+
+Use the strongest single-phase results.
+
+For each selected single-phase model:
+
+1. Identify structured positive residual regions.
+2. Rank candidates that could explain those regions.
+3. Form a limited set of two-phase hypotheses.
+4. Jointly refine both phases against the complete original pattern.
+5. Keep only the strongest two-phase results.
+
+Do not fit a second phase against a pattern from which the first phase was permanently subtracted.
+
+Also permit two-phase combinations that exclude the intended structure when the intended structure is not supported by the data.
+
+Require each proposed second phase to have:
+
+- a positive scale factor
+- stable improvement in more than one residual region
+- at least one partially distinctive reflection when possible
+- stability under small changes to initial values or preprocessing
+
+Limit the first implementation to two crystalline phases.
+
+
+STEP 11: COMPARE ONE-PHASE AND TWO-PHASE MODELS
+
+Do not choose the model with the lowest raw residual automatically. Adding a phase usually improves a least-squares fit.
+
+Use an explicitly documented complexity-penalized comparison, such as:
+
+- AIC
+- corrected AIC
+- BIC
+- Bayesian model evidence
+- a validated custom penalized score
+
+Classify Likely single-phase when:
+
+- one phase explains the significant crystalline signal
+- no stable structured residual group remains
+- a second phase does not provide enough penalized improvement
+- the result remains stable under small analysis changes
+
+Classify Likely multiphase when:
+
+- a two-phase model clearly outperforms all one-phase models after complexity penalty
+- the second phase has identifiable reflection support
+- its scale factor and supporting evidence remain stable
+
+Classify Unresolved when:
+
+- no candidate explains the pattern adequately
+- multiple incompatible hypotheses have similar support
+- minor setting changes alter the result
+- a possible second phase is supported only by fully overlapping reflections
+- the correct phase may be missing from the candidate pool
+
+Classify Insufficient-quality data when the quality-control stage fails.
+
+Until calibration is complete, use the terms evidence score or analysis confidence.
+
+Do not describe the score as a calibrated probability.
+
+
+STEP 12: RUN STABILITY CHECKS
+
+For the best one-phase and two-phase hypotheses, rerun analysis with small controlled changes to:
+
+- background flexibility
+- peak-detection threshold
+- zero shift starting value
+- initial phase scale factors
+- selected reference CIF within the same structural cluster
+- one high-intensity pattern region
+
+Record:
+
+- whether the same phase-state classification is returned
+- whether the same phase candidates remain highly ranked
+- whether phase scale factors remain positive
+- how much model scores change
+
+Use this information in the final analysis confidence.
+
+
+STEP 13: CREATE A CONTENT-ADDRESSED ANALYSIS ID
+
+Do not change material_auid or recipe_auid because an analysis is not part of the material or recipe identity.
+
+Create the analysis identity from:
+
+- raw file hash
+- normalized measurement metadata
+- algorithm version
+- configuration hash
+- candidate database snapshot
+- reference-phase snapshot
+
+The analysis must be idempotent.
+
+If the same input and versions are submitted again, return the existing analysis instead of creating a duplicate run.
+
+
+STEP 14: STORE RESULTS WITHOUT CREATING A NEW STORAGE SYSTEM
+
+Store a compact summary with the trial:
+
+- analysis_id
+- analysis status
+- phase-state classification
+- evidence score or confidence level
+- best hypothesis
+- warning count
+- algorithm version
+- completion time
+
+Store large derived artifacts through the existing raw-file or artifact storage layer:
+
+- full JSON result
+- calculated patterns
+- plot-ready data
+- GSAS-II project file
+- selected CIFs
+- candidate table
+- logs
+- reproducibility manifest
+
+Extend the existing raw-file manifest only as needed with fields such as:
+
+- artifact_type
+- parent_file_hash
+- analysis_id
+- algorithm_version
+
+Do not create an unrelated parallel file-storage system.
+
+
+STEP 15: CONNECT THE PIPELINE TO THE EXISTING API
+
+Use the existing versioned /api/v1 structure.
+
+The API layer must only:
+
+1. Validate access to the trial.
+2. Validate that a raw XRD file exists.
+3. Assemble XRDAnalysisInput.
+4. Submit a background analysis job.
+5. Return analysis_id.
+6. Return job status.
+7. Return the stored result after completion.
+
+Use endpoints conceptually equivalent to:
+
+POST /api/v1/trials/{trial_id}/xrd-analyses
+
+GET /api/v1/xrd-analyses/{analysis_id}
+
+Reuse the repository's existing background-worker pattern.
+
+Do not add another queue framework unless the current worker cannot support the required jobs.
+
+Do not run full candidate search and GSAS-II refinement inside a normal HTTP request.
+
+
+STEP 16: DISPLAY HUMAN AND AUTOMATED RESULTS SEPARATELY
+
+On the trial page, show separate fields such as:
+
+Human result: Multi-phase
+Automated result: Likely multiphase
+Analysis confidence: Moderate
+Analysis version: xrd-phase-v0.1
+
+The analysis detail page must show:
+
+- observed pattern
+- total calculated pattern
+- background
+- difference curve
+- reflection markers for each phase
+- significant unexplained regions
+- best one-phase hypothesis
+- best two-phase hypothesis
+- warnings
+- candidate provenance
+- algorithm and database versions
+
+Do not assign one exclusive owner to every observed peak.
+
+Use descriptions such as:
+
+- primarily explained by phase A
+- predicted contributions from phases A and B
+- strongly overlapped
+- unexplained by the selected model
+
+
+STEP 17: ADD EXPERT REVIEW AS A SEPARATE RECORD
+
+Allow an authorized reviewer to:
+
+- confirm the automated result
+- correct the phase-state label
+- select a better hypothesis
+- add a missing candidate phase
+- mark the result unresolved
+- add notes
+
+Store the review separately.
+
+Do not overwrite:
+
+- the original automated result
+- the original human-entered trial result
+- previous review records
+
+
+STEP 18: TEST THE PIPELINE IN LAYERS
+
+Place tests under:
+
+catalog/tests/xrd_analysis/
+
+Add tests for:
+
+- CSV parsing
+- TXT parsing
+- column detection
+- coordinate conversion
+- duplicate-coordinate handling
+- metadata mismatch warnings
+- insufficient-quality patterns
+- chemical candidate filtering
+- subset-element candidate inclusion
+- deterministic candidate pre-ranking
+- GSAS-II adapter behavior
+- clean single-phase synthetic data
+- known two-phase mixtures
+- strongly overlapping reflections
+- missing correct reference candidate
+- refinement failure handling
+- stability checks
+- idempotent analysis creation
+- API permissions
+- background-job status
+- result persistence
+
+Mock GSAS-II for ordinary unit tests.
+
+Keep a small set of integration tests that run the actual GSAS-II environment.
+
+Use existing human trial labels only for evaluation. Never supply those labels to the analysis function.
+
+
+MVP COMPLETION CRITERIA
+
+The MVP is complete when LOOP can:
+
+1. Retrieve one trial's XRD file and related metadata.
+2. Parse and validate CSV or TXT XRD data.
+3. Run data-quality checks.
+4. Test the intended structure.
+5. Test alternative single-phase candidates.
+6. Search a limited set of two-phase hypotheses.
+7. Compare one-phase and two-phase models with a complexity penalty.
+8. Return one of the four supported phase states.
+9. Store a reproducible, versioned analysis result.
+10. Display the automated evidence separately from the human label.
+11. Reuse an existing analysis when all content-addressed inputs are unchanged.
+
+
+OUT OF SCOPE FOR THIS IMPLEMENTATION
+
+Do not add:
+
+- CNN training
+- CNN inference as a required dependency
+- active learning
+- next-experiment recommendations
+- automatic discovery of unknown crystal structures
+- more than two crystalline phases
+- absolute amorphous-phase quantification
+- guaranteed one-to-one peak ownership
+- broad atomic-coordinate refinement
+- broad occupancy refinement
+- hidden edits to existing human labels
+- live structure-database searches during a normal web request
+- a new storage system
+- a second job-queue framework without demonstrated need
+
+
+FUTURE USE
+
+After the pipeline has accumulated expert-reviewed experimental results, its outputs may be used as structured inputs for:
+
+- XRD pattern encoders
+- CNN or transformer candidate-ranking models
+- phase-probability prediction
+- synthesis-outcome models
+- active learning
+- next-experiment recommendation
+
+Keep these future systems separate from the current phase-analysis implementation.

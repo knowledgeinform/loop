@@ -7,72 +7,85 @@
 
 {% block content %}
 <h1>Add Data</h1>
-<p class="lead">Select the type of data you want to add to the LOOP database.</p>
+<p class="lead">Pick a record type. Use the <strong>Add Data</strong> menu in the top nav to jump straight to any of these.</p>
 
-<div class="mt-4">
-  <!-- Experimental Data -->
-  <a href="{% url 'upload_exp_data' %}" class="text-decoration-none d-block">
-    <div class="card mb-3 card-hover">
-      <div class="card-body d-flex">
-        <div class="fs-1 me-4">🧪</div>
-        <div>
-          <h5 class="card-title mb-1">Experimental Data</h5>
-          <p class="card-text text-muted small mb-2">Upload experimental results (composition, synthesis steps, outcomes):</p>
-          <ul class="small text-muted mb-0 ps-3">
-            <li>Optional XRD CSV with automatic plotting</li>
-            <li>Synthesis conditions (milling, temperature, atmosphere)</li>
-            <li>Success/failure outcomes and phase analysis</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </a>
+<a href="{% url 'predict' %}" class="entry-option">
+  <div><h3 class="entry-option-title">3d oxide rankings</h3><p class="entry-option-desc mb-0">Review the complete ranking of eligible five-cation transition-metal oxides.</p></div>
+  <span class="entry-option-go" aria-hidden="true">&rarr;</span>
+</a>
 
-  <!-- Literature Data -->
-  <a href="{% url 'add_literature_data' %}" class="text-decoration-none d-block">
-    <div class="card mb-3 card-hover">
-      <div class="card-body d-flex">
-        <div class="fs-1 me-4">📚</div>
-        <div>
-          <h5 class="card-title mb-1">Literature Data</h5>
-          <p class="card-text text-muted small mb-2">Add references from published papers:</p>
-          <ul class="small text-muted mb-0 ps-3">
-            <li>DOI lookup (auto-fetches title, journal, year)</li>
-            <li>Synthesis conditions from paper</li>
-            <li>Link compositions to publications</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </a>
+<h2 class="section-eyebrow mt-4 mb-2">Individual &mdash; one record at a time, guided form</h2>
 
-  <!-- Computational Data -->
-  <a href="{% url 'add_computational_data' %}" class="text-decoration-none d-block">
-    <div class="card mb-3 card-hover">
-      <div class="card-body d-flex">
-        <div class="fs-1 me-4">💻</div>
-        <div>
-          <h5 class="card-title mb-1">Computational Data</h5>
-          <p class="card-text text-muted small mb-2">Add DFT calculations and ML predictions:</p>
-          <ul class="small text-muted mb-0 ps-3">
-            <li>Formation energy, hull distance</li>
-            <li>Bandgap calculations</li>
-            <li>Source database (mintaka, AFLOW, etc.)</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </a>
+<a href="{% url 'upload_exp_data' %}" class="entry-option">
+  <div>
+    <h3 class="entry-option-title">Experimental data</h3>
+    <p class="entry-option-desc">Composition, synthesis steps, and outcomes for a single trial.</p>
+    <ul class="entry-option-points">
+      <li>Optional XRD CSV with automatic plotting</li>
+      <li>Synthesis conditions (milling, temperature, atmosphere)</li>
+      <li>Success/failure outcomes and phase analysis</li>
+    </ul>
+  </div>
+  <span class="entry-option-go" aria-hidden="true">&rarr;</span>
+</a>
+
+<a href="{% url 'add_literature_data' %}" class="entry-option">
+  <div>
+    <h3 class="entry-option-title">Literature data</h3>
+    <p class="entry-option-desc">References from published papers.</p>
+    <ul class="entry-option-points">
+      <li>DOI lookup (auto-fetches title, journal, year)</li>
+      <li>Synthesis conditions from paper</li>
+      <li>Link compositions to publications</li>
+    </ul>
+  </div>
+  <span class="entry-option-go" aria-hidden="true">&rarr;</span>
+</a>
+
+<a href="{% url 'add_computational_data' %}" class="entry-option">
+  <div>
+    <h3 class="entry-option-title">Computational data</h3>
+    <p class="entry-option-desc">DFT calculations and ML predictions.</p>
+    <ul class="entry-option-points">
+      <li>Formation energy, hull distance</li>
+      <li>Bandgap calculations</li>
+      <li>Source database (S4E, AFLOW, etc.)</li>
+    </ul>
+  </div>
+  <span class="entry-option-go" aria-hidden="true">&rarr;</span>
+</a>
+
+<h2 class="section-eyebrow mt-4 mb-2">Batch &mdash; many records from a manifest file</h2>
+
+<a href="{% url 'batch_upload_exp_data' %}" class="entry-option">
+  <div>
+    <h3 class="entry-option-title">Experimental data</h3>
+    <p class="entry-option-desc">Manifest CSV plus an XRD folder ZIP.</p>
+    <ul class="entry-option-points">
+      <li>One row per experiment, matched to a batch folder</li>
+      <li>Typed synthesis steps, phase status, spacegroup</li>
+      <li>Automatic file-hash de-duplication</li>
+    </ul>
+  </div>
+  <span class="entry-option-go" aria-hidden="true">&rarr;</span>
+</a>
+
+<a href="{% url 'batch_upload_lit_data' %}" class="entry-option">
+  <div>
+    <h3 class="entry-option-title">Literature data</h3>
+    <p class="entry-option-desc">Manifest CSV with one row per paper.</p>
+    <ul class="entry-option-points">
+      <li>DOI, composition, synthesis outcome</li>
+      <li>Automatic DOI de-duplication</li>
+    </ul>
+  </div>
+  <span class="entry-option-go" aria-hidden="true">&rarr;</span>
+</a>
+
+<div class="entry-option is-disabled" aria-disabled="true">
+  <div>
+    <h3 class="entry-option-title">Computational data <span class="badge text-bg-secondary">Coming soon</span></h3>
+    <p class="entry-option-desc mb-0">Batch import of DFT/ML records is not yet available &mdash; use the individual form above for now.</p>
+  </div>
 </div>
-
-<style>
-.card-hover {
-  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-</style>
-
 {% endblock %}

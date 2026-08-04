@@ -1,0 +1,27 @@
+{
+  "doi": "10.1126/science.aaq1057",
+  "synthesis_successful": true,
+  "elements": {"Mg": 1, "Co": 1, "Ni": 1, "Cu": 1, "Zn": 1, "O": 5},
+  "structure_family": "rocksalt",
+  "title": "Entropy-stabilized oxides",
+  "authors": ["C. M. Rost", "E. Sachet", "J.-P. Maria"],
+  "journal": "Science",
+  "year": 2015,
+  "spacegroup": "Fm-3m (#225)",
+  "element_sites": {},
+  "findings": "Reversible entropy-driven single-phase rocksalt solid solution.",
+  "synthesis_steps": [
+    {
+      "step_type": "ball_milling",
+      "milling_time_hours": 2,
+      "milling_rpm": 250,
+      "atmosphere": "air"
+    },
+    {
+      "step_type": "heat_treatment",
+      "max_temp_c": 1000,
+      "hold_time_hours": 2,
+      "atmosphere": "air"
+    }
+  ]
+}

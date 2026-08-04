@@ -50,7 +50,7 @@ def archive_upload(
     metadata: Dict[str, Any],
     media_src_path: Optional[str] = None,
     media_dest_filename: Optional[str] = None,
-) -> None:
+) -> Optional[str]:
     """Write one archive folder for a completed upload.
 
     Parameters
@@ -71,7 +71,7 @@ def archive_upload(
     """
     root = _archive_root()
     if root is None:
-        return
+        return None
 
     try:
         folder_name = _folder_name(upload_type, username, timestamp)
@@ -88,6 +88,39 @@ def archive_upload(
 
         meta_line = json.dumps(metadata, default=str) + "\n"
         (folder / "metadata.jsonl").write_text(meta_line, encoding="utf-8")
+        return folder_name
 
     except Exception:
         logger.warning("upload_archive: failed to write archive for %s/%s", upload_type, username, exc_info=True)
+        return None
+
+
+def add_files(archive_folder: str, file_paths: list[str], *, relative_to: str | None = None) -> None:
+    """Copy already-written files into an existing archive folder.
+
+    Used to back-fill lazily-built derived artifacts into the upload's
+    timestamped snapshot. When ``relative_to`` is provided, the relative
+    subdirectory structure under that root is preserved inside the archive.
+    Non-fatal: failures are logged, never raised.
+    """
+    root = _archive_root()
+    if root is None or not archive_folder:
+        return
+    folder = root / archive_folder
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        relative_root = Path(relative_to).resolve() if relative_to else None
+        for path in file_paths:
+            src = Path(path)
+            if src.is_file():
+                if relative_root is not None:
+                    try:
+                        dest = folder / src.resolve().relative_to(relative_root)
+                    except Exception:
+                        dest = folder / src.name
+                else:
+                    dest = folder / src.name
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest)
+    except Exception:
+        logger.warning("upload_archive: failed to add files to %s", archive_folder, exc_info=True)

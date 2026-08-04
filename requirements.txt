@@ -9,6 +9,7 @@ kiwisolver==1.4.8
 matplotlib==3.10.3
 mongoengine==0.29.1
 numpy==2.3.1
+openpyxl==3.1.5
 packaging==25.0
 pandas==2.3.1
 pillow==11.3.0
@@ -19,6 +20,7 @@ python-dotenv==1.1.1
 pytz==2025.2
 libsass==0.23.0
 scipy==1.16.1
+scikit-learn==1.6.1
 six==1.17.0
 sqlparse==0.5.3
 tzdata==2025.2
@@ -31,5 +33,9 @@ pymongo==4.10.1
 # CUDA packages that the default Linux torch wheel on PyPI would pull in.
 # Must appear *before* sentence-transformers so pip resolves torch first.
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.5.1+cpu
+torch==2.6.0+cpu
 sentence-transformers==3.0.1
+djangorestframework==3.16.1
+drf-spectacular==0.30.0
+django-redis==6.0.0
+redis==7.0.1

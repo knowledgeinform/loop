@@ -1,0 +1,419 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>LOOP - XRD Analysis {{ analysis_id }}</title>
+{% endblock %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/catalog-detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4 px-xl-5 mt-3 mt-lg-4 catalog-detail-page trial-page"
+     data-xrd-analysis-detail
+     data-status-url="{{ status_url }}"
+     data-job-status="{{ job.status }}">
+  <div class="detail-hero">
+    <div class="detail-hero__body">
+      <p class="detail-kicker">XRD analysis</p>
+      <h1 class="detail-title">Analysis {{ analysis_id }}</h1>
+      <p class="detail-subtitle mb-0">Trial {{ trial_id }} in recipe {{ recipe_id }}</p>
+    </div>
+    <div class="detail-hero__meta">
+      <a href="{% url 'trial_detail' recipe_id=recipe_id trial_id=trial_id %}" class="btn btn-outline-secondary btn-sm">Back to trial</a>
+    </div>
+  </div>
+
+  <div class="py-4">
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Summary</h2></div>
+      <div class="detail-section-body">
+        <div class="trial-summary-grid">
+          <div class="trial-summary-facts">
+            <dl class="trial-facts mb-0">
+              <dt>Automated status</dt>
+              <dd>
+                <span class="badge {{ status_meta.badge_class }}" data-xrd-status-badge>{{ status_meta.label }}</span>
+                <span class="section-hint d-block mt-1" data-xrd-status-message>{{ job.progress_message|default:"Persisted analysis status." }}</span>
+              </dd>
+
+              <dt>Human result</dt>
+              <dd><span class="badge {{ human_phase_meta.badge_class }}">{{ human_phase_meta.label }}</span></dd>
+
+              <dt>Target structure</dt>
+              <dd>
+                {% for label, value in target_structure_rows %}
+                <div><strong>{{ label }}:</strong> {{ value }}</div>
+                {% endfor %}
+              </dd>
+
+              <dt>Phase state</dt>
+              <dd>{{ result_payload.phase_state|default:"—" }}</dd>
+
+              <dt>Selected model</dt>
+              <dd>{{ summary_payload.selected_model_type|default:selected_model_type|default:"—" }}</dd>
+
+              <dt>Best hypothesis</dt>
+              <dd>{{ summary_payload.best_hypothesis_id|default:"—" }}</dd>
+
+              <dt>Evidence score</dt>
+              <dd>{{ result_payload.evidence_score|default:"—" }}</dd>
+            </dl>
+          </div>
+          <div class="trial-summary-facts">
+            <dl class="trial-facts mb-0">
+              <dt>Job status</dt>
+              <dd>{{ job.status }}</dd>
+
+              <dt>Progress stage</dt>
+              <dd>{{ job.progress_stage|default:"—" }}</dd>
+
+              <dt>Queued</dt>
+              <dd>{{ job.queued_at|date:"Y-m-d H:i" }}</dd>
+
+              <dt>Completed</dt>
+              <dd>{{ job.completed_at|date:"Y-m-d H:i"|default:"—" }}</dd>
+
+              <dt>Warnings</dt>
+              <dd>
+                {% if warning_codes %}
+                {{ warning_codes|join:", " }}
+                {% else %}—{% endif %}
+              </dd>
+
+              <dt>Failure codes</dt>
+              <dd>
+                {% if result_payload.failure_codes %}
+                {{ result_payload.failure_codes|join:", " }}
+                {% elif job.failure_codes %}
+                {{ job.failure_codes|join:", " }}
+                {% else %}—{% endif %}
+              </dd>
+
+              <dt>API result</dt>
+              <dd>
+                {% if result_url %}
+                <a href="{{ result_url }}">Open result JSON</a>
+                {% else %}—{% endif %}
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if persisted_error %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Persisted result state</h2></div>
+      <div class="detail-section-body">
+        <p class="mb-1"><strong>{{ persisted_error.code|default:"analysis_result_unavailable" }}</strong></p>
+        <p class="mb-0">{{ persisted_error.detail }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if data_quality_rows %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Data quality</h2></div>
+      <div class="detail-section-body">
+        <div class="table-wrap">
+          <table class="table meta-table mb-0">
+            <tbody>
+              {% for label, value in data_quality_rows %}
+              <tr><th>{{ label }}</th><td>{{ value }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Selected model</h2></div>
+      <div class="detail-section-body">
+        {% if selected_hypothesis %}
+        <div class="table-wrap">
+          <table class="table meta-table mb-0">
+            <tbody>
+              <tr><th>Model type</th><td>{{ selected_model_type|default:"—" }}</td></tr>
+              <tr><th>Hypothesis ID</th><td>{{ selected_hypothesis.hypothesis_id|default:"—" }}</td></tr>
+              <tr><th>Refinement status</th><td>{{ selected_hypothesis.refinement_status|default:"—" }}</td></tr>
+              <tr><th>Convergence</th><td>{{ selected_hypothesis.convergence_status|default:"—" }}</td></tr>
+              <tr><th>Rwp</th><td>{{ selected_hypothesis.rwp|default:"—" }}</td></tr>
+              <tr><th>Rp</th><td>{{ selected_hypothesis.rp|default:"—" }}</td></tr>
+              <tr><th>Goodness of fit</th><td>{{ selected_hypothesis.goodness_of_fit|default:"—" }}</td></tr>
+              <tr><th>Runtime (s)</th><td>{{ selected_hypothesis.runtime_seconds|default:"—" }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="mb-0">No persisted selected model is available for this analysis yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if candidate_rows %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Competing hypotheses</h2></div>
+      <div class="detail-section-body">
+        <div class="table-wrap">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Candidate</th>
+                <th>Source</th>
+                <th>Formula</th>
+                <th>Space group</th>
+                <th>Pre-rank score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for candidate in candidate_rows %}
+              <tr>
+                <td>{{ candidate.rank }}</td>
+                <td>{{ candidate.label }}</td>
+                <td>{{ candidate.source|default:"—" }}</td>
+                <td>{{ candidate.formula|default:"—" }}</td>
+                <td>{{ candidate.space_group|default:"—" }}</td>
+                <td>{{ candidate.combined_pre_rank_score|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Pattern evidence</h2></div>
+      <div class="detail-section-body">
+        {% if plot_context %}
+        <div class="mb-3">
+          {% for series in plot_context.series %}
+          <label class="me-3 mb-2">
+            <input type="checkbox" data-xrd-plot-toggle data-target-series="{{ series.id }}" {% if series.visible %}checked{% endif %}>
+            {{ series.label }}
+          </label>
+          {% endfor %}
+        </div>
+        <svg viewBox="0 0 960 320" width="100%" height="320" role="img" aria-label="XRD evidence plot">
+          <line x1="0" y1="319" x2="960" y2="319" stroke="#cbd5e1" stroke-width="1"></line>
+          {% for reflection in plot_context.reflections %}
+          <line x1="{{ reflection.x }}" y1="278" x2="{{ reflection.x }}" y2="318" stroke="#94a3b8" stroke-width="1" data-xrd-reflection-tick></line>
+          {% endfor %}
+          {% for series in plot_context.series %}
+          <polyline
+            fill="none"
+            stroke="{{ series.color }}"
+            stroke-width="1.8"
+            points="{{ series.points }}"
+            data-xrd-series="{{ series.id }}"
+            {% if not series.visible %}style="display:none"{% endif %}></polyline>
+          {% endfor %}
+        </svg>
+        <p class="section-hint mt-2 mb-0">Observed, calculated, background, and difference traces are shown without assigning exclusive peak ownership. Reflection ticks mark expected model reflections only.</p>
+        {% else %}
+        <p class="mb-0">No persisted pattern arrays are available for deterministic evidence plotting.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if phase_rows %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Per-phase evidence</h2></div>
+      <div class="detail-section-body">
+        <div class="table-wrap">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr>
+                <th>Candidate</th>
+                <th>Source</th>
+                <th>Scale factor</th>
+                <th>Expected reflections</th>
+                <th>Unsupported strong regions</th>
+                <th>Lattice parameters</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for phase in phase_rows %}
+              <tr>
+                <td>{{ phase.candidate_id }}</td>
+                <td>{{ phase.source|default:"—" }}</td>
+                <td>{{ phase.scale_factor|default:"—" }}</td>
+                <td>{{ phase.expected_reflection_count }}</td>
+                <td>{{ phase.unsupported_region_count }}</td>
+                <td>
+                  {% for key, value in phase.lattice_parameters.items %}
+                  {% if value %}<div><strong>{{ key }}</strong>: {{ value }}</div>{% endif %}
+                  {% empty %}—{% endfor %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if warnings %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Warnings and limitations</h2></div>
+      <div class="detail-section-body">
+        <div class="table-wrap">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Code</th><th>Stage</th><th>Field</th><th>Message</th></tr></thead>
+            <tbody>
+              {% for warning in warnings %}
+              <tr>
+                <td>{{ warning.code|default:"—" }}</td>
+                <td>{{ warning.stage|default:"—" }}</td>
+                <td>{{ warning.field|default:"—" }}</td>
+                <td>{{ warning.message|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if provenance_rows %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Provenance and reproducibility</h2></div>
+      <div class="detail-section-body">
+        <div class="table-wrap">
+          <table class="table meta-table mb-0">
+            <tbody>
+              {% for label, value in provenance_rows %}
+              <tr><th>{{ label }}</th><td>{{ value }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if artifact_rows %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Available downloads</h2></div>
+      <div class="detail-section-body">
+        <div class="table-wrap">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Artifact</th><th>Type</th><th>Content type</th><th>Size</th><th>SHA-256</th></tr></thead>
+            <tbody>
+              {% for artifact in artifact_rows %}
+              <tr>
+                <td><a href="{{ artifact.download_url }}">{{ artifact.name }}</a></td>
+                <td>{{ artifact.artifact_type|default:"—" }}</td>
+                <td>{{ artifact.content_type|default:"—" }}</td>
+                <td>{{ artifact.size_bytes|default:"—" }}</td>
+                <td>{{ artifact.sha256|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar"><h2>Expert review</h2></div>
+      <div class="detail-section-body">
+        {% if can_review_xrd_analysis %}
+        <form method="post" action="{{ review_post_url }}" class="mb-4">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="id_review_status">Review status</label>
+              <select id="id_review_status" name="review_status" class="form-select" required>
+                {% for status in review_status_values %}
+                <option value="{{ status }}">{{ status }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="id_reviewed_phase_state">Reviewed phase state</label>
+              <select id="id_reviewed_phase_state" name="reviewed_phase_state" class="form-select">
+                <option value="">---------</option>
+                {% for phase_state in phase_state_values %}
+                <option value="{{ phase_state }}">{{ phase_state }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="id_selected_hypothesis_id">Selected hypothesis</label>
+              <select id="id_selected_hypothesis_id" name="selected_hypothesis_id" class="form-select">
+                <option value="">---------</option>
+                {% for option in hypothesis_options %}
+                <option value="{{ option.hypothesis_id }}">{{ option.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="id_confidence">Confidence</label>
+              <input id="id_confidence" name="confidence" type="text" class="form-control" placeholder="high / medium / low">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="id_added_candidate_identifiers">Added candidate identifiers</label>
+              <input id="id_added_candidate_identifiers" name="added_candidate_identifiers" type="text" class="form-control" placeholder="candidate_a, candidate_b">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="id_notes">Notes</label>
+              <textarea id="id_notes" name="notes" class="form-control" rows="4" placeholder="Explain the review without altering the persisted automated result."></textarea>
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary btn-sm">Save expert review</button>
+            </div>
+          </div>
+        </form>
+        {% else %}
+        <p class="section-hint">Approved access is required to add expert review records.</p>
+        {% endif %}
+
+        {% if review_history %}
+        <div class="table-wrap">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Reviewer</th><th>Status</th><th>Phase state</th><th>Hypothesis</th><th>Confidence</th><th>Created</th></tr></thead>
+            <tbody>
+              {% for review in review_history %}
+              <tr>
+                <td>
+                  {{ review.reviewer_display_name }}
+                  {% if review.is_active %}<span class="badge bg-success ms-2">Active</span>{% endif %}
+                  {% if review.reviewer_organization %}<div class="section-hint">{{ review.reviewer_organization }}</div>{% endif %}
+                </td>
+                <td>{{ review.review_status }}</td>
+                <td>{{ review.reviewed_phase_state|default:"—" }}</td>
+                <td>{{ review.selected_hypothesis_id|default:"—" }}</td>
+                <td>{{ review.confidence|default:"—" }}</td>
+                <td>{{ review.created_at|date:"Y-m-d H:i" }}</td>
+              </tr>
+              {% if review.notes %}
+              <tr><td colspan="6"><strong>Notes:</strong> {{ review.notes }}</td></tr>
+              {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="mb-0">No expert review records have been saved for this analysis yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ block.super }}
+  <script src="{% static 'js/xrd_analysis.js' %}" defer></script>
+{% endblock %}

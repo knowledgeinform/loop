@@ -56,6 +56,18 @@
 
           <dt class="col-4">Extracted By</dt>
           <dd class="col-8">{{ record.extracted_by|default:"—" }}</dd>
+
+          <dt class="col-4">Space Group</dt>
+          <dd class="col-8">{{ record.spacegroup|default:"—" }}</dd>
+
+          {% if record.element_sites %}
+          <dt class="col-4">Element Sites</dt>
+          <dd class="col-8">
+            {% for sym, site in record.element_sites.items %}
+            <span class="badge text-bg-light border me-1 mb-1"><strong>{{ sym }}</strong> → {{ site }}</span>
+            {% endfor %}
+          </dd>
+          {% endif %}
         </dl>
       </div>
     </div>

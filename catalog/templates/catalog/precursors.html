@@ -7,31 +7,9 @@
 
 {% block extra_css %}
   {{ block.super }}
-  <style>
-    .precursor-table input,
-    .precursor-table textarea {
-      font-size: 0.9rem;
-    }
-    .precursor-empty {
-      border: 1px dashed #dee2e6;
-      border-radius: 8px;
-      padding: 2rem;
-      text-align: center;
-      color: #6c757d;
-    }
-    .cas-lookup-inline {
-      display: flex;
-      gap: 0.5rem;
-      align-items: stretch;
-    }
-    .cas-lookup-inline input { max-width: 180px; }
-  </style>
 {% endblock %}
 
 {% block content %}
-<div class="mb-1">
-  <a href="{% url 'account' %}" class="text-muted text-decoration-none small">← Back to account</a>
-</div>
 <nav aria-label="breadcrumb" class="mb-3">
   <ol class="breadcrumb mb-0">
     <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>

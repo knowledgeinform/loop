@@ -101,3 +101,92 @@ class LiteratureDataForm(forms.Form):
         for name in control_fields:
             self.fields[name].widget.attrs.update({"class": "form-control"})
 
+class BatchExperimentalUploadForm(forms.Form):
+    MODE_WITH_MANIFEST = "with_manifest"
+    MODE_ZIP_ONLY = "zip_only"
+    MODE_WITH_EXISTING_ZIP = "with_existing_zip"
+
+    upload_mode = forms.ChoiceField(
+        required=True,
+        choices=(
+            (MODE_WITH_MANIFEST, "I have a manifest CSV and an XRD ZIP"),
+            (MODE_ZIP_ONLY, "I only have an XRD ZIP"),
+            (MODE_WITH_EXISTING_ZIP, "I have completed a generated manifest"),
+        ),
+        widget=forms.RadioSelect(attrs={"class": "btn-check", "autocomplete": "off"}),
+        initial=MODE_WITH_MANIFEST,
+    )
+
+    manifest = forms.FileField(
+        required=False,
+        help_text="CSV or Excel (.xlsx) manifest with one row per experiment.",
+        widget=forms.ClearableFileInput(attrs={"accept": ".csv,.xlsx"}),
+    )
+
+    archive = forms.FileField(
+        required=False,
+        help_text="ZIP file containing experiment folders.",
+    )
+
+    structure_family = forms.ChoiceField(
+        required=True,
+        choices=(
+            ("unknown", "Unknown"),
+            ("rocksalt", "Rocksalt"),
+            ("pyrochlore", "Pyrochlore"),
+            ("spinel", "Spinel"),
+            ("perovskite", "Perovskite"),
+            ("fluorite", "Fluorite"),
+            ("other", "Other"),
+        ),
+        initial="unknown",
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        mode = cleaned.get("upload_mode")
+        manifest = cleaned.get("manifest")
+        archive = cleaned.get("archive")
+
+        if mode == self.MODE_WITH_MANIFEST:
+            if not manifest:
+                self.add_error("manifest", "Manifest CSV is required.")
+            if not archive:
+                self.add_error("archive", "XRD ZIP is required.")
+
+        elif mode == self.MODE_ZIP_ONLY:
+            if not archive:
+                self.add_error("archive", "XRD ZIP is required.")
+
+        elif mode == self.MODE_WITH_EXISTING_ZIP:
+            if not manifest:
+                self.add_error("manifest", "Completed manifest CSV is required.")
+
+        return cleaned
+
+
+class BatchLiteratureUploadForm(forms.Form):
+    manifest = forms.FileField(
+        required=True,
+        help_text=(
+            "CSV or Excel (.xlsx) manifest with one row per paper, or a JSON / "
+            "JSONL file with one record per paper."
+        ),
+        widget=forms.ClearableFileInput(
+            attrs={"accept": ".csv,.xlsx,.json,.jsonl,.ndjson"}
+        ),
+    )
+
+    structure_family = forms.ChoiceField(
+        required=True,
+        choices=(
+            ("unknown", "Unknown"),
+            ("rocksalt", "Rocksalt"),
+            ("pyrochlore", "Pyrochlore"),
+            ("spinel", "Spinel"),
+            ("perovskite", "Perovskite"),
+            ("fluorite", "Fluorite"),
+            ("other", "Other"),
+        ),
+        initial="unknown",
+    )

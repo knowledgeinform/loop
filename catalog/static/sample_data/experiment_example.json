@@ -1,0 +1,34 @@
+{
+  "elements": {"Mg": 1, "Co": 1, "Ni": 1, "Cu": 1, "Zn": 1, "O": 5},
+  "structure_family": "rocksalt",
+  "phase_status": "single_phase",
+  "spacegroup": "Fm-3m (#225)",
+  "element_sites": {"Mg": "4a", "O": "4b"},
+  "raw_data_type": "xrd",
+  "comments": "Single rocksalt phase confirmed by XRD.",
+  "synthesis_steps": [
+    {
+      "step_type": "weighing",
+      "total_mass_g": 2.0,
+      "precursors_list": [
+        {"name": "MgO", "formula": "MgO", "purity": "99.9%"},
+        {"name": "Cobalt(II) oxide", "formula": "CoO"}
+      ]
+    },
+    {
+      "step_type": "ball_milling",
+      "milling_time_hours": 12,
+      "milling_rpm": 300,
+      "ball_powder_ratio": "10:1",
+      "atmosphere": "air"
+    },
+    {
+      "step_type": "heat_treatment",
+      "max_temp_c": 1000,
+      "ramp_rate_c_min": 5,
+      "hold_time_hours": 12,
+      "atmosphere": "air",
+      "furnace_type": "box"
+    }
+  ]
+}

@@ -108,6 +108,22 @@ def delete_comp_embedding(comp_auid: Optional[str]) -> None:
 # --- MongoEngine post_save handlers ------------------------------------------
 
 def _material_post_save(sender, document, **kwargs):
+    # Labeled EFA/DEED records are training truth. Queueing is cheap and
+    # coalesced, so batch imports produce one retraining run after they settle.
+    try:
+        from .model_training import (
+            enqueue_model_retraining,
+            material_has_training_labels,
+        )
+
+        if material_has_training_labels(document):
+            enqueue_model_retraining(
+                material_auids=[str(document.id)],
+                reason="Labeled computational data saved",
+            )
+    except Exception as exc:
+        logger.warning("EFA/DEED retraining enqueue failed for %s: %s", document.id, exc)
+
     if not _embeddings_enabled():
         return
     try:
@@ -119,6 +135,26 @@ def _material_post_save(sender, document, **kwargs):
 
 
 def _recipe_post_save(sender, document, **kwargs):
+    try:
+        from .composition_model import invalidate_composition_model
+        invalidate_composition_model()
+    except Exception as exc:
+        logger.warning("Composition model invalidation failed: %s", exc)
+
+    try:
+        from .model_training import enqueue_model_retraining
+
+        enqueue_model_retraining(
+            material_auids=[str(document.material_auid or "")],
+            reason="Experimental or literature data saved",
+        )
+    except Exception as exc:
+        logger.warning(
+            "EFA/DEED retraining enqueue failed for recipe %s: %s",
+            document.id,
+            exc,
+        )
+
     if not _embeddings_enabled():
         return
     try:
@@ -129,15 +165,35 @@ def _recipe_post_save(sender, document, **kwargs):
         )
 
 
+def _recipe_post_delete(sender, document, **kwargs):
+    try:
+        from .composition_model import invalidate_composition_model
+        invalidate_composition_model()
+    except Exception as exc:
+        logger.warning("Composition model invalidation failed after delete: %s", exc)
+
+
+def _synthesis_prediction_changed(sender, document, **kwargs):
+    """Refresh the low-weight pseudo-label snapshot after a stored prediction changes."""
+    try:
+        from .composition_model import invalidate_composition_model
+        invalidate_composition_model()
+    except Exception as exc:
+        logger.warning("Composition model invalidation failed for synthesis prediction: %s", exc)
+
+
 def connect_document_signals() -> None:
     """Register post_save hooks; safe to call repeatedly."""
     global _signals_connected
     if _signals_connected:
         return
-    from .documents import Material, Recipe
+    from .documents import Material, Recipe, SynthesisPrediction
 
     me_signals.post_save.connect(_material_post_save, sender=Material)
     me_signals.post_save.connect(_recipe_post_save, sender=Recipe)
+    me_signals.post_delete.connect(_recipe_post_delete, sender=Recipe)
+    me_signals.post_save.connect(_synthesis_prediction_changed, sender=SynthesisPrediction)
+    me_signals.post_delete.connect(_synthesis_prediction_changed, sender=SynthesisPrediction)
     _signals_connected = True
 
 

@@ -1,0 +1,150 @@
+{% extends "base_generic.html" %}
+
+{% block title %}
+<title>LOOP - My literature records</title>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+    <li class="breadcrumb-item active">My literature records</li>
+  </ol>
+</nav>
+
+<h1 class="mb-2">My literature records</h1>
+<p class="text-muted mb-4">
+  {% if show_all %}
+    Every literature record in the catalogue.
+  {% else %}
+    Literature records you uploaded. Select any number and remove them in one step.
+  {% endif %}
+</p>
+
+{% if over_limit %}
+  <div class="alert alert-warning">
+    You have {{ rows|length }} records, more than the {{ max_selection }} that can be
+    deleted in one step. Select up to {{ max_selection }} at a time and repeat.
+  </div>
+{% endif %}
+
+{% if rows %}
+<form method="post" action="{% url 'bulk_delete_literature' %}" id="bulk-form"
+      data-max="{{ max_selection }}">
+  {% csrf_token %}
+
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <button type="submit" class="btn btn-danger btn-sm" id="bulk-delete" disabled>
+      Delete selected (0)
+    </button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="clear-sel">Clear</button>
+    <span class="text-muted small ms-auto">{{ rows|length }} record{{ rows|length|pluralize }}</span>
+    {% if can_show_all %}
+      {% if show_all %}
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'my_literature' %}">Only mine</a>
+      {% else %}
+        <a class="btn btn-outline-secondary btn-sm" href="?all=1">Show all users</a>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th style="width: 2.5rem;">
+            {# Selects only the rows rendered here; there is no hidden "all matching" #}
+            <input type="checkbox" id="check-all" class="form-check-input"
+                   title="Select all rows on this page" aria-label="Select all rows">
+          </th>
+          <th>DOI</th>
+          <th>Title</th>
+          <th>Journal</th>
+          <th class="text-end">Year</th>
+          <th>Material</th>
+          {% if show_all %}<th>Uploaded by</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>
+            <input type="checkbox" name="selected" value="{{ row.token }}"
+                   class="form-check-input row-check"
+                   aria-label="Select {{ row.doi }}">
+          </td>
+          <td class="text-nowrap"><code>{{ row.doi }}</code></td>
+          <td>
+            <a href="{% url 'literature_detail' recipe_id=row.recipe_id lit_id=row.lit_id %}">
+              {{ row.title|default:"(untitled)"|truncatechars:70 }}
+            </a>
+          </td>
+          <td>{{ row.journal|default:"—"|truncatechars:32 }}</td>
+          <td class="text-end">{{ row.year|default:"—" }}</td>
+          <td class="text-nowrap"><code class="small">{{ row.material_auid }}</code></td>
+          {% if show_all %}<td>{{ row.extracted_by|default:"—" }}</td>{% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+
+<script>
+// Enable the delete button only when something is selected, and keep the count
+// truthful. The button is disabled in markup so it is never clickable before
+// this runs.
+(function () {
+  var form   = document.getElementById('bulk-form');
+  var all    = document.getElementById('check-all');
+  var btn    = document.getElementById('bulk-delete');
+  var clear  = document.getElementById('clear-sel');
+  var boxes  = function () { return form.querySelectorAll('.row-check'); };
+
+  function refresh() {
+    var n = form.querySelectorAll('.row-check:checked').length;
+    btn.disabled = n === 0 || n > max;
+    // Restore the normal label too, or it stays stuck reading "Too many"
+    // after the user deselects back under the cap.
+    btn.textContent = n > max
+      ? 'Too many selected (max ' + max + ')'
+      : 'Delete selected (' + n + ')';
+    var total = boxes().length;
+    all.checked = n === total && total > 0;
+    all.indeterminate = n > 0 && n < total;
+  }
+
+  var max = parseInt(form.dataset.max || '500', 10);
+
+  all.addEventListener('change', function () {
+    // Stop at the cap rather than letting the POST be rejected: one checkbox is
+    // sent per record, and past Django's field limit the request fails with a
+    // bare 400 that says nothing useful.
+    var n = 0;
+    boxes().forEach(function (b) {
+      b.checked = all.checked && n < max;
+      if (b.checked) { n++; }
+    });
+    if (all.checked && boxes().length > max) {
+      window.alert('Selected the first ' + max + ' records. Delete these, then select the rest.');
+    }
+    refresh();
+  });
+  form.addEventListener('change', function (e) {
+    if (e.target.classList.contains('row-check')) { refresh(); }
+  });
+  clear.addEventListener('click', function () {
+    boxes().forEach(function (b) { b.checked = false; });
+    refresh();
+  });
+  refresh();
+})();
+</script>
+
+{% else %}
+  <div class="alert alert-info">
+    You have not uploaded any literature records yet.
+    <a href="{% url 'add_data' %}">Add data</a> to get started.
+  </div>
+{% endif %}
+{% endblock %}

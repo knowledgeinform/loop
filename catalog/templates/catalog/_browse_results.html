@@ -1,24 +1,24 @@
 {% load humanize %}
-<div class="browse-results-toolbar d-flex justify-content-between align-items-center mb-2 mt-3 flex-wrap gap-2">
-  <span class="text-muted small">
+<div class="browse-results-toolbar">
+  <span class="browse-count">
     {% if view_mode == "materials" %}
-      {{ total }} material{{ total|pluralize }} found
+      <strong>{{ total }}</strong> material{{ total|pluralize }} found
     {% elif view_mode == "recipes" %}
-      {{ total }} recipe{{ total|pluralize }} found
+      <strong>{{ total }}</strong> recipe{{ total|pluralize }} found
     {% elif view_mode == "literature" %}
-      {{ total }} literature record{{ total|pluralize }} found
+      <strong>{{ total }}</strong> literature record{{ total|pluralize }} found
     {% else %}
-      {{ total }} calculation{{ total|pluralize }} found
+      <strong>{{ total }}</strong> calculation{{ total|pluralize }} found
     {% endif %}
   </span>
-  <a href="{% url 'add_data' %}" class="btn btn-success btn-sm">+ Add Data</a>
+  <a href="{% url 'add_data' %}" class="btn btn-primary btn-sm">+ Add data</a>
 </div>
 
 {% if composition_rows %}
   {% if view_mode == "materials" %}
-  <div class="table-responsive browse-table-wrap">
-    <table class="table table-sm table-striped table-hover align-middle browse-data-table mb-0">
-      <thead class="table-light">
+  <div class="table-wrap">
+    <table class="table table-sm">
+      <thead>
         <tr>
           {% if search_mode == "semantic" %}
           <th class="text-end text-nowrap" title="Cosine similarity (best across composition, structure, and synthesis embeddings)">Score</th>
@@ -70,21 +70,21 @@
           <td class="text-nowrap small">{{ row.temperature_display }}</td>
           <td class="text-center">
             {% if row.literature_count %}
-              <span class="badge browse-result-badge">{{ row.literature_count }}</span>
+              <a class="badge count-badge count-badge-link" href="{% url 'composition_detail' material_auid=row.material_auid %}#tab-lit" title="View literature for this material">{{ row.literature_count }}</a>
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
           </td>
           <td class="text-center">
             {% if row.trial_count %}
-              <span class="badge browse-result-badge">{{ row.trial_count }}</span>
+              <a class="badge count-badge count-badge-link" href="{% url 'composition_detail' material_auid=row.material_auid %}#tab-routes" title="View experiments for this material">{{ row.trial_count }}</a>
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
           </td>
           <td class="text-center">
-            {% if row.has_comp %}
-              <span class="badge browse-result-badge">✓</span>
+            {% if row.comp_count %}
+              <a class="badge count-badge count-badge-link" href="{% url 'composition_detail' material_auid=row.material_auid %}#tab-dft" title="View DFT for this material">{{ row.comp_count }}</a>
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
@@ -96,9 +96,9 @@
   </div>
 
   {% elif view_mode == "recipes" %}
-  <div class="table-responsive browse-table-wrap">
-    <table class="table table-sm table-striped table-hover align-middle browse-data-table mb-0">
-      <thead class="table-light">
+  <div class="table-wrap">
+    <table class="table table-sm">
+      <thead>
         <tr>
           {% if search_mode == "semantic" %}
           <th class="text-end text-nowrap">Score</th>
@@ -146,14 +146,14 @@
           <td class="text-nowrap small">{{ row.temperature_display }}</td>
           <td class="text-center">
             {% if row.literature_count %}
-              <span class="badge browse-result-badge">{{ row.literature_count }}</span>
+              <a class="badge count-badge count-badge-link" href="{% url 'composition_detail' material_auid=row.material_auid %}#tab-lit" title="View literature for this material">{{ row.literature_count }}</a>
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
           </td>
           <td class="text-center">
             {% if row.trial_count %}
-              <span class="badge browse-result-badge">{{ row.trial_count }}</span>
+              <a class="badge count-badge count-badge-link" href="{% url 'composition_detail' material_auid=row.material_auid %}#tab-routes" title="View experiments for this material">{{ row.trial_count }}</a>
             {% else %}
               <span class="text-muted">—</span>
             {% endif %}
@@ -165,13 +165,14 @@
   </div>
 
   {% elif view_mode == "literature" %}
-  <div class="table-responsive browse-table-wrap">
-    <table class="table table-sm table-striped table-hover align-middle browse-data-table mb-0">
-      <thead class="table-light">
+  <div class="table-wrap">
+    <table class="table table-sm">
+      <thead>
         <tr>
           {% if search_mode == "semantic" %}
           <th class="text-end text-nowrap">Score</th>
           {% endif %}
+          <th>Organization</th>
           <th>DOI</th>
           <th>Title</th>
           <th>Year</th>
@@ -195,6 +196,17 @@
             {% endif %}
           </td>
           {% endif %}
+          <td>
+            {% if row.organizations %}
+              <div class="d-flex flex-wrap gap-1">
+                {% for org in row.organizations %}
+                <span class="badge org-badge org-badge-{{ org|lower|slugify }}">{{ org }}</span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td class="small browse-mono">{{ row.doi }}</td>
           <td class="small browse-cell-truncate" title="{{ row.title|escape }}">{{ row.title|default:"—" }}</td>
           <td class="text-nowrap small">{% if row.year %}{{ row.year }}{% else %}—{% endif %}</td>
@@ -208,13 +220,14 @@
   </div>
 
   {% else %}
-  <div class="table-responsive browse-table-wrap">
-    <table class="table table-sm table-striped table-hover align-middle browse-data-table mb-0">
-      <thead class="table-light">
+  <div class="table-wrap">
+    <table class="table table-sm">
+      <thead>
         <tr>
           {% if search_mode == "semantic" %}
           <th class="text-end text-nowrap">Score</th>
           {% endif %}
+          <th>Organization</th>
           <th>Calculation</th>
           <th>Material</th>
           <th>Structure</th>
@@ -239,6 +252,17 @@
             {% endif %}
           </td>
           {% endif %}
+          <td>
+            {% if row.organizations %}
+              <div class="d-flex flex-wrap gap-1">
+                {% for org in row.organizations %}
+                <span class="badge org-badge org-badge-{{ org|lower|slugify }}">{{ org }}</span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td><a href="{% url 'computational_detail' material_auid=row.material_auid comp_auid=row.comp_auid %}" class="browse-mono small">{{ row.comp_auid }}</a></td>
           <td><a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono small">{{ row.material_auid }}</a></td>
           <td><span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span></td>
@@ -286,16 +310,14 @@
 {% endif %}
 
 {% else %}
-<div class="alert alert-info mb-0">
-  {% if view_mode == "materials" %}
-    No materials match your criteria.
-  {% elif view_mode == "recipes" %}
-    No recipes match your criteria.
-  {% elif view_mode == "literature" %}
-    No literature entries match your criteria.
-  {% else %}
-    No computational records match your criteria.
-  {% endif %}
-  <a href="{% url 'add_data' %}">Add data</a> to grow the catalog.
+<div class="empty-state">
+  <h3>
+    {% if view_mode == "materials" %}No materials match your criteria
+    {% elif view_mode == "recipes" %}No recipes match your criteria
+    {% elif view_mode == "literature" %}No literature entries match your criteria
+    {% else %}No computational records match your criteria
+    {% endif %}
+  </h3>
+  <p>Try broadening your search or clearing the advanced filters &mdash; or <a href="{% url 'add_data' %}">add data</a> to grow the catalog.</p>
 </div>
 {% endif %}

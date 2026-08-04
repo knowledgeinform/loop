@@ -1,5 +1,14 @@
 {% extends "base_generic.html" %}
+
 {% block content %}
-  <h2>Awaiting Approval</h2>
-    <p>Your email may be verified, but access requires admin approval. Please contact <a href="mailto:loop@mintaka.arch.jhu.edu">loop@mintaka.arch.jhu.edu</a> to get site access.</p>
+  <div class="auth-shell">
+    <h1 class="mb-3">Awaiting approval</h1>
+    <div class="card auth-card">
+      <div class="card-body">
+        <p class="mb-0">Your email may be verified, but access requires admin approval. Please contact <a href="mailto:loop@mintaka.arch.jhu.edu">loop@mintaka.arch.jhu.edu</a> to get site access.</p>
+      </div>
+    </div>
+  </div>
 {% endblock %}
+
+{% block sidebar %}{% endblock %}

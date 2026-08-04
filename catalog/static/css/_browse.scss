@@ -1,0 +1,85 @@
+// =============================================================================
+// Browse / search catalog — page-scoped styles (tokenised; replaces the old
+// inline <style> block that carried a parallel --browse-accent system).
+// =============================================================================
+
+.search-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 1.15rem 1.25rem;
+  background: var(--paper);
+}
+
+// search field + mode indicator label
+.search-field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+// disclosure for advanced filters
+.browse-details {
+  summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+    font-size: var(--fs-body);
+    font-weight: 600;
+    color: var(--navy);
+    list-style: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "\25B8";
+    display: inline-block;
+    transition: transform var(--dur) var(--ease-out);
+  }
+  &[open] summary::before { transform: rotate(90deg); }
+}
+.browse-advanced-inner {
+  margin-top: 0.9rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+// results
+.browse-results-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.5rem 0 0.75rem;
+}
+.browse-count {
+  font-size: var(--fs-body);
+  color: var(--muted);
+
+  strong { color: var(--ink); font-weight: 700; }
+}
+
+// clickable data rows
+.browse-row-clickable { cursor: pointer; }
+
+.browse-mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  letter-spacing: -0.02em;
+}
+a.browse-mono { color: var(--navy); text-decoration: none; }
+a.browse-mono:hover { text-decoration: underline; }
+
+.browse-elements-inline {
+  margin-top: 0.15rem;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.browse-cell-truncate {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

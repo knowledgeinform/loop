@@ -1,0 +1,130 @@
+{
+  "__doc__": "DEV / LLM REFERENCE ONLY — not a valid upload. Lists every field the literature batch parser and add form recognize. CONVENTION: when a field's value is an ARRAY, it is an enumerated dropdown (or a boolean radio) — the auto-populator must choose EXACTLY ONE of the listed values, copied VERBATIM (exact case, spacing, and punctuation). When a field's value is the string 'na', it is free text or a number — fill it in (or omit to default: 'na' for text, 'unknown' for spacegroup). SPACEGROUP must be one of the exact strings in '__spacegroup_options_by_structure_family__' for the chosen structure_family — always the literal 'Symbol (#number)' form, e.g. 'Fm-3m (#225)', NOT the bare number 225, NOT the bare symbol 'Fm-3m', or the literal 'unknown'. 'authors' is a list of strings (or a comma-separated string); 'year' is an integer. Required fields: doi, synthesis_successful, elements, structure_family. The synthesis_steps schema mirrors the experimental form; each entry shows one step_type with all of its fields — include only the steps you need, renumbered by order. ball_powder_ratio must be 'x:y' form (e.g. '10:1'). number_of_remelts is an integer; all other numeric fields are floats.",
+  "__spacegroup_options_by_structure_family__": {
+    "rocksalt":   ["unknown", "Fm-3m (#225)"],
+    "spinel":     ["unknown", "Fd-3m (#227)"],
+    "pyrochlore": ["unknown", "Fd-3m (#227)"],
+    "perovskite": ["unknown", "Pm-3m (#221)", "R-3c (#167)", "Pnma (#62)", "P4/mmm (#123)"],
+    "fluorite":   ["unknown", "Fm-3m (#225)"],
+    "other":      ["unknown"],
+    "unknown":    ["unknown"]
+  },
+  "doi": "na",
+  "synthesis_successful": [true, false],
+  "elements": {"Symbol": "na"},
+  "structure_family": ["rocksalt", "pyrochlore", "spinel", "perovskite", "fluorite", "other", "unknown"],
+  "title": "na",
+  "authors": ["na"],
+  "journal": "na",
+  "year": "na",
+  "findings": "na",
+  "spacegroup": ["unknown", "Fm-3m (#225)", "Fd-3m (#227)", "Pm-3m (#221)", "R-3c (#167)", "Pnma (#62)", "P4/mmm (#123)"],
+  "element_sites": {"Symbol": "na"},
+  "synthesis_steps": [
+    {
+      "step_type": "weighing",
+      "total_mass_g": "na",
+      "precursors": "na",
+      "precursors_list": [
+        {
+          "cas_number": "na",
+          "name": "na",
+          "formula": "na",
+          "purity": "na",
+          "supplier": "na",
+          "notes": "na"
+        }
+      ],
+      "notes": "na"
+    },
+    {
+      "step_type": "ball_milling",
+      "milling_time_hours": "na",
+      "milling_rpm": "na",
+      "ball_powder_ratio": "na",
+      "atmosphere": ["argon", "nitrogen", "air", "vacuum", "unknown", "na"],
+      "jar_material": ["stainless_steel", "tungsten_carbide", "zirconia", "agate", "unknown", "na"],
+      "ball_material": ["stainless_steel", "tungsten_carbide", "zirconia", "unknown", "na"],
+      "process_control_agent": "na",
+      "notes": "na"
+    },
+    {
+      "step_type": "mixing",
+      "mixing_time_min": "na",
+      "mixing_method": ["mortar_pestle", "tumbler", "vortex", "unknown", "na"],
+      "notes": "na"
+    },
+    {
+      "step_type": "pelletizing",
+      "pressure_mpa": "na",
+      "hold_time_min": "na",
+      "die_diameter_mm": "na",
+      "lubricant": "na",
+      "notes": "na"
+    },
+    {
+      "step_type": "heat_treatment",
+      "max_temp_c": "na",
+      "ramp_rate_c_min": "na",
+      "hold_time_hours": "na",
+      "atmosphere": ["air", "argon", "nitrogen", "hydrogen", "oxygen", "vacuum", "unknown", "na"],
+      "furnace_type": ["box", "tube", "muffle", "sps", "unknown", "na"],
+      "o2_partial_pressure_bar": "na",
+      "notes": "na"
+    },
+    {
+      "step_type": "annealing",
+      "temperature_c": "na",
+      "duration_hours": "na",
+      "atmosphere": ["air", "argon", "vacuum", "unknown", "na"],
+      "notes": "na"
+    },
+    {
+      "step_type": "arc_melting",
+      "current_a": "na",
+      "number_of_remelts": "na",
+      "hearth_material": ["copper", "graphite", "unknown", "na"],
+      "atmosphere": ["argon", "argon_hydrogen", "unknown", "na"],
+      "notes": "na"
+    },
+    {
+      "step_type": "quenching",
+      "quenching_medium": ["water", "oil", "liquid_nitrogen", "air", "unknown", "na"],
+      "medium_temperature_c": "na",
+      "notes": "na"
+    },
+    {
+      "step_type": "cooling",
+      "cooling_method": ["furnace_cool", "air_cool", "controlled", "unknown", "na"],
+      "cooling_rate_c_min": "na",
+      "notes": "na"
+    },
+    {
+      "step_type": "grinding",
+      "grinding_method": ["mortar", "ball_mill", "polishing", "unknown", "na"],
+      "final_particle_size": "na",
+      "notes": "na"
+    },
+    {
+      "step_type": "xrd_measurement",
+      "radiation": ["cu_ka", "co_ka", "mo_ka", "unknown", "na"],
+      "two_theta_range": "na",
+      "step_size_deg": "na",
+      "scan_speed_deg_min": "na",
+      "notes": "na"
+    },
+    {
+      "step_type": "other",
+      "description": "na",
+      "notes": "na"
+    },
+    {
+      "step_type": "unknown",
+      "notes": "na"
+    },
+    {
+      "step_type": "na",
+      "notes": "na"
+    }
+  ]
+}

@@ -169,3 +169,57 @@ def clear_sample_scale_refinement(histogram: Any) -> None:
         histogram.clear_refinements({"Sample Parameters": ["Scale"]})
     except Exception:
         pass
+
+
+def read_powder_pattern(
+    datafile_path: str,
+    fmthint: str | None = None,
+    gsas2_path: str | None = None,
+):
+    """Read a powder diffraction pattern from a (possibly binary) instrument
+    file via GSAS-II's importers and return a pandas DataFrame with ``Angle``
+    and ``Intensity`` columns.
+
+    Used for vendor formats the text parsers cannot read (e.g. Bruker ``.raw``).
+    GSAS-II selects an importer by matching ``fmthint`` against reader format
+    names; for Bruker RAW the format name is "Bruker RAW", so we try ``"RAW"``
+    and fall back to ``"Bruker"``. Raises :class:`GSASRuntimeError` when GSAS-II
+    is unavailable or no importer can read the file, so callers can degrade
+    gracefully.
+    """
+    import pandas as pd
+
+    G2sc = configure_gsas(gsas2_path)
+
+    project_path, remove_project = prepare_project_path()
+    instprm_path, remove_instprm = resolve_instrument_parameter_file(gsas2_path=gsas2_path)
+    try:
+        project = new_project(G2sc, project_path)
+        hints = [fmthint] if fmthint else ["RAW", "Bruker"]
+        histogram = None
+        last_error: Exception | None = None
+        for hint in hints:
+            try:
+                histogram = project.add_powder_histogram(
+                    str(datafile_path), iparams=instprm_path, fmthint=hint
+                )
+            except Exception as exc:  # importer mismatch / parse failure
+                last_error = exc
+                histogram = None
+            if histogram is not None:
+                break
+
+        if histogram is None:
+            raise GSASRuntimeError(
+                f"GSAS-II could not import the powder pattern '{datafile_path}'."
+            ) from last_error
+
+        x = np.asarray(histogram.getdata("X"), dtype=float)
+        y = np.asarray(histogram.getdata("Yobs"), dtype=float)
+        if x.size == 0 or y.size == 0:
+            raise GSASRuntimeError(
+                f"GSAS-II returned an empty pattern for '{datafile_path}'."
+            )
+        return pd.DataFrame({"Angle": x, "Intensity": y})
+    finally:
+        cleanup_paths((project_path, remove_project), (instprm_path, remove_instprm))

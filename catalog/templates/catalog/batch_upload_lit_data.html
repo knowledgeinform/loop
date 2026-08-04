@@ -1,0 +1,154 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'add_data' %}#batch">Add Data</a></li>
+      <li class="breadcrumb-item active">Batch Upload Literature</li>
+    </ol>
+  </nav>
+  <h1 class="mb-2">Batch Upload Literature</h1>
+
+  <p class="text-muted">
+    Upload a manifest (CSV or Excel) with one row per paper, or a JSON / JSONL file
+    with one record per paper. Each record is committed through the same path as the
+    manual literature form, so DOIs are de-duplicated automatically.
+  </p>
+  <p class="text-muted">
+    JSON uploads keep their structured <code>elements</code> and
+    <code>synthesis_steps</code> intact. A CSV manifest carries only a free-text
+    synthesis route, so prefer JSON when you have step-level detail.
+  </p>
+
+  <form method="post" enctype="multipart/form-data" class="upload-form mb-4">
+    {% csrf_token %}
+
+    <section class="upload-section">
+      <h2>1. Manifest (CSV, Excel, or JSON)</h2>
+      <div id="manifest-dropzone" class="batch-dropzone border border-2 border-secondary-subtle rounded p-4 text-center text-muted mb-2"
+           data-input="id_manifest" data-label="manifest-filename"
+           style="border-style: dashed !important; cursor: pointer;">
+        <div class="dropzone-prompt">
+          Drag &amp; drop your file (<code>.csv</code>, <code>.xlsx</code>, <code>.json</code>,
+          or <code>.jsonl</code>) here, or click to browse.
+        </div>
+        <div id="manifest-filename" class="dropzone-file mt-1"></div>
+      </div>
+      {{ form.manifest }}
+      <div class="form-text">
+        <strong>CSV / Excel required columns:</strong> <code>DOI</code> and
+        <code>Target composition</code>.<br>
+        <strong>JSON required fields:</strong> <code>doi</code> and either
+        <code>elements</code> or <code>target_composition</code>. A single object, an
+        array of objects, or <code>{"records": [...]}</code> are all accepted.
+      </div>
+      {{ form.manifest.errors }}
+
+      <div class="d-flex align-items-center justify-content-between mt-3 mb-1">
+        <span class="form-label fw-bold mb-0" id="manifest-preview-caption">Example rows</span>
+        <span class="badge text-bg-light border" id="manifest-preview-count">example only</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered mb-1" style="max-width: 40rem;">
+          <thead class="table-light">
+            <tr><th>DOI</th><th>Target composition</th></tr>
+          </thead>
+          <tbody id="manifest-preview-body" data-state="example" data-key-column="DOI">
+            <tr class="text-muted fst-italic"><td><code>10.1038/ncomms9485</code></td><td><code>(Co0.2Cu0.2Mg0.2Ni0.2Zn0.2)O</code></td></tr>
+            <tr class="text-muted fst-italic"><td><code>10.1126/science.aaq1102</code></td><td><code>(CrFeMnNiCo)3O4</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="form-text mb-2" id="manifest-preview-hint">
+        These are just examples &mdash; choose a manifest above and its rows will appear here.
+        Download a filled example
+        (<a href="{% static 'sample_data/example_literature_manifest.csv' %}" download>CSV</a>
+        &middot;
+        <a href="{% static 'sample_data/example_literature_manifest.xlsx' %}" download>Excel</a>)
+        or a
+        <a href="{% url 'download_batch_lit_manifest_template' %}">blank template</a>.
+      </div>
+    </section>
+
+    <section class="upload-section">
+      <h2>2. Defaults</h2>
+      <label class="form-label">Default Structure Family</label>
+      {{ form.structure_family }}
+      <div class="form-text">Used when a row does not provide a Structure Family.</div>
+      {{ form.structure_family.errors }}
+    </section>
+
+    <div class="upload-actions">
+      <button type="submit" class="btn btn-primary">Scan / Preview Batch</button>
+    </div>
+  </form>
+
+  {% if preview %}
+    <hr>
+    <h2>Dry-Run Preview</h2>
+
+    <div class="alert {% if preview.error_count %}alert-warning{% else %}alert-info{% endif %} d-flex gap-3 flex-wrap">
+      <span><strong>{{ preview.total_rows }}</strong> rows</span>
+      <span class="text-success"><strong>{{ preview.valid_count }}</strong> ready</span>
+      <span class="text-warning"><strong>{{ preview.warning_count }}</strong> with warnings</span>
+      <span class="text-danger"><strong>{{ preview.error_count }}</strong> with errors</span>
+    </div>
+
+    <table class="table table-bordered table-sm align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>DOI</th>
+          <th>Composition</th>
+          <th>Synthesis</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in preview.items %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ item.row.doi|default:"—" }}</td>
+            <td>{{ item.row.target_composition|default:"—" }}</td>
+            <td>{{ item.row.synthesis_route|truncatechars:80|default:"—" }}</td>
+            <td>
+              {% if item.errors %}
+                <div class="text-danger fw-bold">Error</div>
+                <ul class="mb-0">{% for error in item.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+              {% elif item.warnings %}
+                <div class="text-warning fw-bold">Warning</div>
+                <ul class="mb-0">{% for warning in item.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+              {% else %}
+                <span class="text-success fw-bold">Ready</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if ready_to_confirm %}
+      <form method="post" action="{% url 'confirm_batch_upload_lit_data' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Confirm Import</button>
+      </form>
+    {% elif preview.empty_reason %}
+      <div class="alert alert-warning">
+        <strong>Nothing to import.</strong> {{ preview.empty_reason }}
+      </div>
+    {% else %}
+      <div class="alert alert-warning">Fix errors before confirming this batch import.</div>
+    {% endif %}
+  {% endif %}
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+        integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+        crossorigin="anonymous"></script>
+
+<script src="{% static 'js/batch_upload.js' %}"></script>
+{% endblock %}

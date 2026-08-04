@@ -8,12 +8,26 @@
     <div id="ptable" class="ptable-grid"></div>
   </div>
 
-  <p class="form-text mt-2">Click elements to add them to your composition. Ratios appear below.</p>
+  <p class="form-text mt-2">Click elements to select them for your composition.</p>
 </div>
 
-<div class="mb-3">
-  <label for="selected-elements" class="form-label">Composition Ratios</label>
-  <div id="selected-elements"></div>
+<div class="mb-0">
+  <label class="form-label fw-semibold mb-1">{{ comp_label|default:"Composition Ratios" }}</label>
+  {% if comp_hint %}
+  <p class="form-text mt-0 mb-2">{{ comp_hint }}</p>
+  {% endif %}
+
+  {# selected-elements contains both the sticky column header and element rows #}
+  <div id="selected-elements">
+    {# Column headers — hidden until JS adds at least one element row #}
+    <div id="comp-col-headers" class="d-none border-bottom pb-1 mb-2 small text-muted fw-semibold">
+      <div class="d-flex align-items-center">
+        <span style="width:3.5rem; flex-shrink:0; text-align:center;">Elem</span>
+        <span style="flex:0 0 90px; max-width:90px; padding-left:0.75rem;">Ratio</span>
+        <span style="flex:1 1 0%; padding-left:0.75rem;">Site</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>

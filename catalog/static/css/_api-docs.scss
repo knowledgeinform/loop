@@ -1,0 +1,346 @@
+// =============================================================================
+// API console (/api/docs/) — "The Institutional Archive" design system.
+// Flat surfaces, 1px hairlines (Line-Not-Shadow); navy for authority/action
+// only (One Navy Rule); method badges pair color WITH their text label; all
+// paths/params/JSON in monospace (Call-Number Rule).
+// =============================================================================
+
+.api-console {
+  max-width: 62rem;
+
+  code.mono { font-size: 0.9em; }
+}
+
+.api-section {
+  margin-bottom: var(--sp-4);
+
+  & + .api-section { margin-top: var(--sp-4); }
+}
+
+.api-section-title {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+  margin: 0 0 var(--sp-2);
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+// --- Endpoint disclosure -----------------------------------------------------
+.api-endpoint {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  margin-bottom: var(--sp-2);
+
+  &[open] {
+    border-color: var(--line-2);
+  }
+}
+
+.api-endpoint-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+
+  &::-webkit-details-marker { display: none; }
+
+  &:hover { background: var(--surface-3); }
+
+  .api-endpoint[open] & {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.api-endpoint-path {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+// Method badge — color is paired with the text label (colorblind-safe).
+.api-method {
+  flex: none;
+  min-width: 3.6rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+}
+
+.api-method--get {
+  color: var(--navy);
+  background: var(--navy-tint);
+  border-color: var(--navy-tint-2);
+}
+
+.api-method--post {
+  color: var(--success-ink);
+  background: var(--success-bg);
+  border-color: var(--success-border);
+}
+
+.api-method--delete {
+  color: var(--danger-strong);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+
+.api-tag {
+  margin-left: auto;
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 0.1rem 0.55rem;
+}
+
+// --- Endpoint body -----------------------------------------------------------
+.api-endpoint-body {
+  padding: 0.8rem;
+}
+
+.api-endpoint-desc {
+  margin: 0 0 var(--sp-3);
+  color: var(--ink-2);
+  line-height: var(--lh-body);
+}
+
+.api-params {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-3);
+
+  th, td {
+    text-align: left;
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    background: var(--surface-2);
+  }
+
+  td.mono, code.mono { color: var(--ink); }
+}
+
+// --- "Try it" panel ----------------------------------------------------------
+.api-try {
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-3);
+}
+
+.api-try-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.api-try-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.api-try-field-name {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+
+  .req { color: var(--danger); }
+}
+
+.api-input {
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  font-size: var(--fs-sm);
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  color: var(--ink);
+
+  &:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: var(--focus-ring);
+  }
+}
+
+.api-try-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.api-try-status {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--muted);
+
+  &.is-pending { color: var(--muted); }
+  &.is-ok { color: var(--success-ink); }
+  &.is-error { color: var(--danger-strong); }
+}
+
+.api-readonly-note {
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-3);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+// --- Response / example JSON -------------------------------------------------
+.api-response {
+  margin: var(--sp-2) 0 0;
+  padding: 0.7rem 0.8rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.api-example {
+  margin-top: var(--sp-3);
+}
+
+.api-example-label {
+  display: block;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+// --- Authentication callout on the docs page --------------------------------
+.api-auth {
+  max-width: 62rem;
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+  border-radius: var(--r-sm);
+
+  h2 {
+    font-size: var(--fs-title);
+    margin: 0 0 0.4rem;
+    color: var(--navy);
+  }
+
+  p { margin: 0 0 0.5rem; color: var(--info-ink); line-height: var(--lh-body); }
+  code.mono { font-size: 0.9em; }
+  a { color: var(--navy); font-weight: 600; }
+}
+
+// =============================================================================
+// API keys management page (/account/api-keys/)
+// =============================================================================
+.apikey-reveal {
+  max-width: 48rem;
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: var(--r-sm);
+}
+
+.apikey-reveal-head { font-weight: 700; color: var(--ink); margin-bottom: 0.25rem; }
+.apikey-reveal-warn { margin: 0 0 0.5rem; color: var(--warn-ink); font-size: var(--fs-sm); }
+
+.apikey-token {
+  display: block;
+  padding: 0.6rem 0.8rem;
+  background: var(--paper);
+  border: 1px solid var(--field-border);
+  border-radius: var(--r-sm);
+  word-break: break-all;
+  color: var(--ink);
+}
+
+.apikey-create { margin-bottom: var(--sp-4); }
+
+.apikey-create-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.apikey-create-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  span { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
+
+  input {
+    min-width: 18rem;
+    padding: 0.4rem 0.55rem;
+    font-size: var(--fs-sm);
+    border: 1px solid var(--field-border);
+    border-radius: var(--r-sm);
+    background: var(--paper);
+    color: var(--ink);
+
+    &:focus { outline: none; border-color: var(--navy); box-shadow: var(--focus-ring); }
+  }
+}
+
+.apikey-table {
+  width: 100%;
+  max-width: 62rem;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-4);
+
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+
+  thead th {
+    font-size: var(--fs-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    background: var(--surface-2);
+  }
+}
+
+.apikey-table-actions { text-align: right; }
+.apikey-empty { color: var(--muted); margin-bottom: var(--sp-4); }
+
+.apikey-usage {
+  max-width: 62rem;
+
+  summary { cursor: pointer; color: var(--navy); font-weight: 600; font-size: var(--fs-sm); }
+  .api-response { margin-top: var(--sp-2); }
+}

@@ -17,13 +17,15 @@ services:
       - raw_uploads:/app/raw-uploads
     environment:
       DJANGO_DEBUG: "True"
+      DJANGO_SUBPATH: ""
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
       DJANGO_SECRET_KEY: dev-secret-change-me
       DJANGO_EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
-      DEV_COLLECTSTATIC: "0"
       MONGODB_URI: mongodb://mongodb:27017/loop
       MONGODB_RAW_URI: mongodb://mongodb:27017/loop_raw
       RAW_UPLOADS_ROOT: /app/raw-uploads
+      CHEMSCREEN_BOOTSTRAP_ON_START: "1"
+      SQLITE_PATH: /app/db.sqlite3
       # Single canonical cache root for all Hugging Face libraries
       # (transformers, sentence-transformers, datasets, hub). Set HF_HOME
       # and every one of them picks it up. Points at the named volume above.
@@ -43,14 +45,19 @@ services:
     # after verifying the new version boots against the existing
     # `mongodb_data` volume; production deployments should mirror this pin.
     image: mongodb/mongodb-atlas-local:8.0.14
+    hostname: mongodb
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+      # Atlas Local generates a replica-set keyfile under /data/configdb on
+      # first bootstrap. Persist it so recreated dev containers can reopen the
+      # same data volume without losing the keyfile.
+      - mongodb_configdb:/data/configdb
     environment:
       MONGO_INITDB_DATABASE: loop
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.runCommand({ ping: 1 }).ok\" && mongosh --quiet --port 27027 --eval \"db.runCommand({ ping: 1 }).ok\""]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -60,5 +67,6 @@ volumes:
   static_volume:
   media_volume:
   mongodb_data:
+  mongodb_configdb:
   hf_cache:
   raw_uploads:

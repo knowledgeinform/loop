@@ -1,0 +1,39 @@
+{
+  "snapshot_version": "loop-reference-phases-v1",
+  "notes": [
+    "Curated local reference phases for deterministic XRD candidate screening.",
+    "CIF hashes must match the repository-local files exactly."
+  ],
+  "entries": [
+    {
+      "candidate_identifier": "curated_nacl_rocksalt",
+      "relative_cif_path": "NaCl_rocksalt.cif",
+      "sha256": "172d121d5c420b9ceb4e18edd2f83c730230cfd0a158fd6761836bfe57746b16",
+      "formula": "NaCl",
+      "element_set": ["Cl", "Na"],
+      "space_group": "F m -3 m",
+      "structure_family": "rocksalt",
+      "source": "curated_reference",
+      "source_identifier": "local:NaCl_rocksalt",
+      "notes": [
+        "Validated local rocksalt reference used for deterministic candidate-stage tests."
+      ],
+      "enabled": true
+    },
+    {
+      "candidate_identifier": "curated_hypothetical_nacl3",
+      "relative_cif_path": "hypothetical_NaCl3_1to3.cif",
+      "sha256": "31b715db8169607203a7a7fa76050559cbde644ba9a906e13155b328ae60137e",
+      "formula": "NaCl3",
+      "element_set": ["Cl", "Na"],
+      "space_group": "P m -3 m",
+      "structure_family": "rocksalt",
+      "source": "curated_reference",
+      "source_identifier": "local:hypothetical_NaCl3_1to3",
+      "notes": [
+        "Synthetic local contrast phase retained to exercise chemistry and duplicate-ranking logic."
+      ],
+      "enabled": true
+    }
+  ]
+}

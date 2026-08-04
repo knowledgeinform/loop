@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 from django.contrib.messages import constants as messages
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -63,6 +64,72 @@ MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", str(BASE_DIR / "media")))
 # Set RAW_UPLOADS_ROOT= (empty) to disable archiving.
 RAW_UPLOADS_ROOT = os.environ.get("RAW_UPLOADS_ROOT", str(BASE_DIR / "raw-uploads"))
 
+# Path to the CHAOS/AFLOW SQLite database for periodic computational data import.
+# Leave empty to disable the file watcher and import command.
+CHAOS_DB_PATH = os.environ.get("CHAOS_DB_PATH", "")
+CHEMSCREEN_ROOT = os.environ.get("CHEMSCREEN_ROOT", "") or str(
+    BASE_DIR / "vendor" / "ChemScreen"
+)
+CHEMSCREEN_PREDICTIONS_PATH = os.environ.get("CHEMSCREEN_PREDICTIONS_PATH", "")
+CHEMSCREEN_PREDICTION_METRIC = os.environ.get(
+    "CHEMSCREEN_PREDICTION_METRIC", "ML_Predicted"
+)
+CHEMSCREEN_MODEL_NAME = os.environ.get("CHEMSCREEN_MODEL_NAME", "ChemScreen")
+CHEMSCREEN_MODEL_DIR = os.environ.get(
+    "CHEMSCREEN_MODEL_DIR",
+    str(BASE_DIR / "var" / "chemscreen-models"),
+)
+CHEMSCREEN_AUTOTRAIN_ENABLED = (
+    os.environ.get("CHEMSCREEN_AUTOTRAIN_ENABLED", "1") != "0"
+    and "test" not in sys.argv
+)
+CHEMSCREEN_RETRAIN_WORKER = os.environ.get("CHEMSCREEN_RETRAIN_WORKER", "1") != "0"
+CHEMSCREEN_RETRAIN_POLL_SECONDS = float(
+    os.environ.get("CHEMSCREEN_RETRAIN_POLL_SECONDS", "15")
+)
+CHEMSCREEN_RETRAIN_DEBOUNCE_SECONDS = float(
+    os.environ.get("CHEMSCREEN_RETRAIN_DEBOUNCE_SECONDS", "15")
+)
+CHEMSCREEN_MIN_TRAINING_ROWS = int(
+    os.environ.get("CHEMSCREEN_MIN_TRAINING_ROWS", "20")
+)
+CHEMSCREEN_RF_ESTIMATORS = int(os.environ.get("CHEMSCREEN_RF_ESTIMATORS", "100"))
+CHEMSCREEN_RF_MAX_DEPTH = int(os.environ.get("CHEMSCREEN_RF_MAX_DEPTH", "10"))
+CHEMSCREEN_RF_MIN_SAMPLES_LEAF = int(
+    os.environ.get("CHEMSCREEN_RF_MIN_SAMPLES_LEAF", "2")
+)
+CHEMSCREEN_RF_N_JOBS = int(os.environ.get("CHEMSCREEN_RF_N_JOBS", "-1"))
+CHEMSCREEN_PROMOTION_MAE_TOLERANCE = float(
+    os.environ.get("CHEMSCREEN_PROMOTION_MAE_TOLERANCE", "0")
+)
+CHEMSCREEN_EFA_REWARD_TOLERANCE = float(
+    os.environ.get("CHEMSCREEN_EFA_REWARD_TOLERANCE", "5")
+)
+CHEMSCREEN_DEED_REWARD_TOLERANCE = float(
+    os.environ.get("CHEMSCREEN_DEED_REWARD_TOLERANCE", "2")
+)
+CHEMSCREEN_REWARD_WEIGHT = float(os.environ.get("CHEMSCREEN_REWARD_WEIGHT", "1.25"))
+CHEMSCREEN_FLAG_WEIGHT = float(os.environ.get("CHEMSCREEN_FLAG_WEIGHT", "2"))
+
+# AFLOW's public AFLUX API supplies formation/entropy inputs and provenance.
+# EFA and DEED are model outputs; they are not direct AFLUX properties.
+AFLOW_API_ENABLED = os.environ.get("AFLOW_API_ENABLED", "1") != "0"
+AFLOW_API_BASE_URL = os.environ.get(
+    "AFLOW_API_BASE_URL", "https://aflow.org/API/aflux/"
+)
+AFLOW_API_TIMEOUT = float(os.environ.get("AFLOW_API_TIMEOUT", "12"))
+AFLOW_RESULT_LIMIT = int(os.environ.get("AFLOW_RESULT_LIMIT", "25"))
+AFLOW_CACHE_HOURS = float(os.environ.get("AFLOW_CACHE_HOURS", "168"))
+AFLOW_REFRESH_PER_TRAINING_JOB = int(
+    os.environ.get("AFLOW_REFRESH_PER_TRAINING_JOB", "10")
+)
+
+# The dev deployment runs against a clone of production, real password hashes
+# included, so the admin and the open registration form are liabilities there
+# rather than features. With this on, loop/urls.py leaves those routes out of the
+# URL conf entirely -- absent, not permission-gated, so there is no form to
+# attack. Off by default: production and normal local development are unchanged.
+DEV_LOCKDOWN = os.environ.get("DEV_LOCKDOWN", "0") == "1"
 
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
@@ -81,6 +148,8 @@ INSTALLED_APPS = [
     # This object was created for us in in /catalog/apps.py
     'catalog.apps.CatalogConfig',
     'django.contrib.humanize',
+    'rest_framework',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -92,6 +161,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "loop.middleware.ApiTokenAuthMiddleware",
     "loop.middleware.ApprovedGateMiddleware",
 
 ]
@@ -125,6 +195,64 @@ DATABASES = {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': Path(os.environ.get("SQLITE_PATH", str(BASE_DIR / "db.sqlite3"))),
     }
+}
+
+CACHES = {
+    "default": {
+        # Redis (shared across workers) when REDIS_URL is set — required for
+        # accurate API throttling under multi-process serving; falls back to a
+        # file-based cache for single-process dev.
+        "BACKEND": (
+            "django_redis.cache.RedisCache"
+            if os.environ.get("REDIS_URL")
+            else "django.core.cache.backends.filebased.FileBasedCache"
+        ),
+        "LOCATION": os.environ.get(
+            "REDIS_URL", os.environ.get("DJANGO_CACHE_DIR", "/tmp/django_cache")
+        ),
+        "OPTIONS": (
+            {"CLIENT_CLASS": "django_redis.client.DefaultClient"}
+            if os.environ.get("REDIS_URL")
+            else {}
+        ),
+        "TIMEOUT": 300,
+    }
+}
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "catalog.api.authentication.APIKeyAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "catalog.api.throttling.AnonymousIPRateThrottle",
+        "catalog.api.throttling.AuthenticatedIPRateThrottle",
+        "catalog.api.throttling.APIKeyRateThrottle",
+        "catalog.api.throttling.SessionUserRateThrottle",
+    ],
+    "EXCEPTION_HANDLER": "catalog.api.exceptions.problem_exception_handler",
+    # Production has one trusted reverse proxy in front of the loopback-bound
+    # Gunicorn port. Override this if the deployment adds another proxy hop.
+    "NUM_PROXIES": int(os.environ.get("API_NUM_PROXIES", "1")),
+}
+
+LOOP_API_ANON_IP_RATE = os.environ.get("API_ANON_IP_RATE", "60/min")
+LOOP_API_AUTH_IP_RATE = os.environ.get("API_AUTH_IP_RATE", "1200/min")
+LOOP_API_KEY_RATE = os.environ.get("API_KEY_RATE", "600/min")
+LOOP_API_SESSION_USER_RATE = os.environ.get("API_SESSION_USER_RATE", "600/min")
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "LOOP API",
+    "DESCRIPTION": (
+        "Versioned read/write access to LOOP materials, experimental, "
+        "literature, and computational records."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 
@@ -189,9 +317,16 @@ STORAGES = {
         },
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
+
+if DEBUG:
+    WHITENOISE_AUTOREFRESH = True
 
 FILE_UPLOAD_PERMISSIONS = 0o644  # rw-r--r-- (no execute permissions)
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755  # rwxr-xr-x (directories need execute for traversal)
@@ -263,6 +398,38 @@ EMBEDDINGS_PRELOAD = os.environ.get("EMBEDDINGS_PRELOAD", "1") != "0"
 # hits visible. Lower it if the catalog is small enough that every hit
 # matters; raise it as the dataset grows and noise piles up.
 SEMANTIC_SCORE_THRESHOLD = float(os.environ.get("SEMANTIC_SCORE_THRESHOLD", "0.55"))
+
+# --- Synthesis-route LLM discretization (OpenRouter; trial run) --------------
+# Batch uploads store the free-form "Synthesis route" as a single ``other`` step
+# and enqueue a background job. When enabled, the worker
+# (catalog/synthesis_worker.py) calls an LLM via OpenRouter to split that blob
+# into the typed steps a manual upload produces. Ships DISABLED; any failure
+# falls back to the single ``other`` step so data is never lost.
+#   SYNTHESIS_LLM_ENABLED  gate the LLM call at all (needs OPENROUTER_API_KEY).
+#   SYNTHESIS_LLM_WORKER   start the in-process background worker thread.
+SYNTHESIS_LLM_ENABLED = os.environ.get("SYNTHESIS_LLM_ENABLED", "0") != "0"
+SYNTHESIS_LLM_WORKER = os.environ.get("SYNTHESIS_LLM_WORKER", "0") != "0"
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash")
+OPENROUTER_BASE_URL = os.environ.get(
+    "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+)
+SYNTHESIS_LLM_TIMEOUT = float(os.environ.get("SYNTHESIS_LLM_TIMEOUT", "60"))
+SYNTHESIS_LLM_POLL_SECONDS = float(os.environ.get("SYNTHESIS_LLM_POLL_SECONDS", "15"))
+SYNTHESIS_LLM_MAX_ATTEMPTS = int(os.environ.get("SYNTHESIS_LLM_MAX_ATTEMPTS", "3"))
+
+# --- XRD analysis worker -----------------------------------------------------
+# ``catalog/apps.py`` starts the queue-draining thread behind
+# ``getattr(settings, "XRD_ANALYSIS_WORKER", False)``. The name was never bound
+# here, so the getattr default always won: submissions were accepted, persisted
+# as ``queued``, and then never executed by any deployment. Binding it makes the
+# thread reachable; it stays OFF by default so enabling the worker is a
+# deliberate deployment decision, matching SYNTHESIS_LLM_WORKER above.
+#
+# Enabling it is necessary but not sufficient -- the refinement step also needs
+# GSAS-II importable (see GSAS2_PATH) and a reference-phase library covering the
+# chemistry being measured. See docs/xrd_analysis/DEPLOYMENT_GAPS.md.
+XRD_ANALYSIS_WORKER = os.environ.get("XRD_ANALYSIS_WORKER", "0") != "0"
 
 # MongoDB Configuration
 import mongoengine

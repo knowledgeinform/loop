@@ -1,6 +1,14 @@
 {% extends "base_generic.html" %}
 
 {% block content %}
-  <p>Logged out!</p>
-  <a href="{% url 'login'%}">Click here to log back in.</a>
+  <div class="auth-shell">
+    <h1 class="mb-3">Signed out</h1>
+    <div class="card auth-card">
+      <div class="card-body">
+        <p class="mb-0">You've been signed out. <a href="{% url 'login' %}">Log back in</a> to continue.</p>
+      </div>
+    </div>
+  </div>
 {% endblock %}
+
+{% block sidebar %}{% endblock %}

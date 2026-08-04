@@ -1,4 +1,5 @@
 {% extends "base_generic.html" %}
+{% load catalog_extras %}
 
 {% block title %}
 <title>LOOP · Learning and Optimization Platform</title>
@@ -7,78 +8,48 @@
 {% block content %}
 <h1>LOOP · Learning and Optimization Platform</h1>
 <p class="lead">
-  Manage materials science data for high-entropy materials research—linking experimental results,
+  A content-addressable catalog for high-entropy materials — linking experimental results,
   literature references, and computational predictions.
 </p>
 
-<div class="row mt-4 g-3">
-  <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h2 class="h5">Materials</h2>
-        <p class="display-6 mb-0">{{ material_count }}</p>
-      </div>
-    </div>
+<form class="home-search" method="get" action="{% url 'browse_data' %}" role="search">
+  <label for="home-search-input" class="home-search-label">Search the catalog</label>
+  <div class="home-search-row">
+    <input type="text" id="home-search-input" name="search" class="form-control form-control-lg"
+           placeholder="Describe a material, or paste an AUID, composition, or DOI…"
+           autocomplete="off" autofocus>
+    <button type="submit" class="btn btn-primary">Search</button>
   </div>
-  <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h2 class="h5">Literature</h2>
-        <p class="display-6 mb-0">{{ literature_count }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h2 class="h5">Experiments</h2>
-        <p class="display-6 mb-0">{{ experiment_count }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body">
-        <h2 class="h5">Computational</h2>
-        <p class="display-6 mb-0">{{ computational_count }}</p>
-      </div>
-    </div>
-  </div>
-</div>
+  <p class="home-search-hint">
+    Ranked by semantic similarity across composition, structure, and synthesis — or
+    <a href="{% url 'browse_data' %}">open advanced filters</a>.
+  </p>
+</form>
 
-<div class="mt-4">
-  <a href="{% url 'browse_data' %}" class="text-decoration-none d-block">
-    <div class="card mb-3 card-hover">
-      <div class="card-body d-flex align-items-center">
-        <div class="fs-1 me-4">🔎</div>
-        <div>
-          <h5 class="card-title mb-1">Browse Materials</h5>
-          <p class="card-text text-muted mb-0">Search materials by AUID, trials, literature, and computational records.</p>
-        </div>
-      </div>
-    </div>
+<h2 class="section-eyebrow mt-4 mb-2">Catalog holdings</h2>
+<div class="catalog-census">
+  <a class="census-cell" href="{% url 'browse_data' %}?view=materials">
+    <div class="census-figure">{{ material_count|compact_number }}</div>
+    <div class="census-label">Materials</div>
   </a>
-
-  <a href="{% url 'add_data' %}" class="text-decoration-none d-block">
-    <div class="card mb-3 card-hover">
-      <div class="card-body d-flex align-items-center">
-        <div class="fs-1 me-4">➕</div>
-        <div>
-          <h5 class="card-title mb-1">Add Data</h5>
-          <p class="card-text text-muted mb-0">Submit experiment, literature, or computational data to MongoDB.</p>
-        </div>
-      </div>
-    </div>
+  <a class="census-cell" href="{% url 'browse_data' %}?view=literature">
+    <div class="census-figure">{{ literature_count|compact_number }}</div>
+    <div class="census-label">Literature</div>
+  </a>
+  <a class="census-cell" href="{% url 'browse_data' %}?view=materials">
+    <div class="census-figure">{{ experiment_count|compact_number }}</div>
+    <div class="census-label">Experiments</div>
+  </a>
+  <a class="census-cell" href="{% url 'browse_data' %}?view=computational">
+    <div class="census-figure">{{ computational_count|compact_number }}</div>
+    <div class="census-label">Computational</div>
   </a>
 </div>
 
-<style>
-.card-hover {
-  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-</style>
+<div class="home-actions">
+  <a href="{% url 'upload_exp_data' %}" class="btn btn-outline-secondary btn-sm">+ New experiment</a>
+  <a href="{% url 'add_literature_data' %}" class="btn btn-outline-secondary btn-sm">+ New literature</a>
+  <a href="{% url 'add_computational_data' %}" class="btn btn-outline-secondary btn-sm">+ New computational</a>
+  <a href="{% url 'browse_data' %}" class="home-browse-all">Browse all &rarr;</a>
+</div>
 {% endblock %}

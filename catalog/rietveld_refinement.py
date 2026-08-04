@@ -38,6 +38,7 @@ from .gsas_runtime import (
     set_project_cycles,
     write_temp_xye as _runtime_write_temp_xye,
 )
+from .utils import parse_columnar_xrd_text
 
 DEFAULT_BACKGROUND_COEFFS = 6
 DEFAULT_REFINEMENT_CYCLES = 6
@@ -298,32 +299,7 @@ def _load_xrd_dataframe(xrd_source: str | os.PathLike[str] | Any) -> pd.DataFram
     if _ANGLE_HEADER in text:
         return _parse_loop_csv(text)
 
-    rows: list[tuple[float, float, float | None]] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith(("#", ";", "!", "%", "//")):
-            continue
-        parts = [part for part in re.split(r"[\s,;]+", stripped) if part]
-        if len(parts) < 2:
-            continue
-        try:
-            angle = float(parts[0])
-            intensity = float(parts[1])
-            sigma = float(parts[2]) if len(parts) >= 3 else None
-        except ValueError:
-            continue
-        rows.append((angle, intensity, sigma))
-
-    if not rows:
-        raise ValueError(
-            "Could not parse diffraction data. Expected a LOOP CSV with "
-            "'Angle,Intensity' or a 2/3-column powder pattern text file."
-        )
-
-    df = pd.DataFrame(rows, columns=["Angle", "Intensity", "Sigma"])
-    if df["Sigma"].isna().all():
-        df = df.drop(columns=["Sigma"])
-    return df
+    return parse_columnar_xrd_text(text)
 
 
 def _infer_wavelength(
@@ -364,7 +340,12 @@ def _parse_formula(formula: str) -> dict[str, float]:
     if not cleaned:
         raise ValueError("Formula cannot be empty.")
 
-    segments = re.split(r"[·.]", cleaned.replace(" ", ""))
+    # A plain ``.`` is also the decimal separator in high-entropy formulas
+    # such as ``(Co0.2Cr0.2Fe0.2Mn0.2Ni0.2)O``.  Splitting on every period
+    # silently turned those amounts into hydrate segments.  The middle dot is
+    # unambiguous; retain support for a plain hydrate dot only when it is not
+    # between two digits.
+    segments = re.split(r"·|(?<!\d)\.(?!\d)", cleaned.replace(" ", ""))
     total: dict[str, float] = {}
 
     def add_scaled(target: dict[str, float], source: dict[str, float], scale: float) -> None:

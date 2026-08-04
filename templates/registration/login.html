@@ -2,26 +2,6 @@
 
 {% block extra_css %}
   {{ block.super }}
-  <style>
-    .auth-shell {
-      max-width: 640px;
-      margin: 0 auto;
-    }
-    .auth-card {
-      border: 1px solid rgba(49, 38, 29, 0.12);
-      border-radius: 12px;
-      box-shadow: 0 6px 16px rgba(49, 38, 29, 0.08);
-    }
-    .auth-card .card-body {
-      padding: 1.25rem 1.25rem 1rem;
-    }
-    .auth-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem 1rem;
-      margin-top: 0.9rem;
-    }
-  </style>
 {% endblock %}
 
 {% block content %}
@@ -80,10 +60,16 @@
         <button type="submit" class="btn btn-primary">Log in</button>
       </form>
 
+      {# The "as" form yields "" instead of raising when DEV_LOCKDOWN has taken
+         the signup route out, so the link disappears rather than the login page
+         dying with NoReverseMatch. #}
+      {% url 'signup' as signup_url %}
       <div class="auth-links">
         <a href="{% url 'password_reset' %}">Reset password</a>
-        <span class="text-muted">•</span>
-        <span>Need an account? <a href="{% url 'signup' %}">Register</a></span>
+        {% if signup_url %}
+          <span class="text-muted">•</span>
+          <span>Need an account? <a href="{{ signup_url }}">Register</a></span>
+        {% endif %}
       </div>
     </div>
   </div>

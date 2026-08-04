@@ -1,0 +1,139 @@
+{% extends "base_generic.html" %}
+
+{% block title %}<title>LOOP - API Keys</title>{% endblock %}
+
+{% block content %}
+<div class="developer-docs">
+  {% include "catalog/partials/_developer_api_nav.html" %}
+
+  <section class="developer-docs-hero mb-5">
+    <h1>API Keys</h1>
+    <p class="lead mb-0">Create, expire, and revoke scoped credentials for your LOOP integrations.</p>
+  </section>
+
+  {% if new_api_key %}
+  <div class="alert alert-warning border-warning" role="alert">
+    <h2 class="h5 alert-heading">Copy this key now</h2>
+    <p>For security, LOOP stores only a hash. This secret will not be shown again.</p>
+    <div class="input-group">
+      <input id="new-api-key" class="form-control font-monospace" value="{{ new_api_key }}" readonly aria-label="New API key">
+      <button id="copy-api-key" class="btn btn-dark" type="button">Copy key</button>
+    </div>
+    <div id="copy-api-key-status" class="small mt-2" aria-live="polite"></div>
+  </div>
+  {% endif %}
+
+  {% if can_manage_api_keys %}
+  <div class="card">
+    <div class="card-header bg-white">
+      <h2 class="h5 mb-1">Manage API keys</h2>
+      <p class="text-muted small mb-0">Expired keys are automatically deleted. Keys without an expiration remain until you revoke them.</p>
+    </div>
+    <div class="card-body">
+      {% if form_errors %}
+      <div class="alert alert-danger">
+        <strong>The key could not be created.</strong>
+        <ul class="mb-0 mt-2">
+          {% for field, errors in form_errors.items %}
+            {% for error in errors %}<li>{{ field }}: {{ error }}</li>{% endfor %}
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <form method="post" class="row g-3 align-items-end mb-4">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_key">
+        <div class="col-lg-4">
+          <label for="api-key-name" class="form-label">Key name</label>
+          <input id="api-key-name" name="name" class="form-control" maxlength="100" placeholder="Research notebook" required>
+        </div>
+        <div class="col-lg-3">
+          <label for="api-key-expiration" class="form-label">Expiration</label>
+          <select id="api-key-expiration" name="expires_in_days" class="form-select">
+            <option value="30">30 days</option>
+            <option value="90" selected>90 days</option>
+            <option value="365">1 year</option>
+            <option value="">No expiration</option>
+          </select>
+        </div>
+        <div class="col-lg-5">
+          <span class="form-label d-block">Scopes</span>
+          <div class="d-flex flex-wrap gap-3">
+            {% for scope in api_key_scopes %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="scopes" value="{{ scope }}" id="scope-{{ forloop.counter }}" {% if scope == 'data:read' %}checked{% endif %}>
+              <label class="form-check-label font-monospace small" for="scope-{{ forloop.counter }}">{{ scope }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-12"><button class="btn btn-primary" type="submit">Generate API key</button></div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead><tr><th>Name</th><th>Key</th><th>Scopes</th><th>Expires</th><th>Status</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+          <tbody>
+            {% for key in api_keys %}
+            <tr>
+              <td>{{ key.name }}</td>
+              <td><code>loop_{{ key.prefix }}_…</code></td>
+              <td>{% for scope in key.scopes %}<span class="badge text-bg-light border font-monospace">{{ scope }}</span>{% endfor %}</td>
+              <td>{{ key.expires_at|default:"Never" }}</td>
+              <td>{% if key.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+              <td class="text-end">
+                {% if key.is_active %}
+                <form method="post" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="revoke_key">
+                  <input type="hidden" name="key_id" value="{{ key.id }}">
+                  <button class="btn btn-outline-danger btn-sm" type="submit">Revoke</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">No API keys yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card border-primary-subtle">
+    <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <h2 class="h5 mb-1">Ready to connect?</h2>
+        <p class="text-muted mb-0">Sign in to create an API key for scripts, notebooks, and services.</p>
+      </div>
+      {% if user.is_authenticated %}
+        <a class="btn btn-outline-primary" href="{% url 'awaiting_approval' %}">Account approval required</a>
+      {% else %}
+        <a class="btn btn-primary" href="{% url 'login' %}?next={{ request.path|urlencode }}">Sign in to create an API key</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const keyButton = document.getElementById('copy-api-key');
+  if (keyButton) {
+    keyButton.addEventListener('click', async function () {
+      const input = document.getElementById('new-api-key');
+      const status = document.getElementById('copy-api-key-status');
+      try {
+        await navigator.clipboard.writeText(input.value);
+        status.textContent = 'Copied to clipboard.';
+      } catch (error) {
+        input.select();
+        status.textContent = 'Select the key and copy it manually.';
+      }
+    });
+  }
+</script>
+{% endblock %}

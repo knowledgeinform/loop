@@ -1,0 +1,117 @@
+// =============================================================================
+// LOOP design tokens — "The Institutional Archive"
+// Single source of truth for color, type, space, radius, z-index, motion.
+// See DESIGN.md. All values contrast-verified against WCAG AA.
+// =============================================================================
+
+:root {
+  // --- Color: institutional signature -------------------------------------
+  --navy: #002d72;            // Hopkins Navy — authority + action only
+  --navy-strong: #001a45;     // hover / pressed
+  --navy-tint: rgba(0, 45, 114, 0.06);   // faint fills (toolbars, active rows)
+  --navy-tint-2: rgba(0, 45, 114, 0.12); // hover fills, chip borders
+  --sky: #68ace5;             // accent — dark text on it only (fails white)
+  --sky-tint: rgba(104, 172, 229, 0.16);
+
+  // --- Color: neutral / ink -----------------------------------------------
+  --ink: #1a1510;             // primary text (18:1 on paper)
+  --ink-2: #31261d;           // secondary heading ink
+  --muted: #6a635b;           // secondary text (5.9:1 — AA safe)
+  --muted-2: #8a8279;         // large/non-essential text & icons only
+  --paper: #ffffff;           // primary surface
+  --surface-2: #f6f8fc;       // toolbars, table headers (navy-tinted)
+  --surface-3: #f0f2f7;       // inset / hover on light
+  --hero-1: #f7f8fb;          // hero banner gradient stop
+  --hero-2: #e8ecf4;          // hero banner gradient stop
+  --line: #e6e2dc;            // hairline dividers / borders
+  --line-2: #d8d3cc;          // stronger divider
+  --field-border: #c7c2ba;    // input stroke
+
+  // --- Color: encoding (data meaning, never decoration) -------------------
+  --aff-s4e: #002d72;
+  --aff-apl: #68ace5;
+  --aff-oakridge: #2e7d32;
+  --struct-rocksalt: #5a4e9c;
+  --struct-pyrochlore: #4a63b8;
+  --struct-spinel: #68ace5;
+  --struct-perovskite: #4f7dc4;
+  --struct-fluorite: #2e7d32;
+  --struct-other: #6c757d;
+  --on-light-badge: #0f223a;  // dark text for light-fill badges (apl/spinel)
+
+  // --- Color: status ------------------------------------------------------
+  --success: #2e7d32;
+  --success-strong: #276b2a;  // hover / pressed
+  --success-bg: #eaf4eb;
+  --success-border: #bfdcc1;
+  --success-ink: #1f5a22;     // text on success-bg
+  --danger: #b02a37;
+  --danger-strong: #8f222d;   // hover / pressed + text on danger-bg
+  --danger-bg: #fbeaec;
+  --danger-border: #f0c6cb;
+  --warn-bg: #fffbeb;         // amber note card
+  --warn-border: #f5e6c8;
+  --warn-ink: #7a5b12;
+  --info-bg: #eef3fb;
+  --info-border: #cdddf3;
+  --info-ink: #1f3d66;        // text on info-bg
+  --scrim: rgba(15, 20, 30, 0.45); // modal backdrop
+
+  // --- Focus --------------------------------------------------------------
+  --focus-ring: 0 0 0 3px rgba(0, 45, 114, 0.35);
+
+  // --- Typography ---------------------------------------------------------
+  --font-sans: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+
+  // fixed rem scale (product UI — no fluid clamp), ratio ~1.2
+  --fs-xs: 0.75rem;      // 12px — labels, table eyebrows
+  --fs-sm: 0.8125rem;    // 13px — captions, dense meta
+  --fs-body: 0.9375rem;  // 15px — data-cell / compact body
+  --fs-md: 1rem;         // 16px — reading body
+  --fs-lg: 1.125rem;     // 18px — lead / emphasis
+  --fs-title: 1.0625rem; // 17px — card / section titles
+  --fs-h3: 1.15rem;
+  --fs-h2: 1.3rem;
+  --fs-h1: 1.6rem;
+  --fs-display: 2rem;    // quiet display ceiling
+
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-body: 1.55;
+
+  // --- Spacing (Bootstrap-compatible scale, so authored layouts survive) --
+  --sp-0: 0;
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 1rem;
+  --sp-4: 1.5rem;
+  --sp-5: 3rem;
+  // semantic
+  --gutter: 1.75rem;
+  --shell-pad: 2.5rem 1.25rem 1.5rem;
+
+  // --- Radius -------------------------------------------------------------
+  --r-sm: 0.35rem;   // buttons, inputs, badges
+  --r-md: 0.5rem;
+  --r-lg: 0.75rem;   // panels, cards, tab bodies (12px)
+  --r-pill: 999px;   // data chips only
+
+  // --- Elevation (line-not-shadow; shadow only for raised layers) ---------
+  --shadow-pop: 0 8px 28px rgba(15, 20, 30, 0.16), 0 2px 6px rgba(15, 20, 30, 0.08);
+
+  // --- Z-index (semantic scale) -------------------------------------------
+  --z-base: 1;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-toast: 1060;
+  --z-tooltip: 1070;
+
+  // --- Motion -------------------------------------------------------------
+  --ease-out: cubic-bezier(0.22, 0.7, 0.24, 1); // ease-out-quart-ish
+  --dur-fast: 0.12s;
+  --dur: 0.18s;
+  --dur-slow: 0.24s;
+}

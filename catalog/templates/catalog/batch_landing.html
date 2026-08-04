@@ -1,0 +1,45 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>LOOP - Batch Upload</title>
+{% endblock %}
+
+{% block content %}
+<h1>Batch Upload</h1>
+<p class="lead">Choose the type of data to import from a manifest file and a folder of files.</p>
+
+<div class="mt-4">
+  <a href="{% url 'batch_upload_exp_data' %}" class="entry-option">
+    <div>
+      <h2 class="entry-option-title">Experimental data</h2>
+      <p class="entry-option-desc">Manifest CSV plus an XRD folder ZIP.</p>
+      <ul class="entry-option-points">
+        <li>One row per experiment, matched to a batch folder</li>
+        <li>Typed synthesis steps, phase status, spacegroup</li>
+        <li>Automatic file-hash de-duplication</li>
+      </ul>
+    </div>
+    <span class="entry-option-go" aria-hidden="true">&rarr;</span>
+  </a>
+
+  <a href="{% url 'batch_upload_lit_data' %}" class="entry-option">
+    <div>
+      <h2 class="entry-option-title">Literature data</h2>
+      <p class="entry-option-desc">Manifest CSV with one row per paper.</p>
+      <ul class="entry-option-points">
+        <li>DOI, composition, synthesis outcome</li>
+        <li>Automatic DOI de-duplication</li>
+      </ul>
+    </div>
+    <span class="entry-option-go" aria-hidden="true">&rarr;</span>
+  </a>
+
+  <div class="entry-option is-disabled" aria-disabled="true">
+    <div>
+      <h2 class="entry-option-title">Computational data <span class="badge text-bg-secondary">Coming soon</span></h2>
+      <p class="entry-option-desc mb-0">Batch import of DFT/ML records is not yet available.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

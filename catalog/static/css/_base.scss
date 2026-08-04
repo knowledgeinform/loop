@@ -1,0 +1,205 @@
+// =============================================================================
+// Reset + base element styling
+// =============================================================================
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-width: 360px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  background-color: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+// Media / form elements inherit sensibly
+img,
+picture,
+svg {
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+// --- Headings -----------------------------------------------------------
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0 0 var(--sp-2);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--ink-2);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--fs-h1);
+  font-weight: 700;
+  color: var(--navy);
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+}
+
+h3 {
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+
+h4 {
+  font-size: var(--fs-title);
+  font-weight: 600;
+}
+
+h5,
+h6 {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+p {
+  margin: 0 0 var(--sp-3);
+  text-wrap: pretty;
+}
+
+// Description lists (reboot removed with Bootstrap — restore sane defaults so
+// dl.row label/value grids line up instead of the browser's 40px dd indent).
+dl { margin: 0 0 var(--sp-3); }
+dt { font-weight: 600; }
+dd { margin-left: 0; margin-bottom: var(--sp-2); }
+
+// Reading prose gets a comfortable measure; opt-in via .prose
+.prose {
+  max-width: 72ch;
+}
+
+.lead {
+  font-size: var(--fs-lg);
+  font-weight: 400;
+  color: var(--muted);
+  line-height: var(--lh-snug);
+  max-width: 72ch;
+}
+
+// Quiet section label — matches the uppercase eyebrow used on panel toolbars.
+.section-eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+small,
+.small {
+  font-size: var(--fs-sm);
+}
+
+strong,
+b {
+  font-weight: 700;
+}
+
+// --- Links --------------------------------------------------------------
+a {
+  color: var(--navy);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease-out);
+}
+
+a:hover {
+  color: var(--navy-strong);
+  text-decoration: underline;
+}
+
+// --- Code / identifiers -------------------------------------------------
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+// Canonical AUID / hash presentation — the archive call-number
+.auid,
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--sp-4) 0;
+}
+
+// --- Focus: visible, never removed --------------------------------------
+:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--r-sm);
+}
+
+::selection {
+  background: var(--sky-tint);
+  color: var(--ink);
+}
+
+// JS-dependent elements hidden until JS removes .noscript
+.noscript {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

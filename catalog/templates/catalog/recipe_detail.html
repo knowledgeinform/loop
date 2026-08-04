@@ -15,16 +15,17 @@
   {% include "catalog/partials/_detail_hero.html" with detail_kind="recipe" %}
 
   <div class="py-4">
+    {# ------------------------------------------------- Synthesis procedure #}
     <div class="detail-section-panel">
       <div class="comp-tab-toolbar">
-        <h2>Synthesis steps</h2>
+        <h2>Synthesis procedure</h2>
       </div>
       <div class="detail-section-body">
         {% if synthesis_steps_display %}
         <div class="synthesis-timeline">
           {% for step in synthesis_steps_display %}
           <div class="synthesis-step-card">
-            <h5 class="mb-2">Step {{ step.step_number }} <span class="text-muted fs-6">— {{ step.step_type_label }}</span></h5>
+            <h5 class="step-title mb-2">Step {{ step.step_number }} <span class="step-type-inline">— {{ step.step_type_label }}</span></h5>
             {% for detail in step.details %}
             <div class="step-details-row">
               <div class="step-details-label">{{ detail.label }}</div>
@@ -35,28 +36,20 @@
             <div class="step-details-row">
               <div class="step-details-label">Precursors</div>
               <div class="step-details-value">
-                <table class="table table-sm table-bordered mb-0">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Formula</th>
-                      <th>CAS</th>
-                      <th>Purity</th>
-                      <th>Supplier</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for p in step.precursors_list %}
-                    <tr>
-                      <td>{{ p.name|default:"—" }}</td>
-                      <td>{{ p.formula|default:"—" }}</td>
-                      <td>{{ p.cas_number|default:"—" }}</td>
-                      <td>{{ p.purity|default:"—" }}</td>
-                      <td>{{ p.supplier|default:"—" }}</td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
+                <div class="table-wrap">
+                  <table class="table table-sm mb-0">
+                    <thead><tr><th>Name</th><th>Formula</th><th>CAS</th><th>Purity</th><th>Supplier</th></tr></thead>
+                    <tbody>
+                      {% for p in step.precursors_list %}
+                      <tr>
+                        <td>{{ p.name|default:"—" }}</td><td>{{ p.formula|default:"—" }}</td>
+                        <td>{{ p.cas_number|default:"—" }}</td><td>{{ p.purity|default:"—" }}</td>
+                        <td>{{ p.supplier|default:"—" }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
             {% endif %}
@@ -64,88 +57,67 @@
           {% endfor %}
         </div>
         {% else %}
-        <p class="text-muted mb-0">No synthesis steps recorded for this recipe.</p>
+        <p class="text-muted mb-0">No synthesis steps recorded for this route.</p>
         {% endif %}
       </div>
     </div>
 
+    {# --------------------------------------------------------------- Trials #}
     <div class="detail-section-panel">
       <div class="comp-tab-toolbar">
-        <h2>Trials <span class="badge text-bg-light border ms-1">{{ trials|length }}</span></h2>
+        <h2>Trials <span class="badge count-badge">{{ trials|length }}</span></h2>
         <a href="{% url 'upload_exp_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add experiment</a>
       </div>
       <div class="detail-section-body flush">
         {% if trials %}
-        <div class="table-responsive">
-          <table class="table table-sm table-hover mb-0 comp-data-table">
+        <p class="section-hint">Select a row to preview its XRD pattern in place.</p>
+        <div class="table-wrap route-trials-wrap borderless-wrap">
+          <table class="table trial-table">
             <thead>
-              <tr><th>Trial ID</th><th>Date</th><th>Result</th><th>Experimenter</th><th>Raw Data</th></tr>
+              <tr>
+                <th>Result</th><th>Trial</th><th class="num">Date</th>
+                <th class="col-collapse">Experimenter</th><th>Org</th><th class="col-collapse">Space group / sites</th>
+                <th>Raw</th><th class="trial-caret-cell"><span class="visually-hidden">Expand</span></th>
+              </tr>
             </thead>
             <tbody>
-              {% for trial in trials %}
-              <tr>
-                <td><a href="{% url 'trial_detail' recipe_id=recipe_id trial_id=trial.trial_id %}">{{ trial.trial_id }}</a></td>
-                <td>{{ trial.trial_date|date:"Y-m-d" }}</td>
-                <td>
-                  {% if trial.phase_status == 'single_phase' %}
-                  <span class="badge text-bg-success">Single phase</span>
-                  {% elif trial.phase_status == 'not_confirmed' %}
-                  <span class="badge text-bg-secondary">Not confirmed</span>
-                  {% elif trial.success %}
-                  <span class="badge text-bg-success">Success</span>
-                  {% elif trial.success == False %}
-                  <span class="badge text-bg-danger">Failed</span>
-                  {% else %}
-                  <span class="badge text-bg-secondary">Not confirmed</span>
-                  {% endif %}
-                </td>
-                <td>{{ trial.experimenter|default:"—" }}</td>
-                <td>
-                  {% if trial.raw_data_link %}
-                  <a href="{{ trial.raw_data_link }}" target="_blank" rel="noopener">{{ trial.raw_data_type|upper }}</a>
-                  {% else %}
-                  <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
+              {% include "catalog/partials/_trial_rows.html" with trials=trials table_recipe_id=recipe_id show_compare=False %}
             </tbody>
           </table>
         </div>
         {% else %}
-        <p class="comp-tab-empty mb-0">No trials yet.</p>
+        <p class="route-empty mb-0">No trials yet.</p>
         {% endif %}
       </div>
     </div>
 
+    {# ----------------------------------------------------------- Literature #}
     <div class="detail-section-panel">
       <div class="comp-tab-toolbar">
-        <h2>Literature <span class="badge text-bg-light border ms-1">{{ literature|length }}</span></h2>
+        <h2>Literature <span class="badge count-badge">{{ literature|length }}</span></h2>
         <a href="{% url 'add_literature_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add reference</a>
       </div>
       <div class="detail-section-body flush">
         {% if literature %}
-        <div class="list-group list-group-flush">
+        <ul class="lit-list">
           {% for lit in literature %}
-          <a href="{% url 'literature_detail' recipe_id=recipe_id lit_id=lit.lit_id %}" class="list-group-item list-group-item-action">
-            <div class="d-flex justify-content-between">
-              <div>
-                <h6 class="mb-1">{{ lit.title|default:"Untitled" }}</h6>
-                <small class="text-muted">DOI {{ lit.doi }} · {{ lit.journal|default:"" }} {% if lit.year %}({{ lit.year }}){% endif %}</small>
+          <li>
+            <a href="{% url 'literature_detail' recipe_id=recipe_id lit_id=lit.lit_id %}" class="lit-list-item">
+              <div class="lit-list-main">
+                <span class="lit-list-title">{{ lit.title|default:"Untitled" }}</span>
+                <span class="lit-list-meta"><span class="auid-mono">DOI {{ lit.doi }}</span> · {{ lit.journal|default:"" }}{% if lit.year %} ({{ lit.year }}){% endif %}</span>
               </div>
-              <div class="text-end">
-                {% if lit.synthesis_successful %}
-                <span class="badge text-bg-success">Successful</span>
-                {% else %}
-                <span class="badge text-bg-secondary">Reported</span>
-                {% endif %}
-              </div>
-            </div>
-          </a>
+              {% if lit.synthesis_successful %}
+              <span class="badge bg-success">Successful</span>
+              {% else %}
+              <span class="badge bg-secondary">Reported</span>
+              {% endif %}
+            </a>
+          </li>
           {% endfor %}
-        </div>
+        </ul>
         {% else %}
-        <p class="comp-tab-empty mb-0">No literature references for this recipe yet.</p>
+        <p class="route-empty mb-0">No literature references for this route yet.</p>
         {% endif %}
       </div>
     </div>

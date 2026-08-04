@@ -1,0 +1,4 @@
+Batch ID,Material / catalyst,Target composition,Synthesis route,XRD,Reference,Structure Family,Phase status,Spacegroup,Raw data type,Milling time (h),Milling rpm,Atmosphere,Temp profile,Cooling method,Notes
+SP15M-001,Co-Cu-Mg-Ni-Zn oxide,(Co0.2Cu0.2Mg0.2Ni0.2Zn0.2)O,Equimolar oxides ball-milled then calcined,XRD completed.,10.1038/ncomms9485,rocksalt,single_phase,Fm-3m,xrd,12,300,Ar,900C/12h,furnace_cool,Entropy-stabilized single rocksalt phase confirmed
+SP15M-002,Cr-Fe-Mn-Ni-Co spinel,(CrFeMnNiCo)3O4,"High-energy milled, sintered in air",XRD completed.,,spinel,multi_phase,Fd-3m,xrd,8,400,air,1000C/6h,air_quench,Secondary phase observed alongside spinel
+SP15M-003,,(Mg0.25Co0.25Ni0.25Cu0.25)O,,Insufficient sample.,,rocksalt,not_confirmed,,,,,,,,Pending re-measurement

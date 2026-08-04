@@ -172,7 +172,7 @@ def normalize_elements(elements: Dict[str, float], scale: int = 1000) -> Dict[st
 
 
 STRUCTURE_FAMILY_VALUES = frozenset(
-    ("rocksalt", "pyrochlore", "spinel", "perovskite", "fluorite", "other")
+    ("rocksalt", "pyrochlore", "spinel", "perovskite", "fluorite", "other", "unknown")
 )
 
 

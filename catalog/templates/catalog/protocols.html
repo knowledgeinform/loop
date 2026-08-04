@@ -7,83 +7,9 @@
 
 {% block extra_css %}
   {{ block.super }}
-  <style>
-    .synthesis-step {
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      background: #f8f9fa;
-      position: relative;
-      cursor: pointer;
-    }
-    .synthesis-step.active {
-      border-color: #002d72;
-      background: #fff;
-      cursor: default;
-    }
-    .synthesis-step:not(.active):hover {
-      border-color: #adb5bd;
-      background: #f1f3f5;
-    }
-    .step-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-right: 2rem;
-      min-height: 38px;
-      cursor: pointer;
-    }
-    .synthesis-step.active .step-header { margin-bottom: 0.75rem; }
-    .step-header:hover { opacity: 0.8; }
-    .step-header-left { display: flex; align-items: center; gap: 0.5rem; }
-    .step-move-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
-    .step-move-btns button { display: block; background: none; border: none; padding: 0 3px; line-height: 1; font-size: 0.55rem; color: #adb5bd; cursor: pointer; }
-    .step-move-btns button:not(:disabled):hover { color: #002d72; }
-    .step-move-btns button:disabled { opacity: 0.25; cursor: default; }
-    .step-number {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 28px; height: 28px; background: #002d72; color: #fff;
-      border-radius: 50%; font-weight: 600; font-size: 0.9rem; flex-shrink: 0;
-    }
-    .step-type-select { font-weight: 600; }
-    .step-arrow {
-      color: #6c757d; font-size: 0.75rem; transition: transform 0.2s;
-    }
-    .synthesis-step.active .step-arrow { transform: rotate(180deg); }
-    .step-content { display: none; }
-    .synthesis-step.active .step-content { display: block; }
-    .remove-step {
-      position: absolute; top: 50%; right: 0.5rem;
-      transform: translateY(-50%); z-index: 10;
-    }
-    .synthesis-step.active .remove-step { top: 0.75rem; transform: none; }
-    .add-step-btn {
-      border: 2px dashed #dee2e6; background: transparent; width: 100%;
-      padding: 1rem; border-radius: 8px; color: #6c757d;
-      cursor: pointer; transition: all 0.2s;
-    }
-    .add-step-btn:hover { border-color: #002d72; color: #002d72; }
-    .precursor-row {
-      display: grid;
-      grid-template-columns: 110px 1.3fr 0.8fr 0.7fr 1fr auto;
-      gap: 0.4rem; align-items: center; margin-bottom: 0.4rem;
-    }
-    .precursor-row input { font-size: 0.85rem; padding: 0.25rem 0.5rem; }
-    .precursor-row-actions { display: flex; gap: 0.3rem; }
-    .protocol-empty {
-      border: 1px dashed #dee2e6; border-radius: 8px;
-      padding: 2rem; text-align: center; color: #6c757d;
-    }
-    .protocol-steps-preview .badge { font-weight: 400; }
-    #protocol-editor-card { scroll-margin-top: 1rem; }
-  </style>
 {% endblock %}
 
 {% block content %}
-<div class="mb-1">
-  <a href="{% url 'account' %}" class="text-muted text-decoration-none small">← Back to account</a>
-</div>
 <nav aria-label="breadcrumb" class="mb-3">
   <ol class="breadcrumb mb-0">
     <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>

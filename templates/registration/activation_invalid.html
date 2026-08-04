@@ -1,6 +1,22 @@
 {% extends "base_generic.html" %}
+
 {% block content %}
-  <h2>Activation link is invalid or expired</h2>
-  <p>Please register again or contact support.</p>
-  <p><a href="{% url 'signup' %}">Sign up</a> · <a href="{% url 'index' %}">Home</a></p>
+  <div class="auth-shell">
+    <h1 class="mb-3">Activation link invalid or expired</h1>
+    <div class="card auth-card">
+      <div class="card-body">
+        <p>This activation link is no longer valid. Please register again or contact support.</p>
+        {% url 'signup' as signup_url %}
+        <div class="auth-links">
+          {% if signup_url %}
+            <a href="{{ signup_url }}">Sign up</a>
+            <span class="text-muted">•</span>
+          {% endif %}
+          <a href="{% url 'index' %}">Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}
+
+{% block sidebar %}{% endblock %}

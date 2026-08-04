@@ -1,0 +1,111 @@
+{% comment %}
+Shared trial rows for the material comparison table and the route page.
+Each row expands in place to a drawer that lazy-loads the trial's XRD pattern.
+
+Expects:
+  trials           iterable of trial dicts (trial_id, phase_status, success,
+                   trial_date, experimenter, spacegroup, element_sites,
+                   raw_data_link, raw_data_type, notes, organizations)
+  table_recipe_id  recipe id used to build trial URLs for these rows
+  show_compare     bool — render the compare checkbox column (default via caller)
+{% endcomment %}
+{% load static %}
+{% for trial in trials %}
+<tr class="trial-row" tabindex="0" role="button" aria-expanded="false"
+    data-xrd-url="{% url 'trial_xrd_thumb' recipe_id=table_recipe_id trial_id=trial.trial_id %}"
+    data-trial-label="Trial {{ trial.trial_id }}"
+    data-loaded="0">
+  {% if show_compare %}
+  <td class="trial-select-cell" data-noexpand>
+    <input type="checkbox" class="trial-compare-check" aria-label="Select trial {{ trial.trial_id }} to compare"
+           data-xrd-url="{% url 'trial_xrd_thumb' recipe_id=table_recipe_id trial_id=trial.trial_id %}"
+           data-trial-label="Trial {{ trial.trial_id }}">
+  </td>
+  {% endif %}
+  <td class="trial-result-cell">
+    {% if trial.phase_status == 'single_phase' %}
+    <span class="badge bg-success">Single phase</span>
+    {% elif trial.phase_status == 'multi_phase' %}
+    <span class="badge bg-danger">Multi-phase</span>
+    {% elif trial.phase_status == 'not_confirmed' %}
+    <span class="badge bg-secondary">Not confirmed</span>
+    {% elif trial.success %}
+    <span class="badge bg-success">Success</span>
+    {% elif trial.success == False %}
+    <span class="badge bg-danger">Failed</span>
+    {% else %}
+    <span class="badge bg-secondary">Not confirmed</span>
+    {% endif %}
+  </td>
+  <td class="trial-id-cell">
+    <a href="{% url 'trial_detail' recipe_id=table_recipe_id trial_id=trial.trial_id %}"
+       class="auid-mono trial-id-link" data-noexpand>{{ trial.trial_id }}</a>
+  </td>
+  <td class="trial-date-cell num">{{ trial.trial_date|date:"Y-m-d"|default:"—" }}</td>
+  <td class="col-collapse">{{ trial.experimenter|default:"—" }}</td>
+  <td>
+    {% if trial.organizations %}
+    <div class="trial-orgs">
+      {% for org in trial.organizations %}
+      <span class="badge org-badge org-badge-{{ org|lower|slugify }}">{{ org }}</span>
+      {% endfor %}
+    </div>
+    {% else %}<span class="muted">—</span>{% endif %}
+  </td>
+  <td class="trial-structure-cell col-collapse">
+    {% if trial.spacegroup and trial.spacegroup != "unknown" %}
+    <span class="trial-spacegroup">{{ trial.spacegroup }}</span>
+    {% endif %}
+    {% if trial.element_sites %}
+    <div class="trial-sites">
+      {% for sym, site in trial.element_sites.items %}
+      <span class="site-token"><strong>{{ sym }}</strong>{{ site }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if not trial.spacegroup and not trial.element_sites %}<span class="muted">—</span>{% endif %}
+  </td>
+  <td>
+    {% if trial.raw_data_link %}
+    <a href="{{ trial.raw_data_link }}" target="_blank" rel="noopener" data-noexpand>{{ trial.raw_data_type|upper }}</a>
+    {% else %}<span class="muted">—</span>{% endif %}
+  </td>
+  <td class="trial-caret-cell" aria-hidden="true"><span class="trial-caret"></span></td>
+</tr>
+<tr class="trial-drawer" hidden>
+  <td colspan="{% if show_compare %}9{% else %}8{% endif %}">
+    <div class="trial-drawer-inner">
+      <div class="trial-drawer-xrd">
+        <div class="trial-xrd" data-state="idle">
+          <div class="skeleton trial-xrd-skeleton" aria-hidden="true"></div>
+        </div>
+        <p class="trial-xrd-notice" hidden></p>
+      </div>
+      <div class="trial-drawer-meta">
+        <dl class="trial-meta-list">
+          <dt>Result</dt>
+          <dd>
+            {% if trial.phase_status == 'single_phase' %}Single phase
+            {% elif trial.phase_status == 'multi_phase' %}Multi-phase / failed
+            {% elif trial.phase_status == 'not_confirmed' %}Phase not yet confirmed
+            {% elif trial.success %}Success
+            {% elif trial.success == False %}Failed
+            {% else %}Phase not yet confirmed{% endif %}
+          </dd>
+          {% if trial.spacegroup and trial.spacegroup != "unknown" %}
+          <dt>Space group</dt>
+          <dd>{{ trial.spacegroup }}</dd>
+          {% endif %}
+          {% if trial.notes %}
+          <dt>Notes</dt>
+          <dd>{{ trial.notes }}</dd>
+          {% endif %}
+        </dl>
+        <div class="trial-drawer-actions">
+          <a class="btn btn-outline-primary btn-sm" href="{% url 'trial_detail' recipe_id=table_recipe_id trial_id=trial.trial_id %}">Open full trial page&nbsp;&rarr;</a>
+        </div>
+      </div>
+    </div>
+  </td>
+</tr>
+{% endfor %}

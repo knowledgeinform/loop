@@ -1,15 +1,34 @@
 import { setupPeriodicTable } from './periodic.js';
+import { setupSpacegroupUI } from './spacegroup.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const lockByContext =
     window.LOCK_COMPOSITION === true ||
     Boolean(document.querySelector('input[name="material_auid"]'));
 
-  setupPeriodicTable({
+  function getElements() {
+    const f = document.getElementById("composition-json");
+    if (!f || !f.value) return [];
+    try {
+      const data = JSON.parse(f.value);
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === "object") return Object.entries(data);
+      return [];
+    } catch { return []; }
+  }
+  function getStructureFamily() {
+    const sf = document.getElementById("structure_family");
+    return sf ? sf.value : "other";
+  }
+
+  const sgUI = setupSpacegroupUI({ getElements, getStructureFamily });
+
+  const ptableController = setupPeriodicTable({
     requireSelection: true,
     showRatios: true,
     enforceRatios: true,
     lockSelection: lockByContext,
+    onChange: () => { if (sgUI) sgUI.rebuildSiteRows(); },
   });
 
   const modalElement = document.getElementById('csvPreviewModal');

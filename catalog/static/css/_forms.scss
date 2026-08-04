@@ -1,0 +1,344 @@
+// =============================================================================
+// Data-entry pages — add/upload/batch forms.
+// Shared components: the record-type chooser (entry-option), the synthesis-step
+// builder (upload_exp + add_literature), batch dropzones + mode tiles, and the
+// composition/precursor row layouts. All tokenized onto the foundation.
+// =============================================================================
+
+// ---------------------------------------------------------- Auth pages
+// Centered card for login / signup / password-reset / status pages. Flat
+// hairline surface (line-not-shadow) — the empty page + centering carry focus,
+// not a drop shadow. Replaces per-template inline styles with off-scale radii.
+.auth-shell {
+  max-width: 40rem;
+  margin-inline: auto;
+}
+.auth-shell-wide { max-width: 47.5rem; } // signup carries more fields
+.auth-card .card-body { padding: 1.25rem 1.25rem 1rem; }
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 0.9rem;
+  font-size: var(--fs-sm);
+}
+
+// ---------------------------------------------------------- Form scaffold
+// Numbered <section class="upload-section"><h2>N. Title</h2> … </section>
+// blocks wrapped in .upload-form, closing with .upload-actions. Shared by every
+// add/upload form; previously these class names carried no styling at all.
+.upload-form {
+  max-width: 60rem;
+}
+.upload-section {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.upload-section > h2 {
+  margin: 0 0 1.15rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--navy);
+}
+.upload-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+// ---------------------------------------------------------- Record-type chooser
+// Replaces the emoji + drop-shadow "card-hover" pattern on add_data / batch_
+// landing. Flat archival option rows: hairline → navy border + tonal wash on
+// hover, a quiet chevron for affordance. No lift, no shadow, no emoji.
+.entry-option {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  padding: 1rem 1.15rem;
+  margin-bottom: 0.75rem;
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+a.entry-option:hover {
+  border-color: var(--navy);
+  background: var(--surface-2);
+  text-decoration: none;
+}
+a.entry-option:focus-visible {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px var(--navy-tint-2);
+}
+.entry-option-title {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0 0 0.15rem;
+}
+.entry-option-desc {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  margin: 0 0 0.4rem;
+}
+.entry-option-points {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  margin: 0;
+  padding-left: 1.05rem;
+}
+.entry-option-points li { margin-bottom: 0.1rem; }
+.entry-option-go {
+  color: var(--muted-2);
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+a.entry-option:hover .entry-option-go {
+  color: var(--navy);
+  transform: translateX(2px);
+}
+.entry-option.is-disabled {
+  background: var(--surface-2);
+  border-style: dashed;
+  cursor: default;
+}
+.entry-option.is-disabled .entry-option-title { color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  a.entry-option:hover .entry-option-go { transform: none; }
+}
+
+// ---------------------------------------------------------- Synthesis builder
+// Collapsible typed-step editor shared by upload_exp_data + add_literature_data.
+.synthesis-step {
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--surface-2);
+  position: relative;
+  cursor: pointer;
+}
+.synthesis-step.active {
+  border-color: var(--navy);
+  background: var(--paper);
+  cursor: default;
+}
+.synthesis-step:not(.active):hover {
+  border-color: var(--line-2);
+  background: var(--surface-3);
+}
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 2rem;
+  min-height: 38px;
+  cursor: pointer;
+}
+.synthesis-step.active .step-header { margin-bottom: 0.75rem; }
+.step-header:hover { opacity: 0.85; }
+.step-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.step-move-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.step-move-btns button {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0 3px;
+  line-height: 1;
+  font-size: 0.55rem;
+  color: var(--muted-2);
+  cursor: pointer;
+}
+.step-move-btns button:not(:disabled):hover { color: var(--navy); }
+.step-move-btns button:disabled { opacity: 0.25; cursor: default; }
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--navy);
+  color: #fff;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: var(--fs-body);
+  flex-shrink: 0;
+}
+.step-type-select { font-weight: 600; }
+.step-arrow {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  transition: transform var(--dur) var(--ease-out);
+}
+.synthesis-step.active .step-arrow { transform: rotate(180deg); }
+.step-content { display: none; }
+.synthesis-step.active .step-content { display: block; }
+.remove-step {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+.synthesis-step.active .remove-step {
+  top: 0.75rem;
+  transform: none;
+}
+.add-step-btn {
+  border: 1px dashed var(--line-2);
+  background: transparent;
+  width: 100%;
+  padding: 1rem;
+  border-radius: var(--r-md);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease-out),
+              color var(--dur) var(--ease-out);
+}
+.add-step-btn:hover {
+  border-color: var(--navy);
+  color: var(--navy);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-arrow { transition: none; }
+}
+
+// ---------------------------------------------------------- Batch dropzones
+// (batch_upload_exp_data + batch_upload_lit_data). Previously referenced the
+// removed --bs-* Bootstrap vars — retargeted onto success tokens.
+.batch-dropzone {
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+.batch-dropzone.is-filled {
+  border-color: var(--success) !important;
+  background-color: var(--success-bg);
+  border-style: solid !important;
+}
+.batch-dropzone.is-filled .dropzone-prompt { display: none; }
+.batch-dropzone .dropzone-file:empty { display: none; }
+.batch-dropzone .dropzone-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background-color: var(--success);
+  color: #fff;
+  font-size: var(--fs-sm);
+  line-height: 1;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+.batch-dropzone .dropzone-name {
+  font-weight: 700;
+  color: var(--success-ink);
+}
+
+// ---------------------------------------------------------- Mode selector tiles
+// (batch_upload_exp_data). Retargeted from --bs-* onto navy tokens.
+.mode-selector .form-tile {
+  cursor: pointer;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background-color: var(--paper);
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+.mode-selector .form-tile:hover { border-color: var(--navy); }
+.mode-selector .btn-check:checked + .form-tile {
+  border-color: var(--navy);
+  background-color: var(--navy-tint);
+}
+.mode-selector .btn-check:focus-visible + .form-tile {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px var(--navy-tint-2);
+}
+
+// ---------------------------------------------------------- Composition rows
+// Element + site-assignment input groups shared by add_computational_data,
+// add_literature_data, and upload_exp_data.
+#selected-elements .input-group { flex-wrap: nowrap; max-width: none; }
+#selected-elements .input-group-text { width: 3.5rem; justify-content: center; }
+#selected-elements .form-control { flex: 0 0 90px; max-width: 90px; }
+#selected-elements .sg-site-select { flex: 1 1 0%; width: auto; min-width: 0; }
+#locked-composition-table .site-cell .form-select { width: 100%; }
+
+// ---------------------------------------------------------- Precursor rows (exp)
+.precursor-row {
+  display: grid;
+  grid-template-columns: 110px 1.3fr 0.8fr 0.7fr 1fr auto;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.precursor-row input {
+  font-size: var(--fs-sm);
+  padding: 0.25rem 0.5rem;
+}
+.precursor-row .precursor-row-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+.precursor-row-empty {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  padding: 0.5rem 0;
+}
+.xrd-preview-inline {
+  max-width: 640px;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: var(--paper);
+}
+
+// ---------------------------------------------------------- Library pages
+// account / precursors / protocols. The synthesis-step builder + precursor-row
+// styles that protocols reuses already live above — only the page-specific
+// remainder is defined here.
+.precursor-empty,
+.protocol-empty {
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-lg);
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+.precursor-table input,
+.precursor-table textarea { font-size: var(--fs-body); }
+.cas-lookup-inline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.cas-lookup-inline input { max-width: 180px; }
+.protocol-steps-preview .badge { font-weight: 400; }
+#protocol-editor-card { scroll-margin-top: 1rem; }

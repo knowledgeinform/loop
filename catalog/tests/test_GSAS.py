@@ -2,6 +2,7 @@
 
 import io
 import tempfile
+import unittest
 from unittest.mock import patch
 
 import numpy as np
@@ -9,6 +10,7 @@ import pandas as pd
 from django.contrib.auth import get_user_model
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 
+from catalog.gsas_tools import peak_finder, peak_finder_fast
 from catalog.rietveld_refinement import (
     RietveldRefinementError,
     _aggregate_element_fractions,
@@ -32,6 +34,15 @@ from catalog.rietveld_refinement import (
 )
 
 
+def _gsas_runtime_available():
+    try:
+        from GSASII import GSASIIscriptable  # type: ignore  # noqa: F401
+        from GSASII import defaultIparms  # type: ignore  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
 class CatalogURLSmokeTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -45,6 +56,73 @@ class CatalogURLSmokeTests(TestCase):
         self.client = Client(enforce_csrf_checks=False)
         self.client.force_login(self.user)
 
+
+class PeakFinderContractTests(SimpleTestCase):
+    def _clean_dataframe(self):
+        theta = np.linspace(20.0, 20.6, 58)
+        intensity = 50.0 + 389.1 * np.exp(-0.5 * ((theta - 20.3) / 0.025) ** 2)
+        return pd.DataFrame({"Angle": theta, "Intensity": intensity})
+
+    def _noisy_dataframe(self):
+        theta = np.linspace(18.0, 34.0, 121)
+        intensity = (
+            62.0
+            + 6.5 * np.sin(np.linspace(0.0, 7.5, 121))
+            + 3.0 * np.cos(np.linspace(0.0, 15.0, 121))
+            + 78.0 * np.exp(-0.5 * ((theta - 23.2) / 0.24) ** 2)
+            + 42.0 * np.exp(-0.5 * ((theta - 29.1) / 0.36) ** 2)
+        )
+        return pd.DataFrame({"Angle": theta, "Intensity": intensity})
+
+    def _assert_peak_contract(self, peaks):
+        self.assertIsInstance(peaks, list)
+        self.assertTrue(peaks)
+        for peak in peaks:
+            self.assertIsInstance(peak, dict)
+            self.assertIn("two_theta", peak)
+            self.assertIn("intensity", peak)
+            self.assertIn("area", peak)
+
+    def test_peak_finder_fast_clean_pattern_contract(self):
+        peaks, gpx_bytes, overlay_uri = peak_finder_fast(self._clean_dataframe())
+
+        self._assert_peak_contract(peaks)
+        self.assertEqual(gpx_bytes, b"")
+        self.assertTrue(overlay_uri.startswith("data:image/png;base64,"))
+        self.assertGreaterEqual(len(peaks), 1)
+
+    def test_peak_finder_fast_noisy_pattern_contract(self):
+        peaks, gpx_bytes, overlay_uri = peak_finder_fast(self._noisy_dataframe())
+
+        self._assert_peak_contract(peaks)
+        self.assertEqual(gpx_bytes, b"")
+        self.assertTrue(overlay_uri.startswith("data:image/png;base64,"))
+        self.assertGreaterEqual(len(peaks), 1)
+        self.assertAlmostEqual(peaks[0]["two_theta"], 23.2, delta=0.35)
+
+    def test_peak_finder_wrapper_preserves_gsas_contract_when_backend_succeeds(self):
+        fake_peaks = [{"two_theta": 20.3, "intensity": 439.1, "area": 37.5}]
+        with patch("catalog.gsas_tools.find_gsas_peaks", return_value=(fake_peaks, b"gpx")) as mocked_backend:
+            peaks, gpx_bytes, overlay_uri = peak_finder(
+                self._clean_dataframe(),
+                use_gsas=True,
+            )
+
+        mocked_backend.assert_called_once()
+        self.assertEqual(peaks, fake_peaks)
+        self.assertEqual(gpx_bytes, b"gpx")
+        self.assertTrue(overlay_uri.startswith("data:image/png;base64,"))
+
+    @unittest.skipUnless(_gsas_runtime_available(), "GSAS-II runtime not available")
+    def test_peak_finder_real_gsas_integration_contract(self):
+        peaks, gpx_bytes, overlay_uri = peak_finder(
+            self._clean_dataframe(),
+            use_gsas=True,
+        )
+
+        self._assert_peak_contract(peaks)
+        self.assertTrue(gpx_bytes)
+        self.assertTrue(overlay_uri.startswith("data:image/png;base64,"))
 
 
 class RietveldRefinementHelpersTests(SimpleTestCase):

@@ -39,6 +39,20 @@
                 <th class="text-muted">Source</th>
                 <td>{{ record.dft_source|default:"—" }}</td>
               </tr>
+              <tr>
+                <th class="text-muted">Space Group</th>
+                <td>{{ record.spacegroup|default:"—" }}</td>
+              </tr>
+              {% if record.element_sites %}
+              <tr>
+                <th class="text-muted">Element Sites</th>
+                <td>
+                  {% for sym, site in record.element_sites.items %}
+                  <span class="badge text-bg-light border me-1 mb-1"><strong>{{ sym }}</strong> → {{ site }}</span>
+                  {% endfor %}
+                </td>
+              </tr>
+              {% endif %}
             </tbody>
           </table>
         </div>
@@ -94,6 +108,91 @@
         {% endif %}
       </div>
     </div>
+
+    {% with rec=record %}
+    {% if rec.bandgap_type or rec.bandgap_fit_ev is not None or rec.spin_atom is not None or rec.bulk_modulus_vrh is not None or rec.shear_modulus_vrh is not None or rec.youngs_modulus_vrh is not None or rec.poisson_ratio is not None or rec.elastic_anisotropy is not None or rec.debye_temperature is not None or rec.thermal_conductivity_300k is not None or rec.gruneisen_parameter is not None or rec.thermal_expansion_300k is not None or rec.pearson_symbol or rec.crystal_system or rec.crystal_family %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>Advanced properties</h2>
+      </div>
+      <div class="detail-section-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered table-hover meta-table mb-0">
+            <tbody>
+              {% if rec.bandgap_type %}
+              <tr><th class="text-muted">Bandgap Type</th><td>{{ rec.bandgap_type }}</td></tr>
+              {% endif %}
+              {% if rec.bandgap_fit_ev is not None %}
+              <tr><th class="text-muted">Bandgap Fit</th><td>{{ rec.bandgap_fit_ev }} eV</td></tr>
+              {% endif %}
+              {% if rec.spin_atom is not None %}
+              <tr><th class="text-muted">Spin per Atom</th><td>{{ rec.spin_atom }} μB</td></tr>
+              {% endif %}
+              {% if rec.bulk_modulus_vrh is not None %}
+              <tr><th class="text-muted">Bulk Modulus VRH</th><td>{{ rec.bulk_modulus_vrh }} GPa</td></tr>
+              {% endif %}
+              {% if rec.shear_modulus_vrh is not None %}
+              <tr><th class="text-muted">Shear Modulus VRH</th><td>{{ rec.shear_modulus_vrh }} GPa</td></tr>
+              {% endif %}
+              {% if rec.youngs_modulus_vrh is not None %}
+              <tr><th class="text-muted">Young's Modulus VRH</th><td>{{ rec.youngs_modulus_vrh }} GPa</td></tr>
+              {% endif %}
+              {% if rec.poisson_ratio is not None %}
+              <tr><th class="text-muted">Poisson Ratio</th><td>{{ rec.poisson_ratio }}</td></tr>
+              {% endif %}
+              {% if rec.elastic_anisotropy is not None %}
+              <tr><th class="text-muted">Elastic Anisotropy</th><td>{{ rec.elastic_anisotropy }}</td></tr>
+              {% endif %}
+              {% if rec.debye_temperature is not None %}
+              <tr><th class="text-muted">Debye Temperature</th><td>{{ rec.debye_temperature }} K</td></tr>
+              {% endif %}
+              {% if rec.thermal_conductivity_300k is not None %}
+              <tr><th class="text-muted">Thermal Conductivity (300 K)</th><td>{{ rec.thermal_conductivity_300k }} W/m/K</td></tr>
+              {% endif %}
+              {% if rec.gruneisen_parameter is not None %}
+              <tr><th class="text-muted">Grüneisen Parameter</th><td>{{ rec.gruneisen_parameter }}</td></tr>
+              {% endif %}
+              {% if rec.thermal_expansion_300k is not None %}
+              <tr><th class="text-muted">Thermal Expansion (300 K)</th><td>{{ rec.thermal_expansion_300k }} 1/K</td></tr>
+              {% endif %}
+              {% if rec.pearson_symbol %}
+              <tr><th class="text-muted">Pearson Symbol</th><td>{{ rec.pearson_symbol }}</td></tr>
+              {% endif %}
+              {% if rec.crystal_system %}
+              <tr><th class="text-muted">Crystal System</th><td>{{ rec.crystal_system }}</td></tr>
+              {% endif %}
+              {% if rec.crystal_family %}
+              <tr><th class="text-muted">Crystal Family</th><td>{{ rec.crystal_family }}</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% for group_name, group_items in extended_data_groups %}
+    <div class="detail-section-panel">
+      <div class="comp-tab-toolbar">
+        <h2>{{ group_name }}</h2>
+      </div>
+      <div class="detail-section-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered table-hover meta-table mb-0">
+            <tbody>
+              {% for key, value in group_items %}
+              <tr>
+                <th class="text-muted">{{ key }}</th>
+                <td>{{ value }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
 
     {% if can_modify_computational or can_delete_computational %}
     <div class="d-flex justify-content-between align-items-center mt-4">

@@ -40,6 +40,7 @@ from catalog.documents import (
     Material,
     MLEmbedding,
     Recipe,
+    SynthesisPrediction,
     UserAffiliation,
     UserPrecursor,
 )
@@ -50,6 +51,7 @@ from catalog.raw_db import RAW_DB_ALIAS, RawFile
 MAIN_DOCS = (
     Material,
     Recipe,
+    SynthesisPrediction,
     MLEmbedding,
     DOIMapping,
     UserAffiliation,
@@ -62,6 +64,7 @@ ALL_DOCS = MAIN_DOCS + RAW_DOCS
 MAIN_COLLECTION_NAMES = (
     "materials",
     "recipes",
+    "synthesis_predictions",
     "ml_embeddings",
     "doi_mappings",
     "user_affiliations",

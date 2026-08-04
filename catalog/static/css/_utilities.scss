@@ -1,0 +1,272 @@
+// =============================================================================
+// Utility layer — bespoke replacement for the Bootstrap utilities/grid the
+// templates depend on. Class names match Bootstrap 5 so authored markup keeps
+// laying out correctly; the values/behaviour are ours.
+// Breakpoints match Bootstrap defaults so col-md-* etc. behave as authored.
+// =============================================================================
+
+$bp: (
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1200px,
+);
+
+// Bootstrap-compatible spacing scale (rem)
+$space: (
+  0: 0,
+  1: 0.25rem,
+  2: 0.5rem,
+  3: 1rem,
+  4: 1.5rem,
+  5: 3rem,
+);
+
+// ------------------------------------------------------------------ Container
+.container,
+.container-fluid {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 0.75rem;
+}
+.container {
+  @each $name, $w in $bp {
+    @media (min-width: $w) {
+      max-width: if($name == sm, 540px, if($name == md, 720px, if($name == lg, 960px, 1140px)));
+    }
+  }
+}
+
+// ------------------------------------------------------------------ Grid
+.row {
+  --gutter-x: 1.5rem;
+  --gutter-y: 0;
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: calc(-1 * var(--gutter-y));
+  margin-right: calc(-0.5 * var(--gutter-x));
+  margin-left: calc(-0.5 * var(--gutter-x));
+
+  > * {
+    box-sizing: border-box;
+    flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    margin-top: var(--gutter-y);
+    padding-right: calc(0.5 * var(--gutter-x));
+    padding-left: calc(0.5 * var(--gutter-x));
+  }
+}
+
+// gutters
+@each $i, $v in $space {
+  .g-#{$i} { --gutter-x: #{$v}; --gutter-y: #{$v}; }
+  .gx-#{$i} { --gutter-x: #{$v}; }
+  .gy-#{$i} { --gutter-y: #{$v}; }
+}
+
+@mixin cols($infix: "") {
+  .col#{$infix} { flex: 1 0 0%; }
+  .col#{$infix}-auto { flex: 0 0 auto; width: auto; }
+  @for $i from 1 through 12 {
+    .col#{$infix}-#{$i} {
+      flex: 0 0 auto;
+      width: percentage($i / 12);
+    }
+  }
+  @for $i from 1 through 6 {
+    .row-cols#{$infix}-#{$i} > * {
+      flex: 0 0 auto;
+      width: percentage(1 / $i);
+    }
+  }
+}
+
+@include cols();
+@each $name, $w in $bp {
+  @media (min-width: $w) {
+    @include cols("-#{$name}");
+  }
+}
+
+// ------------------------------------------------------------------ Spacing
+$sides: (
+  "": ("margin", "padding"),
+);
+@each $abbr, $prop in ("m": margin, "p": padding) {
+  @each $i, $v in $space {
+    .#{$abbr}-#{$i}  { #{$prop}: #{$v} !important; }
+    .#{$abbr}t-#{$i} { #{$prop}-top: #{$v} !important; }
+    .#{$abbr}b-#{$i} { #{$prop}-bottom: #{$v} !important; }
+    .#{$abbr}s-#{$i} { #{$prop}-left: #{$v} !important; }
+    .#{$abbr}e-#{$i} { #{$prop}-right: #{$v} !important; }
+    .#{$abbr}x-#{$i} { #{$prop}-left: #{$v} !important; #{$prop}-right: #{$v} !important; }
+    .#{$abbr}y-#{$i} { #{$prop}-top: #{$v} !important; #{$prop}-bottom: #{$v} !important; }
+  }
+}
+// auto margins
+.m-auto  { margin: auto !important; }
+.mx-auto { margin-left: auto !important; margin-right: auto !important; }
+.my-auto { margin-top: auto !important; margin-bottom: auto !important; }
+.ms-auto { margin-left: auto !important; }
+.me-auto { margin-right: auto !important; }
+.mt-auto { margin-top: auto !important; }
+
+// gap
+@each $i, $v in $space {
+  .gap-#{$i} { gap: #{$v} !important; }
+}
+
+// ------------------------------------------------------------------ Display
+$displays: none block inline inline-block flex inline-flex grid;
+@each $d in $displays {
+  .d-#{$d} { display: #{$d} !important; }
+}
+@each $name, $w in $bp {
+  @media (min-width: $w) {
+    @each $d in $displays {
+      .d-#{$name}-#{$d} { display: #{$d} !important; }
+    }
+  }
+}
+
+// ------------------------------------------------------------------ Flex
+.flex-row     { flex-direction: row !important; }
+.flex-column  { flex-direction: column !important; }
+.flex-wrap    { flex-wrap: wrap !important; }
+.flex-nowrap  { flex-wrap: nowrap !important; }
+.flex-fill    { flex: 1 1 auto !important; }
+.flex-grow-0  { flex-grow: 0 !important; }
+.flex-grow-1  { flex-grow: 1 !important; }
+.flex-shrink-0 { flex-shrink: 0 !important; }
+
+.justify-content-start   { justify-content: flex-start !important; }
+.justify-content-center  { justify-content: center !important; }
+.justify-content-end     { justify-content: flex-end !important; }
+.justify-content-between { justify-content: space-between !important; }
+.justify-content-around  { justify-content: space-around !important; }
+.justify-content-evenly  { justify-content: space-evenly !important; }
+
+.align-items-start    { align-items: flex-start !important; }
+.align-items-center   { align-items: center !important; }
+.align-items-end      { align-items: flex-end !important; }
+.align-items-baseline { align-items: baseline !important; }
+.align-items-stretch  { align-items: stretch !important; }
+.align-self-center    { align-self: center !important; }
+.align-self-start     { align-self: flex-start !important; }
+.align-self-end       { align-self: flex-end !important; }
+
+// ------------------------------------------------------------------ Sizing
+.w-100 { width: 100% !important; }
+.w-auto { width: auto !important; }
+.mw-100 { max-width: 100% !important; }
+.h-100 { height: 100% !important; }
+.vh-100 { height: 100vh !important; }
+
+// ------------------------------------------------------------------ Text
+.text-start  { text-align: left !important; }
+.text-center { text-align: center !important; }
+.text-end    { text-align: right !important; }
+.text-nowrap { white-space: nowrap !important; }
+.text-muted  { color: var(--muted) !important; }
+.text-primary { color: var(--navy) !important; }
+.text-success { color: var(--success) !important; }
+.text-danger  { color: var(--danger) !important; }
+.text-decoration-none { text-decoration: none !important; }
+.text-uppercase { text-transform: uppercase !important; }
+.fst-italic { font-style: italic !important; }
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.text-dark { color: var(--ink) !important; }
+.text-warning-emphasis { color: var(--warn-ink) !important; }
+.font-monospace,
+.text-monospace { font-family: var(--font-mono) !important; }
+.small { font-size: var(--fs-sm) !important; }
+
+// contextual bg+text pairs (Bootstrap text-bg-*) — used on status pills/badges
+.text-bg-primary   { background-color: var(--navy) !important; color: #fff !important; }
+// Neutral gray — --struct-other is reserved for the structure-family encoding.
+.text-bg-secondary { background-color: var(--muted) !important; color: #fff !important; }
+.text-bg-success   { background-color: var(--success) !important; color: #fff !important; }
+.text-bg-danger    { background-color: var(--danger) !important; color: #fff !important; }
+.text-bg-warning   { background-color: var(--warn-bg) !important; color: var(--warn-ink) !important; }
+.text-bg-info      { background-color: var(--info-bg) !important; color: var(--info-ink) !important; }
+.text-bg-light     { background-color: var(--surface-2) !important; color: var(--ink) !important; }
+.text-bg-dark      { background-color: var(--ink) !important; color: #fff !important; }
+
+// Font weight
+.fw-normal   { font-weight: 400 !important; }
+.fw-medium   { font-weight: 600 !important; }
+.fw-semibold { font-weight: 600 !important; }
+.fw-bold     { font-weight: 700 !important; }
+.fw-light    { font-weight: 300 !important; }
+
+// Font-size helpers (Bootstrap-compatible display/heading utilities)
+.fs-1 { font-size: var(--fs-display) !important; line-height: var(--lh-tight); }
+.fs-2 { font-size: var(--fs-h1) !important; line-height: var(--lh-tight); }
+.fs-3 { font-size: var(--fs-h2) !important; }
+.fs-4 { font-size: var(--fs-h3) !important; }
+.fs-5 { font-size: var(--fs-title) !important; }
+.fs-6 { font-size: var(--fs-md) !important; }
+.display-6 {
+  font-size: var(--fs-display) !important;
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  color: var(--ink-2);
+}
+.h5 { font-size: var(--fs-md) !important; font-weight: 600; }
+.h4 { font-size: var(--fs-title) !important; font-weight: 600; }
+
+// Misc
+.rounded { border-radius: var(--r-sm) !important; }
+.border        { border: 1px solid var(--line) !important; }
+.border-top    { border-top: 1px solid var(--line) !important; }
+.border-bottom { border-bottom: 1px solid var(--line) !important; }
+.border-start  { border-left: 1px solid var(--line) !important; }
+.border-end    { border-right: 1px solid var(--line) !important; }
+.border-0 { border: 0 !important; }
+.overflow-auto { overflow: auto !important; }
+.overflow-hidden { overflow: hidden !important; }
+.table-responsive { overflow-x: auto !important; }
+.opacity-50 { opacity: 0.5 !important; }
+
+// Standalone background utilities (Bootstrap-compatible). Badge-scoped bg-*
+// lives in _components; these cover inset panels (bg-light) and drag states.
+.bg-light { background-color: var(--surface-2) !important; }
+.bg-white,
+.bg-body  { background-color: var(--paper) !important; }
+
+// vertical-align + line-height helpers used in dense form/preview tables
+.align-middle   { vertical-align: middle !important; }
+.align-top      { vertical-align: top !important; }
+.align-bottom   { vertical-align: bottom !important; }
+.lh-1  { line-height: 1 !important; }
+.lh-sm { line-height: var(--lh-snug) !important; }
+
+// table with no cell borders (Bootstrap .table-borderless)
+.table.table-borderless,
+.table.table-borderless th,
+.table.table-borderless td { border: 0 !important; }
+
+// responsive aspect-ratio boxes (Bootstrap .ratio) for embeds / plots
+.ratio {
+  position: relative;
+  width: 100%;
+}
+.ratio > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ratio-1x1   { aspect-ratio: 1 / 1; }
+.ratio-4x3   { aspect-ratio: 4 / 3; }
+.ratio-16x9  { aspect-ratio: 16 / 9; }
+.ratio-21x9  { aspect-ratio: 21 / 9; }
+.position-relative { position: relative !important; }
+.position-sticky { position: sticky !important; }
+.shadow-sm { box-shadow: none !important; } // line-not-shadow: neutralize legacy shadow-sm

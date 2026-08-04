@@ -1,0 +1,73 @@
+# Cloudflare tunnel ingress for <DEV-HOSTNAME>
+#
+# Merge the two `<DEV-HOSTNAME>` rules into the LIVE tunnel config on
+# the tunnel host: ~/.cloudflared/chaos.yml (tunnel `chaos`).
+#
+# Order matters. cloudflared matches top-down, so the /loop path rule must come
+# before the catch-all for the same hostname, or every request lands on the
+# landing page.
+#
+# DNS: the zone must be in the same Cloudflare account that owns this tunnel, so
+# one command creates the record -- no external approval needed:
+#
+#   cloudflared tunnel route dns chaos <DEV-HOSTNAME>
+#
+# (This is why we are not on dev.s4e.ai: a CNAME to <tunnel-id>.cfargotunnel.com
+# only resolves when the DNS record and the tunnel live in the SAME Cloudflare
+# account. The s4e.ai zone is on the professor's account, so it cannot point at
+# a tunnel owned by this one. Switching later means changing the hostname here
+# and in DJANGO_ALLOWED_HOSTS, nothing more.)
+#
+# Neither rule opens a port: both targets bind to 127.0.0.1 only, and
+# cloudflared dials them from inside the box.
+
+tunnel: <TUNNEL-ID>
+credentials-file: <HOME>/.cloudflared/<TUNNEL-ID>.json
+protocol: http2
+
+ingress:
+  # --- existing CHAOS rule, unchanged, keep it first ---
+  - hostname: <OTHER-SERVICE-HOSTNAME>
+    service: http://127.0.0.1:7681
+
+  # --- LOOP dev, served under /loop to match prod's SUBPATH ---
+  - hostname: <DEV-HOSTNAME>
+    path: ^/loop
+    service: http://127.0.0.1:8011
+    originRequest:
+      # Image builds and batch imports can be slow; the 30s default is tight.
+      connectTimeout: 30s
+      # Django validates Host against DJANGO_ALLOWED_HOSTS.
+      httpHostHeader: <DEV-HOSTNAME>
+
+  # --- landing page at <DEV-HOSTNAME>/ (catch-all for this hostname) ---
+  - hostname: <DEV-HOSTNAME>
+    service: http://127.0.0.1:8081
+
+  # cloudflared requires a terminating catch-all.
+  - service: http_status:404
+
+# ---------------------------------------------------------------------------
+# APPLYING THIS TOUCHES A LIVE SERVICE. The `chaos` tunnel currently serves
+# <OTHER-SERVICE-HOSTNAME> and has been up 5 days. Reloading it drops in-flight
+# connections, so CHAOS terminal sessions will disconnect.
+#
+#   cp ~/.cloudflared/chaos.yml ~/.cloudflared/chaos.yml.bak-$(date +%F)
+#   # edit, then:
+#   kill -HUP $(pgrep -f "cloudflared tunnel")     # reload without full restart
+#
+# ---------------------------------------------------------------------------
+# ACCESS CONTROL -- required before any production data is cloned into dev.
+#
+# Dev holds a copy of real research data, so an unlisted URL is not a control.
+# Cloudflare Zero Trust -> Access -> Applications -> Add:
+#
+#   Application domain : <DEV-HOSTNAME>   (leave path blank to cover /loop)
+#   Session duration   : 24h
+#   Policy             : Allow -> Emails ending in @jhu.edu
+#                        (or an explicit list of collaborator addresses)
+#
+# Access authenticates at Cloudflare's edge, so unauthenticated requests never
+# reach mintaka. An unpatched Django CVE on dev is unreachable without a valid
+# identity. Free for small teams, needs no application changes.
+# ---------------------------------------------------------------------------

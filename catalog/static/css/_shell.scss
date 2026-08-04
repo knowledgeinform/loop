@@ -1,0 +1,434 @@
+// =============================================================================
+// App shell — header, primary nav, content/sidebar layout, footer
+// =============================================================================
+
+$shell-max: 1320px;
+$nav-collapse: 768px;
+$footer-contributors-wrap: 1024px;
+
+// ------------------------------------------------------------------ Header
+header {
+  background-color: var(--navy);
+  color: #fff;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  box-sizing: border-box;
+  max-width: $shell-max;
+  margin-inline: auto;
+  padding: 0.7rem 1.5rem;
+
+  img.logo {
+    height: 2.4rem;
+    width: auto;
+  }
+
+  .hero-text {
+    font-size: 1.35rem;
+    font-weight: 300;
+    letter-spacing: 0.01em;
+
+    strong {
+      font-weight: 700;
+    }
+
+    .subtitle {
+      font-size: 0.6em;
+      opacity: 0.82;
+    }
+  }
+}
+
+// ------------------------------------------------------------------ Nav
+// Light sticky bar, navy links, tab-style active underline. Shares its
+// language with the detail-page tabs. (White-on-sky failed contrast.)
+.main-nav {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  width: 100%;
+  background-color: var(--paper);
+  border-bottom: 1px solid var(--line-2);
+
+  input#nav-toggle {
+    display: none;
+  }
+
+  .menu {
+    display: none;
+  }
+
+  > ul {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.25rem;
+    max-width: $shell-max;
+    margin-inline: auto;
+    padding: 0 1rem;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+  }
+
+  a {
+    display: flex;
+    align-items: center;
+    padding: 0.9rem 1.1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: color var(--dur) var(--ease-out),
+      background-color var(--dur) var(--ease-out),
+      border-color var(--dur) var(--ease-out);
+
+    &:hover {
+      color: var(--navy);
+      background-color: var(--navy-tint);
+      text-decoration: none;
+    }
+
+    &.active {
+      color: var(--navy);
+      border-bottom-color: var(--navy);
+    }
+  }
+
+  // --------------------------------------------------- Nav dropdowns
+  // Label is a real link to the section overview (/add/, /account/);
+  // the menu reveals fast shortcuts on hover (mouse) or focus-within
+  // (keyboard). No JS — Tab in opens it, Tab out closes it.
+  .nav-dropdown {
+    position: relative;
+    align-items: stretch;
+  }
+
+  .nav-caret {
+    display: inline-block;
+    margin-left: 0.3rem;
+    font-size: 0.7em;
+    line-height: 1;
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .dropdown-menu {
+    top: 100%; // no hover gap between the label and the menu
+  }
+
+  .dropdown-menu-end {
+    left: auto;
+    right: 0;
+  }
+
+  // Reset the nav-link styling that would otherwise cascade onto items.
+  // Scoped through .dropdown-menu so it outranks the shared component rule.
+  .dropdown-menu .dropdown-item {
+    padding: 0.55rem 0.7rem;
+    font-weight: 500;
+    color: var(--ink);
+    border-bottom: none;
+    border-radius: var(--r-sm);
+
+    &:hover {
+      color: var(--navy);
+      background-color: var(--navy-tint);
+    }
+  }
+
+  .dropdown-form { margin: 0; }
+
+  @media (hover: hover) {
+    .nav-dropdown:hover > .dropdown-menu { display: block; }
+    .nav-dropdown:hover .nav-caret { transform: rotate(180deg); }
+  }
+
+  .nav-dropdown:focus-within > .dropdown-menu { display: block; }
+  .nav-dropdown:focus-within .nav-caret { transform: rotate(180deg); }
+}
+
+// mobile hamburger
+@media screen and (max-width: $nav-collapse) {
+  .main-nav {
+    > ul {
+      flex-direction: column;
+      gap: 0;
+      padding: 0;
+    }
+
+    li {
+      border-top: 1px solid var(--line);
+    }
+
+    a {
+      width: 100%;
+      padding: 0.85rem 1.25rem;
+      border-bottom: none;
+      border-left: 3px solid transparent;
+
+      &.active {
+        border-bottom: none;
+        border-left-color: var(--navy);
+        background-color: var(--navy-tint);
+      }
+    }
+
+    // collapse behaviour driven by the #nav-toggle checkbox
+    .menu {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.8rem 1.25rem;
+      color: var(--navy);
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .menu-icon {
+      position: relative;
+      display: block;
+      width: 1.35rem;
+      height: 1rem;
+    }
+
+    .menu-icon-bar {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: var(--navy);
+      transition: transform var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out);
+
+      &:nth-child(1) { top: 0; }
+      &:nth-child(2) { top: 50%; transform: translateY(-50%); }
+      &:nth-child(3) { bottom: 0; }
+    }
+
+    > ul {
+      display: none;
+    }
+
+    #nav-toggle:checked ~ ul {
+      display: flex;
+    }
+
+    #nav-toggle:checked ~ .menu {
+      .menu-icon-bar:nth-child(1) { top: 50%; transform: translateY(-50%) rotate(45deg); }
+      .menu-icon-bar:nth-child(2) { opacity: 0; }
+      .menu-icon-bar:nth-child(3) { bottom: 50%; transform: translateY(50%) rotate(-45deg); }
+    }
+
+    // Dropdowns flatten into the collapsed column — every destination
+    // is visible at once, indented under its section. No hover on touch.
+    .nav-dropdown { flex-direction: column; }
+    .nav-caret { display: none; }
+    .dropdown-divider { display: none; }
+
+    .dropdown-menu {
+      position: static;
+      display: block;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .dropdown-menu .dropdown-item {
+      padding: 0.75rem 1.25rem 0.75rem 2.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      border-radius: 0;
+      border-top: 1px solid var(--line);
+
+      &:hover {
+        color: var(--navy);
+        background-color: var(--navy-tint);
+      }
+    }
+  }
+}
+
+// ------------------------------------------------------------------ Layout
+.main-content-wrapper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: var(--gutter);
+  flex: 1 0 auto;
+  width: 100%;
+  max-width: $shell-max;
+  margin-inline: auto;
+  padding: 1.75rem 1.5rem 2.5rem;
+
+  &.single-column {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 60rem;
+  }
+
+  // Auto-collapse to one column when a page omits the sidebar aside
+  // (e.g. auth pages override the sidebar block to empty).
+  &:not(.single-column):not(:has(> .sidebar)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.content-block {
+  min-width: 0; // allow children (tables) to shrink instead of overflow
+
+  > h1:first-child,
+  > .page-head:first-child {
+    margin-top: 0;
+  }
+}
+
+// alerts flashed at top of content
+.content-block > .alert {
+  margin-bottom: var(--sp-3);
+}
+
+// ------------------------------------------------------------------ Sidebar
+.sidebar {
+  min-width: 0;
+
+  &-content {
+    position: sticky;
+    top: calc(var(--z-sticky) * 0px + 4.5rem);
+    background-color: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 1.25rem 1.35rem;
+  }
+
+  h2 {
+    border: 0;
+    margin-bottom: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  p {
+    margin-bottom: 0.5rem;
+    font-size: var(--fs-body);
+    color: var(--ink);
+  }
+
+  a {
+    color: var(--navy);
+    font-weight: 600;
+  }
+
+  &-news-item {
+    display: block;
+    margin-bottom: 0.65rem;
+
+    &-date {
+      font-style: italic;
+      color: var(--muted);
+    }
+  }
+}
+
+@media screen and (max-width: $nav-collapse) {
+  .main-content-wrapper {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1.25rem 1rem 2rem;
+  }
+
+  .sidebar {
+    display: none;
+  }
+}
+
+// ------------------------------------------------------------------ Footer
+footer {
+  margin-top: auto;
+  background-color: var(--navy);
+  color: #fff;
+
+  .footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2rem;
+    max-width: $shell-max;
+    margin-inline: auto;
+    padding: 1.75rem 1.5rem;
+  }
+
+  img {
+    max-height: 68px;
+    width: auto;
+  }
+
+  .contact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .contact-line:first-child {
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 0.1rem;
+  }
+
+  .footer-contributors {
+    max-width: 26rem;
+    margin-left: auto;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    color: rgba(255, 255, 255, 0.82);
+
+    summary {
+      width: fit-content;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    ul {
+      margin: var(--sp-2) 0 0;
+      padding-left: var(--sp-3);
+    }
+
+    li + li {
+      margin-top: var(--sp-1);
+    }
+  }
+}
+
+@media screen and (max-width: $footer-contributors-wrap) {
+  footer .footer-contributors {
+    flex-basis: 100%;
+    max-width: none;
+    margin-left: 0;
+  }
+}
+
+@media screen and (max-width: 548px) {
+  footer .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  footer .footer-contributors {
+    width: 100%;
+    margin-left: 0;
+  }
+}

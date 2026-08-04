@@ -45,6 +45,7 @@ from mongoengine import (
     StringField,
     URLField,
 )
+from mongoengine.connection import get_db
 
 from . import auid as auid_mod
 from .auid import STRUCTURE_FAMILY_VALUES
@@ -54,7 +55,7 @@ AFFILIATION_CHOICES = tuple((aff, aff) for aff in AFFILIATION_VALUES)
 
 VISIBILITY_DEFAULT: List[str] = ["S4E"]
 
-RAW_DATA_TYPE_CHOICES = ("xrd", "sem", "tem", "eds", "other")
+RAW_DATA_TYPE_CHOICES = ("xrd", "sem", "tem", "eds", "other", "unknown", "na")
 
 
 def _utc_now() -> datetime:
@@ -111,8 +112,40 @@ class EmbeddedDFT(EmbeddedDocument):
     dft_formation_energy_ev = FloatField()
     dft_hull_distance_ev = FloatField()
     dft_bandgap_ev = FloatField()
+    # Electronic properties
+    bandgap_type = StringField()           # e.g. "metal", "insulator", "semiconductor"
+    bandgap_fit_ev = FloatField()          # fitted bandgap [eV]
+
+    # Elastic properties (Voigt-Reuss-Hill averages)
+    bulk_modulus_vrh = FloatField()        # [GPa]
+    shear_modulus_vrh = FloatField()       # [GPa]
+    youngs_modulus_vrh = FloatField()      # [GPa]
+    poisson_ratio = FloatField()
+    elastic_anisotropy = FloatField()
+
+    # Thermal / acoustic properties
+    debye_temperature = FloatField()       # [K]
+    thermal_conductivity_300k = FloatField()  # [W/m/K]
+    gruneisen_parameter = FloatField()
+    thermal_expansion_300k = FloatField()  # [1/K]
+
+    # Structural
+    pearson_symbol = StringField()         # e.g. "cF8"
+    crystal_system = StringField()         # e.g. "cubic"
+    crystal_family = StringField()         # e.g. "cubic"
+
+    # Magnetic
+    spin_atom = FloatField()               # net spin per atom [μB]
+
     dft_metadata = DictField()
     ml_predictions = DictField()
+
+    # All remaining AFLOW-format properties stored verbatim (tensors, Bader charges,
+    # Wyckoff data, thermodynamic tables, etc.)
+    extended_data = DictField()
+
+    spacegroup = StringField()
+    element_sites = DictField()
 
     # Optional backlink for "this calculation models that sample".
     trial_recipe_auid = StringField()
@@ -145,11 +178,17 @@ class EmbeddedTrial(EmbeddedDocument):
     raw_data_link = URLField()
     raw_data_type = StringField(choices=list(RAW_DATA_TYPE_CHOICES))
     file_hash = StringField()
+    # Deterministic hash of the trial's stored payload. This is a provenance
+    # fingerprint; raw-file dedup happens on ``file_hash`` instead.
+    content_hash = StringField()
 
     experimenter = StringField()
     notes = StringField()
     phases_detected = ListField(StringField())
     is_single_phase = BooleanField()
+
+    spacegroup = StringField()
+    element_sites = DictField()
 
     visibility_affiliations = ListField(StringField(choices=list(AFFILIATION_VALUES)))
     created_at = DateTimeField(default=_utc_now)
@@ -170,6 +209,9 @@ class EmbeddedLiterature(EmbeddedDocument):
 
     synthesis_successful = BooleanField()
     exp_condition = EmbeddedDocumentField(ExpCondition)
+
+    spacegroup = StringField()
+    element_sites = DictField()
 
     notes = StringField()
     extracted_by = StringField()
@@ -202,6 +244,8 @@ class Material(Document):
 
     dft_calculations = ListField(EmbeddedDocumentField(EmbeddedDFT))
 
+    latest_trial_date = DateTimeField()
+
     created_at = DateTimeField(default=_utc_now)
     updated_at = DateTimeField(default=_utc_now)
 
@@ -212,7 +256,11 @@ class Material(Document):
             "structure_family",
             "num_elements",
             "-created_at",
+            "-latest_trial_date",
             "dft_calculations.comp_auid",
+            {"fields": ["element_symbols", "-created_at"]},
+            {"fields": ["structure_family", "-created_at"]},
+            {"fields": ["element_symbols", "structure_family", "-created_at"]},
         ],
         "ordering": ["-created_at"],
         "strict": False,
@@ -268,6 +316,7 @@ class Recipe(Document):
             "trials.trial_id",
             "trials.file_hash",
             "literature.doi",
+            {"fields": ["material_auid", "-created_at"]},
         ],
         "ordering": ["-created_at"],
         "strict": False,
@@ -282,6 +331,72 @@ class Recipe(Document):
             self.element_symbols = sorted(str(k) for k in self.elements.keys())
             self.num_elements = len(self.element_symbols)
         self.visibility_affiliations = _clean_visibility(self.visibility_affiliations)
+        now = _utc_now()
+        if not self.created_at:
+            self.created_at = now
+        self.updated_at = now
+        result = super().save(*args, **kwargs)
+        trial_dates = [t.trial_date for t in (self.trials or []) if t.trial_date]
+        if trial_dates:
+            get_db()["materials"].update_one(
+                {"_id": self.material_auid},
+                {"$max": {"latest_trial_date": max(trial_dates)}},
+            )
+        return result
+
+
+class SynthesisPrediction(Document):
+    """Versioned, auditable synthesis recommendation for one material.
+
+    These records are deliberately separate from :class:`Recipe`: a generated
+    route is useful pseudo-evidence for the composition model, but it is not an
+    experiment or a literature result until somebody validates it.
+    """
+
+    id = StringField(primary_key=True)  # material_auid
+    material_auid = StringField(required=True)
+    elements = DictField(required=True)
+    element_symbols = ListField(StringField())
+    structure_family = StringField(required=True)
+
+    methodology = StringField()
+    precursors = ListField(DictField())
+    route_steps = ListField(DictField())
+    temperature = DictField()
+    atmosphere = StringField()
+    cooling_method = StringField()
+
+    evidence = ListField(DictField())
+    assumptions = ListField(StringField())
+    confidence = FloatField(default=0.0)
+    prediction_status = StringField(
+        default="predicted",
+        choices=["predicted", "verified", "rejected"],
+    )
+    training_eligible = BooleanField(default=True)
+    training_weight = FloatField(default=0.2)
+    model_version = StringField()
+    source_hash = StringField()
+    validation = DictField()
+
+    created_at = DateTimeField(default=_utc_now)
+    updated_at = DateTimeField(default=_utc_now)
+
+    meta = {
+        "collection": "synthesis_predictions",
+        "indexes": [
+            "material_auid",
+            "element_symbols",
+            "structure_family",
+            "prediction_status",
+            "training_eligible",
+            "-updated_at",
+        ],
+        "strict": False,
+    }
+
+    def save(self, *args, **kwargs):
+        self.element_symbols = sorted(str(key) for key in (self.elements or {}))
         now = _utc_now()
         if not self.created_at:
             self.created_at = now
@@ -328,6 +443,310 @@ class MLEmbedding(Document):
 # =============================================================================
 # Supporting collections
 # =============================================================================
+
+SYNTHESIS_JOB_STATUS_VALUES = (
+    "pending",
+    "processing",
+    "done",
+    "failed",
+    "skipped",
+)
+
+XRD_ANALYSIS_JOB_STATUS_VALUES = (
+    "queued",
+    "running",
+    "succeeded",
+    "failed",
+)
+
+XRD_ANALYSIS_REVIEW_STATUS_VALUES = (
+    "confirmed",
+    "corrected",
+    "unresolved",
+    "needs-more-data",
+)
+
+XRD_ANALYSIS_PHASE_STATE_VALUES = (
+    "likely single-phase",
+    "likely multiphase",
+    "unresolved",
+    "insufficient-quality data",
+)
+
+
+class SynthesisParseJob(Document):
+    """Queue entry for background LLM discretization of a batch synthesis route.
+
+    Batch uploads store the free-form "Synthesis route" as a single ``other``
+    step and enqueue one of these per imported trial/literature record. The
+    worker (:mod:`catalog.synthesis_worker`) claims ``pending`` jobs atomically,
+    calls the LLM to split ``route_text`` into typed steps, and re-keys the
+    recipe. ``recipe_auid`` is updated to the new (discretized) id once done.
+    """
+
+    kind = StringField(required=True, choices=["experiment", "literature"])
+    recipe_auid = StringField(required=True)
+    material_auid = StringField()
+    trial_id = StringField()  # experiment jobs
+    lit_id = StringField()    # literature jobs
+    route_text = StringField(required=True)
+    username = StringField()  # uploader, so the worker preserves visibility/experimenter
+
+    status = StringField(default="pending", choices=list(SYNTHESIS_JOB_STATUS_VALUES))
+    attempts = IntField(default=0)
+    last_error = StringField()
+
+    created_at = DateTimeField(default=_utc_now)
+    updated_at = DateTimeField(default=_utc_now)
+
+    meta = {
+        "collection": "synthesis_parse_jobs",
+        "indexes": [
+            "status",
+            "recipe_auid",
+            {"fields": ["status", "created_at"]},
+        ],
+        "ordering": ["created_at"],
+        "strict": False,
+    }
+
+    def save(self, *args, **kwargs):
+        self.updated_at = _utc_now()
+        return super().save(*args, **kwargs)
+
+
+class SynthesisParseCache(Document):
+    """Cache of LLM synthesis-route parses, keyed by a hash of (model, prompt, text).
+
+    Guarantees the same route text yields the same discrete steps across retries
+    and re-imports (so content-addressable recipe AUIDs stay stable), and avoids
+    paying for the same parse twice. ``_id`` is the cache key from
+    :func:`catalog.llm_synthesis._cache_key`.
+    """
+
+    id = StringField(primary_key=True)
+    steps = ListField(DictField())
+    model = StringField()
+    prompt_version = StringField()
+    created_at = DateTimeField(default=_utc_now)
+
+    meta = {
+        "collection": "synthesis_parse_cache",
+        "strict": False,
+    }
+
+
+MODEL_TRAINING_STATUS_VALUES = (
+    "pending",
+    "processing",
+    "done",
+    "failed",
+    "skipped",
+)
+
+
+class ModelRetrainJob(Document):
+    """Coalesced background request to refresh the EFA/DEED models."""
+
+    reason = StringField()
+    material_auids = ListField(StringField())
+    trigger_count = IntField(default=1)
+    status = StringField(default="pending", choices=list(MODEL_TRAINING_STATUS_VALUES))
+    attempts = IntField(default=0)
+    model_version = StringField()
+    result_summary = DictField()
+    last_error = StringField()
+    created_at = DateTimeField(default=_utc_now)
+    requested_at = DateTimeField(default=_utc_now)
+    started_at = DateTimeField()
+    completed_at = DateTimeField()
+    updated_at = DateTimeField(default=_utc_now)
+
+    meta = {
+        "collection": "model_retrain_jobs",
+        "indexes": ["status", {"fields": ["status", "requested_at"]}, "-created_at"],
+        "ordering": ["created_at"],
+        "strict": False,
+    }
+
+    def save(self, *args, **kwargs):
+        self.updated_at = _utc_now()
+        return super().save(*args, **kwargs)
+
+
+class ModelVersion(Document):
+    """Immutable metadata for one trained EFA/DEED model artifact."""
+
+    id = StringField(primary_key=True)
+    model_name = StringField(default="LOOP ChemScreen RF")
+    artifact_path = StringField(required=True)
+    targets = ListField(StringField())
+    feature_names = ListField(StringField())
+    training_counts = DictField()
+    metrics = DictField()
+    source_data_hash = StringField()
+    chemscreen_commit = StringField()
+    aflow_enabled = BooleanField(default=False)
+    active = BooleanField(default=False)
+    promoted = BooleanField(default=False)
+    promotion_reason = StringField()
+    created_at = DateTimeField(default=_utc_now)
+
+    meta = {
+        "collection": "model_versions",
+        "indexes": ["active", "-created_at", "source_data_hash"],
+        "ordering": ["-created_at"],
+        "strict": False,
+    }
+
+
+class ModelFeedback(Document):
+    """Prediction-versus-truth audit record used for reward/flag weighting."""
+
+    id = StringField(primary_key=True)
+    material_auid = StringField(required=True)
+    comp_auid = StringField()
+    model_version = StringField()
+    outcome = StringField(required=True, choices=["reward", "flag", "unscored"])
+    results = DictField()
+    sample_weight = FloatField(default=1.0)
+    reason = StringField()
+    created_at = DateTimeField(default=_utc_now)
+
+    meta = {
+        "collection": "model_feedback",
+        "indexes": ["material_auid", "model_version", "outcome", "-created_at"],
+        "ordering": ["-created_at"],
+        "strict": False,
+    }
+
+
+class AFLOWCache(Document):
+    """Cached exact-species AFLUX response and aggregate model features."""
+
+    id = StringField(primary_key=True)
+    species = ListField(StringField())
+    query = StringField()
+    status = StringField(choices=["ok", "empty", "error"])
+    records = ListField(DictField())
+    summary = DictField()
+    error = StringField()
+    fetched_at = DateTimeField(default=_utc_now)
+
+    meta = {
+        "collection": "aflow_cache",
+        "indexes": ["status", "-fetched_at"],
+        "strict": False,
+    }
+
+
+class XRDAnalysisJob(Document):
+    """Persistent background execution record for one content-addressed XRD analysis."""
+
+    analysis_id = StringField(required=True, unique=True)
+
+    material_auid = StringField(required=True)
+    recipe_auid = StringField(required=True)
+    trial_id = StringField(required=True)
+    raw_file_hash = StringField()
+    algorithm_version = StringField(required=True)
+    configuration_version = StringField(required=True)
+
+    status = StringField(
+        required=True,
+        default="queued",
+        choices=list(XRD_ANALYSIS_JOB_STATUS_VALUES),
+    )
+    cache_hit = BooleanField(default=False)
+    attempt_count = IntField(default=0)
+    maximum_attempts = IntField(default=3)
+    worker_identifier = StringField()
+    progress_stage = StringField(default="queued")
+    progress_message = StringField()
+    lease_claimed_at = DateTimeField()
+    lease_expires_at = DateTimeField()
+    last_heartbeat_at = DateTimeField()
+
+    created_at = DateTimeField(default=_utc_now)
+    queued_at = DateTimeField(default=_utc_now)
+    started_at = DateTimeField()
+    completed_at = DateTimeField()
+
+    result_manifest_relative_path = StringField()
+    automated_summary = DictField()
+    warnings = ListField(DictField())
+    failure_codes = ListField(StringField())
+    error_summary = StringField()
+    diagnostic_metadata = DictField()
+
+    meta = {
+        "collection": "xrd_analysis_jobs",
+        "indexes": [
+            "analysis_id",
+            "recipe_auid",
+            "trial_id",
+            "status",
+            {"fields": ["status", "queued_at"]},
+            {"fields": ["status", "lease_expires_at"]},
+        ],
+        "ordering": ["queued_at"],
+        "strict": False,
+    }
+
+
+class XRDAnalysisReview(Document):
+    """Expert review record for one persisted automated XRD analysis."""
+
+    analysis_id = StringField(required=True)
+    material_auid = StringField(required=True)
+    recipe_auid = StringField(required=True)
+    trial_id = StringField(required=True)
+
+    reviewer_username = StringField(required=True)
+    reviewer_display_name = StringField()
+    reviewer_organization = StringField()
+
+    review_status = StringField(
+        required=True,
+        choices=list(XRD_ANALYSIS_REVIEW_STATUS_VALUES),
+    )
+    reviewed_phase_state = StringField(
+        choices=list(XRD_ANALYSIS_PHASE_STATE_VALUES),
+        null=True,
+    )
+    selected_hypothesis_id = StringField()
+    added_candidate_identifiers = ListField(StringField())
+    confidence = StringField()
+    notes = StringField()
+
+    supersedes_review_id = StringField()
+    is_active = BooleanField(default=True)
+
+    created_at = DateTimeField(default=_utc_now)
+    updated_at = DateTimeField(default=_utc_now)
+
+    meta = {
+        "collection": "xrd_analysis_reviews",
+        "indexes": [
+            "analysis_id",
+            "recipe_auid",
+            "trial_id",
+            "review_status",
+            {"fields": ["analysis_id", "-created_at"]},
+            {"fields": ["analysis_id", "is_active"]},
+            {"fields": ["recipe_auid", "trial_id", "-created_at"]},
+        ],
+        "ordering": ["-created_at"],
+        "strict": False,
+    }
+
+    def save(self, *args, **kwargs):
+        now = _utc_now()
+        if not self.created_at:
+            self.created_at = now
+        self.updated_at = now
+        return super().save(*args, **kwargs)
+
 
 class DOIMapping(Document):
     """DOI -> list of material_auids referenced by that paper."""
@@ -636,8 +1055,18 @@ __all__ = [
     "EmbeddedLiterature",
     "Material",
     "Recipe",
+    "SynthesisPrediction",
     "MLEmbedding",
+    "MODEL_TRAINING_STATUS_VALUES",
+    "ModelRetrainJob",
+    "ModelVersion",
+    "ModelFeedback",
+    "AFLOWCache",
     "DOIMapping",
+    "SynthesisParseJob",
+    "SynthesisParseCache",
+    "XRDAnalysisJob",
+    "XRDAnalysisReview",
     "UserAffiliation",
     "UserPrecursor",
     "UserProtocol",

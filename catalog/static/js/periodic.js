@@ -14,10 +14,21 @@ export function setupPeriodicTable({
 
   if (!grid || !selectedWrap) {
     console.warn('Periodic table mount points are missing. Skipping setup.');
-    return;
+    return null;
   }
 
-  (async () => {
+  // Controller returned to callers. Methods are no-ops until the async element
+  // load finishes; `ready` resolves once they are wired (used by batch upload).
+  const controller = {
+    ready: null,
+    select: () => {},
+    deselect: () => {},
+    clear: () => {},
+    setSelections: () => {},
+    getSelections: () => [],
+  };
+
+  controller.ready = (async () => {
     let elements = [];
     try {
       const defaultElementsUrl = new URL('./elements.json', import.meta.url).href;
@@ -247,7 +258,27 @@ export function setupPeriodicTable({
       }
     }
 
+    // Expose imperative controls now that the grid + handlers exist.
+    controller.select = select;
+    controller.deselect = deselect;
+    controller.getSelections = currentList;
+    controller.clear = () => {
+      for (const sym of Array.from(state.keys())) deselect(sym);
+    };
+    controller.setSelections = (list) => {
+      controller.clear();
+      (Array.isArray(list) ? list : []).forEach((entry) => {
+        if (Array.isArray(entry)) {
+          select(entry[0], entry[1] ?? null);
+        } else if (entry && typeof entry === 'object') {
+          select(entry.symbol || entry.element, entry.ratio ?? entry.value ?? null);
+        }
+      });
+    };
+
     // Initial sync
     syncHidden();
   })();
+
+  return controller;
 }

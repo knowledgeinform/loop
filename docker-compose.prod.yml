@@ -7,11 +7,12 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      - /srv/loop/data/LOOP/staticfiles:/app/staticfiles
-      - /srv/loop/data/LOOP/media:/app/media
-      - /srv/loop/data/LOOP/hf-cache:/hf-cache
-      - /srv/loop/data/LOOP/users:/app/sqlite
-      - /srv/loop/data/LOOP/raw-uploads:/app/raw-uploads
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/staticfiles:/app/staticfiles
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/media:/app/media
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/hf-cache:/hf-cache
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/users:/app/sqlite
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/raw-uploads:/app/raw-uploads
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/CHAOS:/app/chaos-data
     environment:
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,s4e.ai
@@ -22,6 +23,7 @@ services:
       MEDIA_ROOT: /app/media
       SQLITE_PATH: /app/sqlite/db.sqlite3
       RAW_UPLOADS_ROOT: /app/raw-uploads
+      CHAOS_DB_PATH: /app/chaos-data/chaos.db
       MONGODB_URI: mongodb://mongodb:27017/loop
       MONGODB_RAW_URI: mongodb://mongodb:27017/loop_raw
     env_file:
@@ -29,7 +31,7 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
-    restart: "no"
+    restart: on-failure
 
   mongodb:
     build:
@@ -44,8 +46,8 @@ services:
         USER mongod
     hostname: mongodb
     volumes:
-      - /srv/loop/data/LOOP/mongodb:/data/db
-      - /srv/loop/data/LOOP/mongodb-configdb:/data/configdb
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/mongodb:/data/db
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/mongodb-configdb:/data/configdb
     environment:
       MONGO_INITDB_DATABASE: loop
     healthcheck:
@@ -54,4 +56,4 @@ services:
       timeout: 5s
       retries: 24
       start_period: 60s
-    restart: "no"
+    restart: on-failure
