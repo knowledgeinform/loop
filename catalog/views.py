@@ -95,7 +95,7 @@ from .forms import LiteratureDataForm, SignupForm
 from .forms import BatchExperimentalUploadForm, BatchLiteratureUploadForm
 from .gsas_tools import peak_finder, peak_finder_fast
 from .raw_db import record_raw_file
-from .prediction_table import screen_3d_transition_metal_oxides
+from .prediction_table import format_composition, screen_3d_transition_metal_oxides
 from .upload_archive import archive_upload
 from .utils import parse_xrd_file, render_xrd_plot, xrd_parse
 from .services.batch_experiment_upload import (
@@ -1331,6 +1331,40 @@ def _format_composition_compact(display_elements: Optional[Dict[str, Any]]) -> s
     return " ".join(parts)
 
 
+def _format_atomic_fractions(elements: Optional[Dict[str, Any]]) -> str:
+    """Atomic fractions, e.g. ``Fe 0.43 - O 0.57`` for Fe3O4.
+
+    The row label already carries the stoichiometry, so repeating the raw counts
+    underneath it says the same thing twice. Fractions answer a different
+    question: what share of the atoms each element is. That is the number that
+    matters for a high-entropy oxide, where equimolar cations are the point and a
+    formula string hides how far off equimolar a sample actually sits.
+
+    Returns "" when every element has the same fraction. An equimolar row would
+    read 0.20 five times, which is the redundancy this replaced.
+    """
+    values: Dict[str, float] = {}
+    for symbol, raw in (elements or {}).items():
+        try:
+            number = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if number > 0:
+            values[str(symbol)] = number
+    if len(values) < 2:
+        return ""
+    total = sum(values.values())
+    if total <= 0:
+        return ""
+    fractions = {symbol: value / total for symbol, value in values.items()}
+    if max(fractions.values()) - min(fractions.values()) < 1e-9:
+        return ""
+    ordered = sorted(symbol for symbol in fractions if symbol != "O")
+    if "O" in fractions:
+        ordered.append("O")
+    return " \u00b7 ".join(f"{symbol} {fractions[symbol]:.2f}" for symbol in ordered)
+
+
 def _format_steps_preview(steps, max_len: int = 96) -> str:
     if not steps:
         return "—"
@@ -1542,6 +1576,12 @@ def browse_data(request):
                 "composition_compact": _format_composition_compact(
                     _display_elements(row.get("elements") or {})
                 ),
+                # Human-readable formula. This is what browse rows show; the AUID
+                # is content-derived and means nothing to a reader, so it moves to
+                # the link target and the hover title instead of the row itself.
+                "composition_display": format_composition(row.get("elements") or {}),
+                # Second line: fractions, not counts. Counts restate the label.
+                "composition_fractions": _format_atomic_fractions(row.get("elements") or {}),
             }
             if search_mode == "semantic":
                 out_row["semantic_score"] = semantic_score_by_auid.get(material_auid)
@@ -1863,6 +1903,10 @@ def composition_detail(request, material_auid):
     context = {
         "view": view,
         "material_auid": material_auid,
+        # Formula shown as the page title. The AUID stays on the page, demoted to
+        # a small line beneath it, because it is what a reader cites or passes to
+        # the API even though it tells them nothing about the material.
+        "composition_display": format_composition(view.get("elements") or {}),
         "elements": display_elements,
         "nominal_composition_html": _nominal_composition_html(display_elements),
         "structure_family": view.get("structure_family"),
@@ -2676,6 +2720,14 @@ def trial_detail(request, recipe_id, trial_id):
     plot_url = None
     detected_peaks = []
     plot_notice = None
+    full_gsas_applied = False
+
+    # Operator-triggered full Rietveld refinement. The automated pipeline above
+    # answers a different question (which phases are present) and cannot answer
+    # it until the reference library covers the sample's chemistry; this is the
+    # manual fit that has always worked, so it stays reachable independently.
+    use_full_gsas = request.GET.get("refine_gsas", "").strip().lower() in ("1", "true", "yes") or \
+        os.environ.get("LOOP_GSAS_FULL_SYNC", "").strip().lower() in ("1", "true", "yes")
 
     file_hash = additional.get("file_hash")
     has_xrd_csv = bool(xrd_store.resolve_raw_path(recipe.id, trial_id))
@@ -2683,10 +2735,11 @@ def trial_detail(request, recipe_id, trial_id):
         try:
             entry = xrd_store.get_or_build(
                 recipe.id, trial_id, file_hash,
-                variant="fast",
+                variant="gsas" if use_full_gsas else "fast",
             )
             detected_peaks = entry.peaks
             plot_url = _versioned_media_url(entry.overlay_url, file_hash)
+            full_gsas_applied = entry.variant == "gsas"
             if entry.plot_style == "stick":
                 plot_notice = "Reference reflection list (calculated stick pattern)."
             elif not detected_peaks:
@@ -2730,6 +2783,7 @@ def trial_detail(request, recipe_id, trial_id):
         "can_modify_trial": _is_uploader_or_superuser(request.user, getattr(record, "experimenter", "")),
         "can_delete_trial": _is_uploader_or_superuser(request.user, getattr(record, "experimenter", "")),
         "has_xrd_csv": has_xrd_csv,
+        "full_gsas_applied": full_gsas_applied,
         "human_phase_meta": _human_phase_status_meta(record),
         "target_structure_rows": _target_structure_rows(recipe, record),
         "latest_analysis": latest_analysis,
@@ -3664,12 +3718,16 @@ def api_docs(request):
 @never_cache
 def developer_portal(request):
     """Human-facing, API-first documentation entry point for LOOP."""
+    from catalog.api.code_samples import rendered_samples
+
+    api_base_url = request.build_absolute_uri(
+        reverse("api-v1-version")
+    ).rsplit("version/", 1)[0]
     context = {
         "hide_sidebar": True,
-        "api_base_url": request.build_absolute_uri(
-            reverse("api-v1-version")
-        ).rsplit("version/", 1)[0],
+        "api_base_url": api_base_url,
         "materials_url": request.build_absolute_uri(reverse("api-v1-materials")),
+        "python_samples": rendered_samples(api_base_url),
     }
     return render(request, "catalog/developer_docs.html", context)
 
@@ -3677,6 +3735,7 @@ def developer_portal(request):
 @never_cache
 def developer_guide(request):
     """Long-form, human-readable API integration guide."""
+    from catalog.api.code_samples import rendered_samples
     from catalog.api.examples import (
         DOCUMENTED_COMPUTATIONAL_PAYLOAD,
         DOCUMENTED_EXPERIMENT_PAYLOAD,
@@ -3686,12 +3745,14 @@ def developer_guide(request):
         DOCUMENTED_VALIDATION_PAYLOAD,
     )
 
+    api_base_url = request.build_absolute_uri(
+        reverse("api-v1-version")
+    ).rsplit("version/", 1)[0]
     context = {
         "hide_sidebar": True,
-        "api_base_url": request.build_absolute_uri(
-            reverse("api-v1-version")
-        ).rsplit("version/", 1)[0],
+        "api_base_url": api_base_url,
         "materials_url": request.build_absolute_uri(reverse("api-v1-materials")),
+        "python_samples": rendered_samples(api_base_url),
         "documented_experiment_json": json.dumps(DOCUMENTED_EXPERIMENT_PAYLOAD, indent=2),
         "documented_literature_json": json.dumps(DOCUMENTED_LITERATURE_PAYLOAD, indent=2),
         "documented_computational_json": json.dumps(DOCUMENTED_COMPUTATIONAL_PAYLOAD, indent=2),

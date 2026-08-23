@@ -87,7 +87,7 @@ class ChemScreenArtifactTests(SimpleTestCase):
             }
         )
         self.assertNotEqual(record.values["EFA"], 999)
-        self.assertEqual(record.calculation_method, "LOOP direct ChemScreen equation")
+        self.assertEqual(record.calculation_method, "LOOP direct calculation")
         self.assertEqual(record.calculation_inputs["reported_values"]["EFA"], 999)
 
     def test_precomputed_model_csv_shape(self):

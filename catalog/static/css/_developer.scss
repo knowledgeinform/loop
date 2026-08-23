@@ -189,6 +189,63 @@
   }
 }
 
+// --- Code language tabs (curl / Python) -------------------------------------
+// Same underline-tab language as the main nav and the detail tabs: text tabs
+// with a 2px navy underline on the active one. No boxed or pill tabs.
+//
+// site.js builds the bar and hides the inactive panels. Until it does, every
+// panel stays visible with its own caption, so the samples are still readable.
+.code-tabs {
+  margin: var(--sp-3) 0;
+}
+
+.code-tabs-bar {
+  display: flex;
+  gap: var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--sp-2);
+}
+
+.code-tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; // sit the underline on the bar's hairline
+  padding: var(--sp-2) 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover { color: var(--navy); }
+
+  &.active {
+    color: var(--navy);
+    border-bottom-color: var(--navy);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--navy);
+    outline-offset: 2px;
+  }
+}
+
+// Before JS runs there is no tab bar, so caption each panel. Once the group is
+// enhanced the captions would duplicate the tab labels, so they go away.
+.code-tabs-panel::before {
+  content: attr(data-language);
+  display: block;
+  margin-bottom: var(--sp-2);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.code-tabs[data-enhanced] .code-tabs-panel::before { content: none; }
+
 // JS wraps every non-empty <pre> in .code-block and anchors the copy button
 // to the wrapper, so the button never scrolls with (or scrolls!) the code.
 .code-block {

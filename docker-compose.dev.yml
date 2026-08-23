@@ -24,6 +24,11 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/loop
       MONGODB_RAW_URI: mongodb://mongodb:27017/loop_raw
       RAW_UPLOADS_ROOT: /app/raw-uploads
+      # Deliberately NOT a named volume: the repo is bind-mounted at /app, so
+      # this lands in ./archive on the host and you can read the JSON records
+      # directly. (raw-uploads above is a named volume, which is why nobody has
+      # ever looked inside it.) Gitignored.
+      ARCHIVE_ROOT: /app/archive
       CHEMSCREEN_BOOTSTRAP_ON_START: "1"
       SQLITE_PATH: /app/db.sqlite3
       # Single canonical cache root for all Hugging Face libraries

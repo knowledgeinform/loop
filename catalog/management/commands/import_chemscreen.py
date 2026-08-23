@@ -46,7 +46,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--model-name",
-            default=getattr(settings, "CHEMSCREEN_MODEL_NAME", "ChemScreen"),
+            default=getattr(settings, "CHEMSCREEN_MODEL_NAME", "LOOP screening"),
             help="Model provenance label stored with predictions.",
         )
         parser.add_argument(
@@ -159,6 +159,30 @@ class Command(BaseCommand):
 
         if operations:
             get_db()[Material._meta["collection"]].bulk_write(operations, ordered=True)
+
+            # Raw pymongo fires no MongoEngine signals, so the archive hooks
+            # never see these writes. Mirror the affected materials explicitly.
+            # This matters more than it looks: the `$set` above stamps a fresh
+            # `updated_at` on every run, and this command runs on every
+            # container start via `ensure_prediction_data`. Without this, every
+            # boot silently drifted ~1.5k materials out of sync with the
+            # archive, and `loop_archive verify` could never come back clean.
+            try:
+                from catalog.archive import rebuild as archive_rebuild
+
+                counts = archive_rebuild.export_documents("material", grouped.keys())
+                self.stdout.write(
+                    f"Archive: {counts.written} material(s) updated, "
+                    f"{counts.unchanged} unchanged."
+                )
+            except Exception as exc:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Archive mirror failed ({exc}). Run "
+                        "`manage.py loop_archive export --kind material` to repair."
+                    )
+                )
+
             from catalog.model_training import enqueue_model_retraining
 
             enqueue_model_retraining(
@@ -183,7 +207,7 @@ class Command(BaseCommand):
         metric_name: str,
     ) -> Dict[str, Any]:
         identity = {
-            "source": "ChemScreen",
+            "source": "LOOP screening",
             "chem_id": record.chem_id,
             "kind": record.kind,
             "model": record.model_name,
@@ -206,15 +230,15 @@ class Command(BaseCommand):
         ml_predictions: Dict[str, Any] = {}
         if record.kind == "observed":
             extended_data.update(record.values)
-            dft_source = "ChemScreen DFT"
+            dft_source = "DFT"
         elif record.kind == "prediction":
             ml_predictions = {
-                "model": record.model_name or "ChemScreen",
+                "model": record.model_name or "LOOP screening",
                 **record.values,
             }
-            dft_source = "ChemScreen model"
+            dft_source = "Screening model"
         else:
-            dft_source = "ChemScreen candidate pool"
+            dft_source = "Candidate pool"
         now = datetime.now(timezone.utc)
         return {
             "comp_auid": comp_auid,
@@ -224,7 +248,7 @@ class Command(BaseCommand):
             "extended_data": extended_data,
             "spacegroup": "225",
             "element_sites": {},
-            "uploaded_by": "ChemScreen sync",
+            "uploaded_by": "screening sync",
             "visibility_affiliations": ["S4E"],
             "created_at": now,
             "updated_at": now,

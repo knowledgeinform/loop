@@ -189,6 +189,14 @@ def connect_document_signals() -> None:
         return
     from .documents import Material, Recipe, SynthesisPrediction
 
+    # Archive hooks first. They run on pre_save_post_validation / pre_delete,
+    # so they land on disk before Mongo is touched; the embedding and
+    # retraining hooks below are post_save side effects on data that is by
+    # then already durable.
+    from .archive.hooks import connect_archive_signals
+
+    connect_archive_signals()
+
     me_signals.post_save.connect(_material_post_save, sender=Material)
     me_signals.post_save.connect(_recipe_post_save, sender=Recipe)
     me_signals.post_delete.connect(_recipe_post_delete, sender=Recipe)

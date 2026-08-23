@@ -29,6 +29,7 @@ new step types can ship without schema migrations.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -50,7 +51,7 @@ from mongoengine.connection import get_db
 from . import auid as auid_mod
 from .auid import STRUCTURE_FAMILY_VALUES
 
-AFFILIATION_VALUES = ("S4E", "APL", "Oak Ridge")
+AFFILIATION_VALUES = ("S4E", "APL", "Oak Ridge", "MIT")
 AFFILIATION_CHOICES = tuple((aff, aff) for aff in AFFILIATION_VALUES)
 
 VISIBILITY_DEFAULT: List[str] = ["S4E"]
@@ -578,7 +579,7 @@ class ModelVersion(Document):
     """Immutable metadata for one trained EFA/DEED model artifact."""
 
     id = StringField(primary_key=True)
-    model_name = StringField(default="LOOP ChemScreen RF")
+    model_name = StringField(default="LOOP EFA/DEED RF")
     artifact_path = StringField(required=True)
     targets = ListField(StringField())
     feature_names = ListField(StringField())
@@ -927,6 +928,23 @@ def upsert_user_affiliations(user, affiliations: List[str]) -> None:
         set__affiliations=normalized,
         upsert=True,
     )
+
+    # `update_one` fires no MongoEngine signals, so the archive hooks never see
+    # this write. Mirror it explicitly, reading the row back so the archived
+    # payload matches what Mongo actually holds (including the id assigned by
+    # the upsert). Affiliations gate visibility on every document, so losing
+    # them in a rebuild would silently hide data from its owners.
+    try:
+        from catalog.archive import registry, writer
+
+        if writer.is_enabled():
+            row = UserAffiliation.objects(user_id=user.id).first()
+            if row is not None:
+                writer.write_payload("user_affiliation", registry.document_payload(row))
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "archive: could not record affiliations for user %s", user.id
+        )
 
 
 # =============================================================================

@@ -277,7 +277,68 @@
 
   }
 
+  /* --------------------------------------------------- Code language tabs
+   * Markup: .code-tabs wrapping two or more .code-tabs-panel elements, each
+   * labelled with data-language. The tab bar is built here rather than in the
+   * template so a sample block is just its panels — and so the panels all stay
+   * visible, each still labelled, if this script never runs. */
+  function initCodeTabs() {
+    document.querySelectorAll('.code-tabs').forEach(function (group, groupIndex) {
+      var panels = Array.prototype.slice.call(
+        group.querySelectorAll('.code-tabs-panel')
+      );
+      if (panels.length < 2) return;
+
+      var bar = document.createElement('div');
+      bar.className = 'code-tabs-bar';
+      bar.setAttribute('role', 'tablist');
+      bar.setAttribute('aria-label', 'Example language');
+
+      var tabs = panels.map(function (panel, index) {
+        var tabId = 'code-tab-' + groupIndex + '-' + index;
+        if (!panel.id) panel.id = tabId + '-panel';
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', tabId);
+        var tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'code-tab';
+        tab.id = tabId;
+        tab.textContent = panel.dataset.language || 'Example ' + (index + 1);
+        tab.setAttribute('role', 'tab');
+        tab.setAttribute('aria-controls', panel.id);
+        bar.appendChild(tab);
+        return tab;
+      });
+
+      var select = function (index, moveFocus) {
+        tabs.forEach(function (tab, i) {
+          var active = i === index;
+          tab.setAttribute('aria-selected', active ? 'true' : 'false');
+          tab.tabIndex = active ? 0 : -1;
+          tab.classList.toggle('active', active);
+          panels[i].hidden = !active;
+        });
+        if (moveFocus) tabs[index].focus();
+      };
+
+      tabs.forEach(function (tab, index) {
+        tab.addEventListener('click', function () { select(index, false); });
+        tab.addEventListener('keydown', function (e) {
+          var step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+          if (!step) return;
+          e.preventDefault();
+          select((index + step + tabs.length) % tabs.length, true);
+        });
+      });
+
+      group.insertBefore(bar, group.firstChild);
+      group.setAttribute('data-enhanced', 'true');
+      select(0, false);
+    });
+  }
+
   function initPageEnhancements() {
+    initCodeTabs();
     addCopyButtons();
     initDeveloperDocs();
   }

@@ -222,7 +222,7 @@ def build_framework_prediction(
     if aflow_summary:
         evidence.append({"kind": "thermodynamics", "label": "Cached AFLOW exact-species summary", "value": aflow_summary})
     if experimental_probability is not None:
-        evidence.append({"kind": "experiment", "label": "ChemScreen neighbor success probability", "value": experimental_probability})
+        evidence.append({"kind": "experiment", "label": "Neighbor success probability", "value": experimental_probability})
 
     confidence = 0.35
     confidence += 0.10 if d2h is not None else 0.0

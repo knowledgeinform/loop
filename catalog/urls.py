@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import data_management_views, views
+from . import data_management_views, media_access, views
 
 
 urlpatterns = [
@@ -162,5 +162,15 @@ urlpatterns = [
         "data-management/<slug:collection>/",
         data_management_views.data_management_collection,
         name="data_management_collection",
+    ),
+    # Uploaded media. Django does not serve MEDIA_URL when DEBUG is False, and
+    # an Apache Alias would publish every uploaded pattern to anyone with the
+    # URL, so this route exists to apply the same affiliation check the rest of
+    # the catalog uses. Registered last: it is a catch-all under media/ and
+    # must not shadow a more specific route.
+    path(
+        "media/<path:relative_path>",
+        media_access.protected_media,
+        name="protected_media",
     ),
 ]

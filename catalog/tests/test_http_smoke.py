@@ -102,10 +102,10 @@ class CatalogURLSmokeTests(TestCase):
             "synthesis_temperature": "900.0–1100.0 °C",
             "synthesis_temperature_source": "Published HEO route",
             "synthesis_temperature_source_url": "",
-            "dft_status": "ChemScreen DFT",
+            "dft_status": "DFT",
             "dft_detail": "Observed EFA/DEED/d2h",
             "exp_status": "74% single-phase likelihood",
-            "exp_detail": "ChemScreen 5-neighbor estimate · unvalidated",
+            "exp_detail": "5-neighbor estimate · unvalidated",
             "exp_source": "",
             "concerns": ["Zn: volatility risk during high-temperature synthesis"],
         }

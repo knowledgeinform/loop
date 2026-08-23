@@ -216,6 +216,33 @@ def _build_dft_dict(row: dict, mat_auid: str, comp_auid: str, chaos_auid: str) -
 class Command(BaseCommand):
     help = "Import AFLOW-format computational data from the CHAOS SQLite database into MongoDB."
 
+    def _export_materials_to_archive(self) -> None:
+        """Re-emit every material into the JSON archive after a bulk import.
+
+        Uses the shared export path so the files are byte-identical to what the
+        signal hooks would have written. Non-fatal: the import has already
+        succeeded, and `manage.py loop_archive export` can be re-run by hand.
+        """
+        try:
+            from catalog.archive import rebuild as archive_rebuild
+            from catalog.archive import writer as archive_writer
+
+            if archive_writer.archive_root() is None:
+                return
+            self.stdout.write("  Mirroring materials into the JSON archive...")
+            counts = archive_rebuild.export(["material"])["material"]
+            self.stdout.write(
+                f"  Archive: {counts.written} written, {counts.unchanged} unchanged, "
+                f"{counts.failed} failed."
+            )
+        except Exception as exc:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"  Archive mirror failed ({exc}). Run "
+                    "`manage.py loop_archive export --kind material` to repair."
+                )
+            )
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--incremental",
@@ -461,6 +488,16 @@ class Command(BaseCommand):
                 )
 
         _flush(push_ops)
+
+        # Mirror the imported materials into the JSON archive.
+        #
+        # This is the one write path that archives *after* Mongo rather than
+        # before. Two reasons it is the right trade here: the bulk_write is a
+        # two-phase pull/push that has no single in-memory document to archive,
+        # and CHAOS itself is an external source of truth that can simply be
+        # re-imported. An operator-run bulk load is also not a user request that
+        # could silently lose data. Everything else in LOOP is archive-first.
+        self._export_materials_to_archive()
 
         pass2_elapsed = time.monotonic() - t0_pass2
         total_elapsed = time.monotonic() - start_time

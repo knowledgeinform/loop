@@ -60,9 +60,15 @@
             {% endif %}
           </td>
           <td>
-            <a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono">{{ row.material_auid }}</a>
-            {% if row.composition_compact %}
-              <div class="small text-muted browse-elements-inline">{{ row.composition_compact }}</div>
+              {% comment %}
+                AUID is content-derived and means nothing to a reader, so the
+                formula is the label. The identifier stays the link target and
+                is on hover for anyone citing the record or calling the API.
+              {% endcomment %}
+            <a href="{% url 'composition_detail' material_auid=row.material_auid %}"
+               title="{{ row.material_auid }}">{{ row.composition_display|default:row.material_auid }}</a>
+            {% if row.composition_fractions %}
+              <div class="small text-muted browse-elements-inline">{{ row.composition_fractions }}</div>
             {% endif %}
           </td>
           <td><span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span></td>

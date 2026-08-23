@@ -155,6 +155,29 @@ def record_raw_file(
         upsert=True,
         **set_fields,
     )
+    _archive_row(file_hash)
+
+
+def _archive_row(file_hash: str) -> None:
+    """Mirror a ``raw_files`` row into the JSON archive.
+
+    ``QuerySet.update_one`` fires no MongoEngine signals, so the archive hooks
+    in :mod:`catalog.archive.hooks` never see these writes. Both functions in
+    this module use an upsert (deliberately — it makes repeat uploads of the
+    same file idempotent), so they archive explicitly instead.
+
+    Read-after-write rather than reconstructing the row from the arguments:
+    these are partial updates that merge with whatever a previous upload
+    recorded, so only the stored document knows the full state.
+    """
+    from catalog.archive import registry, writer
+
+    if not writer.is_enabled():
+        return
+    row = RawFile.objects(id=file_hash).first()
+    if row is None:
+        return
+    writer.write_payload("raw_file", registry.document_payload(row))
 
 
 def record_derived_file(

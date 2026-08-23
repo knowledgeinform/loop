@@ -22,6 +22,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from django.conf import settings
 
+from .canonical import apply_artifact_mode
 from .documents import (
     Material,
     ModelFeedback,
@@ -337,6 +338,11 @@ def _write_artifact(version: str, artifact: Dict[str, Any]) -> Path:
     ) as handle:
         pickle.dump(artifact, handle)
         temporary = Path(handle.name)
+    # NamedTemporaryFile creates 0600 and os.replace keeps the source mode, so
+    # without this every trained artifact lands unreadable outside the service
+    # account. The model directory is a bind mount that is rsynced offsite
+    # nightly, and that job fails outright on a single unreadable file.
+    apply_artifact_mode(temporary)
     os.replace(temporary, destination)
     return destination
 
@@ -384,7 +390,7 @@ def train_and_maybe_promote(*, reason: str = "") -> Dict[str, Any]:
     version = f"{now.strftime('%Y%m%dT%H%M%S%fZ')}-{source_hash[:8]}"
     artifact = {
         "version": version,
-        "model_name": "LOOP ChemScreen RF",
+        "model_name": "LOOP EFA/DEED RF",
         "feature_names": list(FEATURE_NAMES),
         "models": models,
         "metrics": metrics,

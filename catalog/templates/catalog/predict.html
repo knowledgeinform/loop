@@ -1,12 +1,12 @@
 {% extends "base_generic.html" %}
 
-{% block title %}<title>LOOP — Ranked 3d oxides</title>{% endblock %}
+{% block title %}<title>Ranked 3d oxides | LOOP</title>{% endblock %}
 
 {% block content %}
 <div class="container py-4 prediction-workspace">
   <p class="section-eyebrow mb-2">Focused materials screen</p>
   <h1>Ranked 3d transition-metal oxides</h1>
-  <p class="lead">This is a fixed, data-backed ranking—not a prompt or general-purpose predictor. LOOP combines ChemScreen thermodynamic predictions, experimental outcomes, and literature-informed synthesis priors for the top 20 five-cation 3d oxides. Every measured, model-derived, and literature-prior value is labelled below.</p>
+  <p class="lead">LOOP combines thermodynamic predictions, experimental outcomes, and literature-informed synthesis priors for the top 20 five-cation 3d oxides. Every measured, model-derived, and literature-prior value is labelled below.</p>
 
   <div class="screening-criteria mb-4">
     <strong>Screen applied</strong>
@@ -20,7 +20,7 @@
       {% if model_status.active %}
       <p class="mb-0">Active model <code>{{ model_status.active.id }}</code>. New labeled records are scored against this version, rewarded or flagged, and then included in a full retraining run. A candidate replaces the active model only when validation does not get worse.</p>
       {% else %}
-      <p class="mb-0">No trained EFA/DEED model is active yet. The retraining worker will create the first version after enough labeled ChemScreen/LOOP records are available.</p>
+      <p class="mb-0">No trained EFA/DEED model is active yet. The retraining worker will create the first version after enough labeled records are available.</p>
       {% endif %}
       {% if request.user.is_superuser %}
       <p class="mt-2 mb-0"><a href="{% url 'data_management_collection' collection='model_feedback' %}">Review individual rewards and flags</a></p>
@@ -34,7 +34,7 @@
       <div><dt>DEED validation MAE</dt><dd>{{ model_status.active.metrics.deed.mae|floatformat:4 }}</dd></div>
       {% endif %}
       <div><dt>Latest job</dt><dd>{{ model_status.latest_job.status|default:"Not queued" }}</dd></div>
-      <div><dt>AFLOW</dt><dd>{% if model_status.active.aflow_enabled %}Feature enrichment on{% else %}Awaiting first model{% endif %}</dd></div>
+      <div><dt>Feature enrichment</dt><dd>{% if model_status.active.aflow_enabled %}On{% else %}Awaiting first model{% endif %}</dd></div>
     </dl>
   </section>
 
@@ -110,7 +110,7 @@
   </div>
   {% else %}
   <div class="alert alert-warning">
-    No eligible five-cation 3d transition-metal oxides are loaded. Import the ChemScreen observed datasets, then reload this page.
+    No eligible five-cation 3d transition-metal oxides are loaded. Import the observed datasets, then reload this page.
   </div>
   {% endif %}
 </div>

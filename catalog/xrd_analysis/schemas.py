@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable, Literal, Mapping, Optional
 
 from catalog import xrd_store
+from catalog.canonical import to_jsonable  # noqa: F401  (re-exported; see below)
 
 
 WarningSeverity = Literal["info", "warning", "error"]
@@ -1229,27 +1230,11 @@ DEFAULT_XRD_ANALYSIS_CONFIG = XRDAnalysisConfig(
 )
 
 
-def to_jsonable(value: Any) -> Any:
-    if is_dataclass(value):
-        result: dict[str, Any] = {}
-        for item in fields(value):
-            result[item.name] = to_jsonable(getattr(value, item.name))
-        return result
-    if isinstance(value, dict):
-        return {str(key): to_jsonable(val) for key, val in sorted(value.items(), key=lambda item: str(item[0]))}
-    if isinstance(value, (list, tuple, set)):
-        return [to_jsonable(item) for item in value]
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    if isinstance(value, Path):
-        return str(value)
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    if isinstance(value, float):
-        if math.isnan(value) or math.isinf(value):
-            return None
-        return value
-    return value
+# ``to_jsonable`` now lives in :mod:`catalog.canonical` so the archive writer and
+# the XRD analysis pipeline share one normalization. It is imported at the top of
+# this module and re-exported here for the many call sites that do
+# ``from .schemas import to_jsonable``. The behavior is byte-for-byte identical —
+# persisted ``analysis_id`` / ``result_hash`` values depend on it.
 
 
 def assemble_xrd_analysis_input(

@@ -10,6 +10,13 @@ umask 077
 mkdir -p "$BACKUP_DIR"
 cd "$ROOT"
 
+# The mongodump archives are a fast-restore convenience, not the record of
+# truth: they are opaque binaries tied to a compatible mongod. The JSON archive
+# under ARCHIVE_ROOT is what actually needs to survive, and it is what the
+# offsite backup should cover. Check it agrees with the database first, so a
+# silent divergence surfaces here rather than during a restore.
+"$PYTHON_BIN" manage.py loop_archive verify || echo "WARNING: JSON archive diverges from MongoDB; run 'manage.py loop_archive verify' for detail"
+
 "$PYTHON_BIN" manage.py mongo_admin backup-run --archive "$BACKUP_DIR/loop-$TS.archive.gz" --yes
 "$PYTHON_BIN" manage.py mongo_admin backup-raw --archive "$BACKUP_DIR/loop_raw-$TS.archive.gz" --yes
 

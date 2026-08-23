@@ -13,7 +13,7 @@ from catalog.model_training import (
 )
 
 
-def _dft(*, source="ChemScreen DFT", extended=None, formation=None):
+def _dft(*, source="DFT", extended=None, formation=None):
     return SimpleNamespace(
         dft_source=source,
         extended_data=extended or {},
@@ -63,7 +63,7 @@ class ModelFeatureTests(SimpleTestCase):
         observed = SimpleNamespace(
             elements={"Co": 1, "O": 1},
             dft_calculations=[
-                _dft(source="ChemScreen DFT", extended={"EFA": 42, "DEED": 12})
+                _dft(source="DFT", extended={"EFA": 42, "DEED": 12})
             ],
         )
         self.assertFalse(material_has_training_labels(predicted))

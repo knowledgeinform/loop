@@ -12,7 +12,18 @@ services:
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/hf-cache:/hf-cache
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/users:/app/sqlite
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/raw-uploads:/app/raw-uploads
+      # The JSON archive: the catalog's source of truth. MongoDB below is a
+      # rebuildable index over it, so this bind mount is the one that must
+      # survive a host rebuild and be included in offsite backups.
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/archive:/app/archive
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/CHAOS:/app/chaos-data
+      # Trained EFA/DEED model artifacts. Without this mount they are written
+      # to the container's own filesystem and destroyed on every recreation,
+      # while the ModelVersion record in MongoDB survives. The app then thinks
+      # it has an active model, fails to load the missing .pkl, and silently
+      # renders every predicted column as "Not calculated" with no error shown.
+      # CHEMSCREEN_MODEL_DIR in .env must point at this path.
+      - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/models:/app/models
     environment:
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,s4e.ai
@@ -23,6 +34,7 @@ services:
       MEDIA_ROOT: /app/media
       SQLITE_PATH: /app/sqlite/db.sqlite3
       RAW_UPLOADS_ROOT: /app/raw-uploads
+      ARCHIVE_ROOT: /app/archive
       CHAOS_DB_PATH: /app/chaos-data/chaos.db
       MONGODB_URI: mongodb://mongodb:27017/loop
       MONGODB_RAW_URI: mongodb://mongodb:27017/loop_raw
@@ -32,6 +44,18 @@ services:
       mongodb:
         condition: service_healthy
     restart: on-failure
+
+  # Postfix on the host relays only for 127.0.0.0/8, so the app container is
+  # refused with "454 Relay access denied" when it connects over the docker
+  # bridge. This forwarder runs in the host network namespace, so its hop to
+  # postfix originates from loopback and is accepted -- no postfix config
+  # change, which would need root we do not have. It binds the bridge gateway
+  # only, never mintaka's public interface, so it is not an open relay.
+  mailrelay:
+    image: alpine/socat:latest
+    network_mode: host
+    command: TCP-LISTEN:2525,bind=172.21.0.1,fork,reuseaddr TCP:127.0.0.1:25
+    restart: unless-stopped
 
   mongodb:
     build:

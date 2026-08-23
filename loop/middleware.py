@@ -18,6 +18,32 @@ def _extract_api_key(request):
     return x_api_key.strip() or None
 
 
+class ArchiveContextMiddleware:
+    """Attribute archive writes made during this request to the signed-in user.
+
+    The JSON archive journals an actor and a source for every change, but the
+    write happens inside a MongoEngine signal handler with no access to the
+    request. This middleware puts the attribution into a context variable that
+    the writer reads. See :mod:`catalog.archive.context`.
+
+    Must sit *after* the authentication middlewares so ``request.user`` is
+    resolved, and after ``ApiTokenAuthMiddleware`` so an API key's owning user
+    is credited rather than "anonymous".
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from catalog.api.exceptions import is_api_v1_path
+        from catalog.archive.context import actor_from_user, archive_context
+
+        source = "api" if is_api_v1_path(request.path_info) else "web"
+        attribution = actor_from_user(getattr(request, "user", None), source=source)
+        with archive_context(attribution.actor, attribution.source):
+            return self.get_response(request)
+
+
 class ApiTokenAuthMiddleware:
     """Authenticate ``/api/`` requests via an API key header. A resolved key sets
     ``request.user`` and skips CSRF; the user still passes the approval gate.
@@ -96,6 +122,7 @@ DEFAULT_EXEMPT = (
     r"^docs\.url$",                # canonical human documentation URI
     r"^developers/api\.md$",       # public Markdown API guide
     r"^developers/agent\.md$",     # public API-only agent client guide
+    r"^developers/samples/[\w-]+\.py$",  # downloadable copies of the documented samples
     r"^developers/docs/?$",         # public human API guide
     r"^developers/guide/?$",        # public long-form integration guide
     r"^developers/keys/?$",         # public API-key page shows sign-in/approval state

@@ -82,6 +82,12 @@ STEP_TYPE_VALUES = tuple(STEP_FIELD_SCHEMA.keys())
 _PRECURSOR_KEYS = ("cas_number", "name", "formula", "purity", "supplier", "notes")
 _RATIO_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)\s*$")
 
+# Ways an extractor writes "the paper does not report this". Treated as absent
+# rather than as a malformed value, so a record is not rejected for honestly
+# recording a gap. Deliberately narrow: only unambiguous placeholders, never a
+# value that could be a real measurement.
+_NOT_RECORDED = frozenset({NA, "n/a", "none", "null", "unknown", "-", "--"})
+
 
 # ---------------------------------------------------------------------------
 # Small coercion helpers (self-contained to avoid importing from views.py,
@@ -123,9 +129,17 @@ def _text_or_na(value) -> str:
 
 
 def _normalize_ratio(value) -> str:
-    """Canonicalize a ``x:y`` ratio string; raise ``ValueError`` on bad input."""
+    """Canonicalize a ``x:y`` ratio string; raise ``ValueError`` on bad input.
+
+    Placeholders meaning "the paper does not report this" normalize to empty
+    rather than raising. This module already writes ``NA`` into other fields
+    itself (see ``_text_or_na``) and accepts it for atmosphere, furnace type and
+    element sites, so rejecting it here alone was an inconsistency: an extractor
+    filling every unknown field the same way had rows silently dropped from an
+    import for one field out of many.
+    """
     raw = str(value or "").strip()
-    if not raw:
+    if not raw or raw.lower() in _NOT_RECORDED:
         return ""
     match = _RATIO_RE.match(raw)
     if not match:

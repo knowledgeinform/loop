@@ -34,6 +34,12 @@ _NON_WEB_COMMANDS = frozenset({
     "backfill_embeddings",
     "import_chaos_data",
     "discretize_synthesis",
+    # Archive operations must not run alongside the background workers: those
+    # threads write to MongoDB, so they can mutate documents mid-export (making
+    # the archive stale the moment it is written) or race a `rebuild` that is
+    # repopulating the database from disk. They also have no use for a preloaded
+    # embedding model, which costs ~4 minutes of startup per invocation.
+    "loop_archive",
 })
 
 

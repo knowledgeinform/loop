@@ -17,12 +17,18 @@
     </nav>
 
     <div class="comp-hero-headline">
-      <span class="comp-hero-auid">{{ material_auid }}</span>
+        <span class="comp-hero-title">{{ composition_display|default:material_auid }}</span>
       {% if structure_family %}
       <span class="badge structure-badge structure-badge-{{ structure_family|lower }}">{{ structure_family|title }}</span>
       {% endif %}
       <span class="comp-hero-elcount">{{ num_elements }} element{{ num_elements|pluralize }}</span>
     </div>
+
+      {% comment %}
+        Kept, but demoted. Readers do not need it, yet it is the identifier
+        people cite and pass to the API, and this is the record's own page.
+      {% endcomment %}
+      <p class="comp-hero-auid-line"><span class="auid-mono">{{ material_auid }}</span></p>
 
     {% if annotation and annotation.display_name %}
     <p class="comp-hero-name">{{ annotation.display_name }}</p>

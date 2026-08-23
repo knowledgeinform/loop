@@ -25,6 +25,8 @@ from typing import Any, Dict, Optional
 
 from django.conf import settings
 
+from catalog.canonical import apply_artifact_mode
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,5 +124,9 @@ def add_files(archive_folder: str, file_paths: list[str], *, relative_to: str | 
                     dest = folder / src.name
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dest)
+                # copy2 carries the source mode across, so a restrictively
+                # written source would land here unreadable too. This archive
+                # is rsynced offsite by another account nightly.
+                apply_artifact_mode(dest)
     except Exception:
         logger.warning("upload_archive: failed to add files to %s", archive_folder, exc_info=True)

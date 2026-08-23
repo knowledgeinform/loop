@@ -190,6 +190,26 @@ def _get(value: Any, name: str, default: Any = None) -> Any:
     return getattr(value, name, default)
 
 
+# Internal model/database names that mean nothing to a reader outside the lab.
+# Naming one on the page also implies the ranking depends on that source, which
+# would make it a property of the database rather than a scientific result.
+# Methodology belongs in the references at the foot of the page.
+_INTERNAL_NAMES = ("ChemScreen", "chemscreen", "AFLOW", "aflow")
+
+
+def _public_provenance(label: str) -> str:
+    """Strip internal model/database names from a stored provenance label.
+
+    Applied on read, so records keep their original lineage on disk while the
+    page shows a source-agnostic description.
+    """
+    cleaned = str(label or "")
+    for name in _INTERNAL_NAMES:
+        cleaned = cleaned.replace(f" {name} ", " ").replace(name, "")
+    cleaned = " ".join(cleaned.split())
+    return cleaned.strip(" ·-") or ""
+
+
 def _as_mapping(value: Any) -> Mapping[str, Any]:
     if isinstance(value, Mapping):
         return value
@@ -220,6 +240,11 @@ def _find_payload_value(payload: Any, keys: Sequence[str]) -> Tuple[Optional[flo
 
 def dft_property_value(dft: Any, spec: PropertySpec) -> Tuple[Optional[float], str]:
     """Return ``(value, provenance)`` for a typed, DFT, or ML payload field."""
+    # Provenance labels are read straight from stored records, and ~544 rows
+    # imported before the rename still carry the internal model name. Normalize
+    # on read so the page never shows it, without rewriting historical data:
+    # the record keeps saying where the number came from, the reader does not
+    # need to care which internal codebase produced it.
     if spec.typed_field:
         value = _safe_number(_get(dft, spec.typed_field))
         if value is not None:
@@ -229,7 +254,7 @@ def dft_property_value(dft: Any, spec: PropertySpec) -> Tuple[Optional[float], s
     value, _ = _find_payload_value(extended_data, spec.payload_keys)
     if value is not None:
         calculation_method = str(extended_data.get("calculation_method") or "").strip()
-        return value, calculation_method or "DFT"
+        return value, _public_provenance(calculation_method) or "DFT"
 
     value, _ = _find_payload_value(_get(dft, "ml_predictions", {}) or {}, spec.payload_keys)
     if value is not None:
@@ -349,14 +374,13 @@ def _format_high_entropy_oxide(elements: Mapping[str, Any]) -> str:
     cation_parts = "".join(
         f"{symbol}{values[symbol] / metal_total:.3g}" for symbol in metals
     )
-    oxygen_ratio = oxygen / metal_total if oxygen > 0 else 0.0
-    oxygen_display = (
-        ""
-        if abs(oxygen_ratio - 1.0) < 1e-6
-        else f"{oxygen_ratio:.3g}"
-        if oxygen_ratio > 0
-        else ""
-    )
+    if oxygen <= 0:
+        # No oxygen in the record, so do not write one. Appending "O" regardless
+        # labelled 21,215 of 36,530 materials as oxides they are not, including
+        # records with no oxygen anywhere in their element list.
+        return format_composition(elements)
+    oxygen_ratio = oxygen / metal_total
+    oxygen_display = "" if abs(oxygen_ratio - 1.0) < 1e-6 else f"{oxygen_ratio:.3g}"
     return f"({cation_parts})O{oxygen_display}"
 
 
@@ -501,7 +525,7 @@ def predict_experimental_outlook(
     scored.sort(key=lambda item: item[0], reverse=True)
     if not scored:
         return {
-            "status": "No ChemScreen outcome model",
+            "status": "No outcome model",
             "detail": "Awaiting experimental labels",
             "probability": None,
             "observed": False,
@@ -512,7 +536,7 @@ def predict_experimental_outlook(
     if best_score >= 0.999999:
         return {
             "status": "Single phase" if best.single_phase else "Multi-phase",
-            "detail": "ChemScreen experimental result",
+            "detail": "Experimental result",
             "probability": 100 if best.single_phase else 0,
             "observed": True,
             "source": best.source,
@@ -535,7 +559,7 @@ def predict_experimental_outlook(
     percent = max(5, min(95, int(round(probability * 100))))
     return {
         "status": f"{percent}% single-phase likelihood",
-        "detail": f"ChemScreen {len(neighbors)}-neighbor estimate · unvalidated",
+        "detail": f"{len(neighbors)}-neighbor estimate · unvalidated",
         "probability": percent,
         "observed": False,
         "source": best.source,
@@ -587,7 +611,7 @@ def chemscreen_route_prior(
     return {
         "target_elements": sorted(elements),
         "structure_family": structure_family or "rocksalt",
-        "model": "ChemScreen literature synthesis prior",
+        "model": "Literature synthesis prior",
         "candidate_count": 0,
         "top_match_score": 0.0,
         "route_steps": route_steps,
@@ -707,7 +731,7 @@ def _material_row(
             if neighbor_estimate and chosen_dft is not None
             else f"{len(observed_dfts)} record{'s' if len(observed_dfts) != 1 else ''}"
             if observed_dfts
-            else "ChemScreen: reported"
+            else "Reported"
             if chemscreen_dft
             else "No DFT"
         ),
@@ -715,7 +739,7 @@ def _material_row(
         "exp_status": (
             f"{len(visible_trials)} trial{'s' if len(visible_trials) != 1 else ''}"
             if visible_trials
-            else "ChemScreen: reported"
+            else "Reported"
             if chemscreen_exp
             else "No EXP"
         ),
@@ -914,7 +938,7 @@ def screen_3d_transition_metal_oxides(
                 {},
             )
             model_label = (
-                f"{model_prediction.get('model_name', 'LOOP ChemScreen RF')} "
+                f"{model_prediction.get('model_name', 'LOOP EFA/DEED RF')} "
                 f"{str(model_prediction.get('model_version', ''))[:18]}"
             ).strip()
             if efa is None and model_prediction.get("efa") is not None:
@@ -930,7 +954,7 @@ def screen_3d_transition_metal_oxides(
                 d2h_source = (
                     f"Derived from EFA/DEED · {model_label}"
                     if model_prediction
-                    else "Derived from ChemScreen EFA/DEED"
+                    else "Derived from EFA/DEED"
                 )
 
         concerns: List[str] = []
@@ -962,7 +986,7 @@ def screen_3d_transition_metal_oxides(
         )
         experimental_outlook = predict_experimental_outlook(elements)
         if not trial_count and not reported_exp:
-            concerns.append("No experimental synthesis validation in LOOP/ChemScreen")
+            concerns.append("No experimental synthesis validation in LOOP")
 
         cation_amounts = [float(elements[symbol]) for symbol in metals]
         cation_average = sum(cation_amounts) / len(cation_amounts)
@@ -1065,11 +1089,11 @@ def screen_3d_transition_metal_oxides(
                 or route_prediction.get("source_url")
                 or "",
                 "dft_status": (
-                    "ChemScreen DFT"
+                    "DFT"
                     if has_observed_thermodynamic_value
                     and chosen
                     and "dft" in str(_get(chosen, "dft_source", "")).lower()
-                    else "ChemScreen: reported"
+                    else "Reported"
                     if reported_dft
                     else "Model-estimated thermodynamics"
                     if model_prediction

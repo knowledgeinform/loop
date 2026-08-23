@@ -50,6 +50,11 @@ urlpatterns = [
     path('docs.url', discovery_views.docs_url, name='docs-url'),
     path('developers/api.md', discovery_views.api_markdown, name='api-markdown'),
     path('developers/agent.md', discovery_views.agent_markdown, name='agent-markdown'),
+    path(
+        'developers/samples/<str:sample_name>.py',
+        discovery_views.python_sample,
+        name='python-sample',
+    ),
 ]
 
 if not LOCKDOWN:

@@ -43,11 +43,19 @@
 
       <section id="first-request" class="developer-docs-section">
         <h2>Make your first API request</h2>
-        <p>List materials matching a composition and structure family. Replace the placeholder with a key from the API Keys page.</p>
-        <pre class="developer-docs-code"><code>curl --request GET \
+        <p>List materials matching a composition and structure family. Set <code>LOOP_API_KEY</code> in your shell to a key from the API Keys page — never paste it into the script itself.</p>
+        <div class="code-tabs">
+          <div class="code-tabs-panel" data-language="curl">
+            <pre class="developer-docs-code"><code>curl --request GET \
   "{{ materials_url }}?elements=Ti,Zr,O&amp;structure_family=fluorite" \
   --header "X-API-Key: $LOOP_API_KEY"</code></pre>
-        <p class="mb-0">A successful response has a <code>data</code> array and pagination metadata. Try the same request in <a href="{% url 'api-v1-docs' %}" target="_blank" rel="noopener">Swagger</a> before using it in a script.</p>
+          </div>
+          <div class="code-tabs-panel" data-language="Python">
+            <pre class="developer-docs-code"><code>{{ python_samples.read_materials }}</code></pre>
+          </div>
+        </div>
+        <p>Every Python example is a single self-contained file: save it, set <code>LOOP_API_KEY</code>, and run it. There is nothing to install and no helper module to fetch — the examples use only the Python standard library. Each one can also be downloaded directly, for example <a href="{% url 'python-sample' 'read_materials' %}"><code>read_materials.py</code></a>.</p>
+        <p class="mb-0 mt-3">A successful response has a <code>data</code> array and pagination metadata. Try the same request in <a href="{% url 'api-v1-docs' %}" target="_blank" rel="noopener">Swagger</a> before using it in a script.</p>
       </section>
 
       <section id="authentication" class="developer-docs-section">
@@ -67,7 +75,19 @@
         <p>Use the workflow that matches the information you have. The API uses the same validation and persistence paths as LOOP’s Add Data forms.</p>
         <div class="developer-docs-workflow">
           <h3>Experimental synthesis and XRD</h3>
-          <p>Send an ordered <code>synthesis_steps</code> array to <code>POST /experiments/</code>. A route can include weighing, ball milling, pelletizing, heat treatment, quenching, grinding, and XRD measurement. For an XRD CSV, send multipart form data with both <code>data:write</code> and <code>files:write</code>.</p>
+          <p>Send an ordered <code>synthesis_steps</code> array to <code>POST /experiments/</code>. A route can include weighing, ball milling, pelletizing, heat treatment, quenching, grinding, and XRD measurement. To attach an XRD pattern, send multipart form data — <code>record</code> carries the JSON and <code>csv_file</code> carries the file — with both <code>data:write</code> and <code>files:write</code>.</p>
+          <div class="code-tabs">
+            <div class="code-tabs-panel" data-language="curl">
+              <pre class="developer-docs-code"><code>curl --fail-with-body --request POST "{{ api_base_url }}experiments/" \
+  --header "X-API-Key: $LOOP_API_KEY" \
+  --form 'record={"elements":{"Gd":2,"Zr":2,"O":7},"structure_family":"pyrochlore","phase_status":"single_phase","raw_data_type":"xrd"}' \
+  --form 'csv_file=@pattern.csv;type=text/csv'</code></pre>
+            </div>
+            <div class="code-tabs-panel" data-language="Python">
+              <pre class="developer-docs-code"><code>{{ python_samples.upload_xrd_minimal }}</code></pre>
+            </div>
+          </div>
+          <p class="mb-0">The <a href="{% url 'developer_guide' %}#experimental-data">integration guide</a> has the complete script, including validating first and reading the stored pattern back.</p>
         </div>
         <div class="developer-docs-workflow">
           <h3>Literature data</h3>

@@ -64,6 +64,30 @@ MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", str(BASE_DIR / "media")))
 # Set RAW_UPLOADS_ROOT= (empty) to disable archiving.
 RAW_UPLOADS_ROOT = os.environ.get("RAW_UPLOADS_ROOT", str(BASE_DIR / "raw-uploads"))
 
+# ---------------------------------------------------------------------------
+# JSON archive — the durable source of truth (see catalog/archive/).
+#
+# Every catalog write lands here as sorted, indented JSON *before* it reaches
+# MongoDB, which is treated as a rebuildable index over this tree.
+# `manage.py loop_archive rebuild` reconstructs the database from it.
+# ---------------------------------------------------------------------------
+ARCHIVE_ROOT = os.environ.get("ARCHIVE_ROOT", str(BASE_DIR / "archive"))
+
+# Master switch. Off means no archive writes at all — useful for unit tests
+# that only exercise Mongo behavior.
+ARCHIVE_ENABLED = os.environ.get("ARCHIVE_ENABLED", "1") != "0"
+
+# When True (the default and the intended production setting), a failed
+# archive write aborts the request and MongoDB is never touched — that is what
+# makes the archive authoritative rather than advisory. Set False only to keep
+# uploads flowing through a disk incident; failures are then recorded in
+# ARCHIVE_ROOT/.state/drift.json for `loop_archive verify` to surface.
+ARCHIVE_REQUIRED = os.environ.get("ARCHIVE_REQUIRED", "1") != "0"
+
+# fsync every archive record and journal line. Disable only where durability is
+# already guaranteed by other means; bulk operations turn it off per-call.
+ARCHIVE_FSYNC = os.environ.get("ARCHIVE_FSYNC", "1") != "0"
+
 # Path to the CHAOS/AFLOW SQLite database for periodic computational data import.
 # Leave empty to disable the file watcher and import command.
 CHAOS_DB_PATH = os.environ.get("CHAOS_DB_PATH", "")
@@ -163,7 +187,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "loop.middleware.ApiTokenAuthMiddleware",
     "loop.middleware.ApprovedGateMiddleware",
-
+    # After the auth middlewares (including the API-key one) so archive journal
+    # entries are attributed to the resolved user rather than "anonymous".
+    "loop.middleware.ArchiveContextMiddleware",
 ]
 
 APPROVED_GROUP_NAME = "Approved"

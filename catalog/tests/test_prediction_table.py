@@ -73,13 +73,13 @@ class ModelPayloadTests(SimpleTestCase):
         dft = SimpleNamespace(
             extended_data={
                 "EFA": 42.5,
-                "calculation_method": "LOOP direct ChemScreen equation",
+                "calculation_method": "LOOP direct calculation",
             },
             ml_predictions={},
         )
         self.assertEqual(
             dft_property_value(dft, efa),
-            (42.5, "LOOP direct ChemScreen equation"),
+            (42.5, "LOOP direct calculation"),
         )
 
 

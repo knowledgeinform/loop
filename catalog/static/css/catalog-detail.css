@@ -30,6 +30,24 @@
   letter-spacing: -0.02em;
 }
 
+/* The record's title is its chemistry, not its identifier. Prose, not monospace:
+   a formula is something you read, and the Call-Number Rule reserves monospace
+   for exact identifiers like the AUID below. */
+.comp-hero-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--comp-accent);
+  letter-spacing: -0.01em;
+}
+
+/* The AUID, demoted. Present for citation and API use, quiet enough that it is
+   not the first thing read. */
+.comp-hero-auid-line {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--comp-muted);
+}
+
 .comp-hero-breadcrumb {
   font-size: 0.875rem;
   color: var(--comp-muted);

@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
@@ -75,6 +75,27 @@ def api_markdown(request):
     """Expose the maintained API guide without HTML navigation or scripting."""
     guide = Path(settings.BASE_DIR, "docs", "API.md").read_text(encoding="utf-8")
     return _public_text(guide, "text/markdown; charset=utf-8")
+
+
+@require_GET
+def python_sample(request, sample_name):
+    """Serve one documented Python sample as a downloadable .py file.
+
+    The developer pages render these inside HTML, which is fine for reading but
+    poor for use: copying a client out of a <pre> block is exactly the friction
+    that stops someone before their first request. This serves the same file the
+    pages render, with the deployment's own base URL already substituted in.
+    """
+    from catalog.api import code_samples
+
+    api_base_url = _absolute(request, "api-v1-version").rsplit("version/", 1)[0]
+    try:
+        source = code_samples.render_sample(sample_name, api_base_url)
+    except KeyError:
+        raise Http404(f"No published sample named {sample_name}.py")
+    response = _public_text(source, "text/x-python; charset=utf-8")
+    response["Content-Disposition"] = f'inline; filename="{sample_name}.py"'
+    return response
 
 
 @require_GET

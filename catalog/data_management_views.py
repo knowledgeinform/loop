@@ -124,6 +124,26 @@ def _document_as_json(doc):
     return json_util.dumps(raw, indent=2)
 
 
+def _archive_edited_document(model, oid, data):
+    """Mirror a hand-edited document into the JSON archive, before it is stored.
+
+    Reconstructs a MongoEngine instance from the edited payload so the standard
+    archive path applies — same field coercion, same recipe child explosion.
+    Raising here aborts the edit, which is the intended archive-first behavior:
+    the view already renders the exception as a "Save failed" error.
+
+    Collections that are not archived (``ml_embeddings``, ``doi_mappings``) fall
+    through harmlessly: :func:`registry.kind_for_document` returns ``None`` for
+    them and the archive call is a no-op.
+    """
+    from catalog.archive.hooks import archive_document
+
+    fields = {key: value for key, value in data.items() if key != "_id"}
+    document = model(**fields)
+    document.pk = oid
+    archive_document(document)
+
+
 def _parse_object_id(object_id, collection):
     """Return the right primary-key value for the collection.
 
@@ -328,6 +348,14 @@ def data_management_edit(request, collection, object_id):
         data["_id"] = oid
 
         try:
+            # Archive before Mongo. This view issues a raw `replace_one` so it
+            # can accept arbitrary edited JSON without MongoEngine validation
+            # rejecting a legitimate repair — which also means it fires no
+            # document signals, so the archive hooks never see it. Build a
+            # throwaway document from the edited payload purely to reuse the
+            # normal archive path (including the recipe trial/literature
+            # explosion), then write.
+            _archive_edited_document(model, oid, data)
             coll = _get_db_for(collection)[model._meta["collection"]]
             coll.replace_one({"_id": oid}, data)
         except Exception as e:

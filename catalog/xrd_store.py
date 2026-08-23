@@ -114,7 +114,21 @@ def store_raw_file(recipe_auid: str, trial_id: str, uploaded_file) -> StoredRaw:
     except Exception:
         pass
     rel = f"{_trial_rel(recipe_auid, trial_id)}/raw{ext}"
-    return StoredRaw(str(raw_path), ext, hasher.hexdigest(), _media_url(rel))
+    digest = hasher.hexdigest()
+
+    # Copy the original bytes into the content-addressed archive blob store.
+    # The JSON records describe a trial; without the raw pattern they describe
+    # an experiment nobody can re-analyze. Non-fatal: the file is already
+    # safely written under MEDIA_ROOT, and `loop_archive export` re-links any
+    # blob missed here.
+    try:
+        from catalog.archive import writer as archive_writer
+
+        archive_writer.write_blob(digest, raw_path, ext=ext)
+    except Exception:
+        logger.warning("archive: could not store blob for %s", digest, exc_info=True)
+
+    return StoredRaw(str(raw_path), ext, digest, _media_url(rel))
 
 
 def resolve_raw_path(recipe_auid: str, trial_id: str) -> Optional[str]:

@@ -318,7 +318,7 @@
                     <label for="extended_data" class="form-label">Additional Properties (JSON)</label>
                     <textarea name="extended_data" id="extended_data" class="form-control" rows="3"
                               placeholder='{"agl_gruneisen": 1.8, "bader_net_charges": [...]}'>{% if existing_comp_record and existing_comp_record.extended_data %}{{ existing_comp_record.extended_data|safe }}{% endif %}</textarea>
-                    <div class="form-text">Any additional AFLOW-format properties as a JSON object</div>
+                    <div class="form-text">Any additional calculated properties as a JSON object</div>
                 </div>
             </div>
         </section>

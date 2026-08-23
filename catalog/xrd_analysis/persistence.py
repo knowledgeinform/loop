@@ -13,6 +13,11 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from catalog import raw_db, xrd_store
+from catalog.canonical import (
+    apply_artifact_mode,
+    apply_artifact_mode_tree,
+    atomic_write_bytes,
+)
 from catalog.gsas_runtime import import_gsas_modules
 from catalog.upload_archive import add_files
 
@@ -476,6 +481,14 @@ def persist_xrd_analysis_result(
         )
     except Exception:
         persistence_warning_codes.append("raw_file_manifest_update_failed")
+    # Sweep the finished analysis before it is copied anywhere. Per-write-site
+    # chmods only cover the paths we know about, and the archive backfill below
+    # uses shutil.copy2, which preserves the source mode -- so one artifact
+    # written 0600 by any path would propagate into raw-uploads as well. Both
+    # locations are rsynced offsite nightly by an unrelated account, and that
+    # job fails outright on a single unreadable file.
+    apply_artifact_mode_tree(analysis_root)
+
     try:
         _backfill_archive(
             raw_file_hash=analysis_input.raw_file_hash,
@@ -1022,6 +1035,7 @@ def _write_csv_artifact(
         handle.flush()
         os.fsync(handle.fileno())
         temp_name = handle.name
+    apply_artifact_mode(temp_name)
     os.replace(temp_name, path)
     return _artifact_record(
         path,
@@ -1050,6 +1064,7 @@ def _copy_artifact(
         handle.flush()
         os.fsync(handle.fileno())
         temp_name = handle.name
+    apply_artifact_mode(temp_name)
     os.replace(temp_name, destination)
     return _artifact_record(
         destination,
@@ -1561,13 +1576,15 @@ def _selected_candidates(
 
 
 def _atomic_write_bytes(path: Path, payload: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("wb", dir=path.parent, delete=False) as handle:
-        handle.write(payload)
-        handle.flush()
-        os.fsync(handle.fileno())
-        temp_name = handle.name
-    os.replace(temp_name, path)
+    """Alias for the shared writer in :mod:`catalog.canonical`.
+
+    Kept as a module-level name because tests patch it to simulate disk
+    failures, and because it reads better at the call sites here.
+
+    ``shared=True``: these artifacts are rsynced offsite nightly by an
+    unrelated account, and that job fails outright on one unreadable file.
+    """
+    atomic_write_bytes(path, payload, shared=True)
 
 
 def _default_environment_notes() -> tuple[str, ...]:

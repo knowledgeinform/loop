@@ -60,9 +60,14 @@
         <button type="submit" class="btn btn-primary">Log in</button>
       </form>
 
-      {# The "as" form yields "" instead of raising when DEV_LOCKDOWN has taken
-         the signup route out, so the link disappears rather than the login page
-         dying with NoReverseMatch. #}
+      {% comment %}
+        The "as" form yields "" instead of raising when DEV_LOCKDOWN has taken
+        the signup route out, so the link disappears rather than the login page
+        dying with NoReverseMatch.
+
+        Must be {% comment %}, not {# #}: the latter is single-line only, so a
+        wrapped {# #} renders to the page as visible text.
+      {% endcomment %}
       {% url 'signup' as signup_url %}
       <div class="auth-links">
         <a href="{% url 'password_reset' %}">Reset password</a>

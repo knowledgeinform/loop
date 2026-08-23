@@ -179,7 +179,7 @@ def parse_observed_entry(entry: Mapping[str, Any]) -> ChemScreenRecord:
         reported = {key: values.get(key) for key in ("EFA", "DEED", "d2h")}
         calculated = calculate_efa_deed(dg_list, eform_list, values["d2h"])
         values.update({key: calculated[key] for key in ("EFA", "DEED", "d2h")})
-        calculation_method = "LOOP direct ChemScreen equation"
+        calculation_method = "LOOP direct calculation"
         calculation_inputs = {
             "dg_list": list(dg_list),
             "eform_list": list(eform_list),
@@ -227,7 +227,7 @@ def parse_prediction_entry(
     entry: Mapping[str, Any],
     *,
     metric_name: str = "ML_Predicted",
-    model_name: str = "ChemScreen",
+    model_name: str = "LOOP screening",
 ) -> ChemScreenRecord:
     chem_id = str(entry.get("chem_id") or "").strip()
     symbols = entry.get("species")
@@ -384,7 +384,7 @@ def iter_prediction_records(
     path: str | Path,
     *,
     metric_name: str = "ML_Predicted",
-    model_name: str = "ChemScreen",
+    model_name: str = "LOOP screening",
 ) -> Iterator[ChemScreenRecord]:
     artifact = Path(path).expanduser().resolve()
     if not artifact.exists():
