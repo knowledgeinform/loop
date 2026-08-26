@@ -19,6 +19,7 @@ lib64/
 parts/
 sdist/
 var/
+model-artifacts/
 wheels/
 share/python-wheels/
 *.egg-info/
@@ -212,6 +213,9 @@ __marimo__/
 # Text backup files
 *.bak
 
+# macOS Finder metadata
+.DS_Store
+
 # Database
 *.sqlite3
 
@@ -229,5 +233,19 @@ __marimo__/
 /media/*
 /tmp/*
 
+# JSON archive (the catalog's source of truth). Lives on a mounted data volume
+# in every real deployment — ARCHIVE_ROOT defaults here only so a bare `manage.py`
+# run in a checkout works. Never commit catalog data.
+/archive/*
+/raw-uploads/*
+
 # files from django model setup
 migrations/
+# Django migrations are source code and must be committed.
+!catalog/migrations/
+!catalog/migrations/*.py
+deploy/dev/.env.dev
+deploy/dev/access-emails.txt
+
+# Server-side runtime state, like .venv: MongoDB binaries installed by setup.sh
+mongodb/

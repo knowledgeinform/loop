@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-13",
+  "title": "Design System: LOOP",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Hopkins Navy", "canonical": "#002d72", "tonalRamp": ["#00102a", "#001a45", "#002460", "#002d72", "#1f4a90", "#4d72ad", "#88a5cc", "#c3d3e8"] },
+      "primary-tint-light": { "role": "secondary", "displayName": "Sky Tint", "canonical": "#68ace5", "tonalRamp": ["#12314a", "#1f4d73", "#2f6ea3", "#3f8ecf", "#68ace5", "#93c4ee", "#bcdcf6", "#e2f0fb"] },
+      "ink": { "role": "neutral", "displayName": "Archive Ink", "canonical": "#1a1510", "tonalRamp": ["#0e0b08", "#1a1510", "#31261d", "#4c4238", "#7c756c", "#a8a29a", "#d0ccc6", "#efece8"] },
+      "surface": { "role": "neutral", "displayName": "Paper", "canonical": "#ffffff", "tonalRamp": ["#e6e2dc", "#efece8", "#f6f4f1", "#fbfaf9", "#ffffff", "#ffffff", "#ffffff", "#ffffff"] },
+      "muted": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#7c756c", "tonalRamp": ["#2b2822", "#403a32", "#585047", "#6c645a", "#7c756c", "#a09a91", "#c4bfb7", "#e6e2dc"] },
+      "danger": { "role": "tertiary", "displayName": "Danger Red", "canonical": "#b02a37", "tonalRamp": ["#3d0e13", "#5c151d", "#7c1c27", "#9b2330", "#b02a37", "#cc5560", "#e08b93", "#f4c8cd"] },
+      "success": { "role": "tertiary", "displayName": "Oak Ridge Green", "canonical": "#2e7d32", "tonalRamp": ["#0f2911", "#173f1a", "#215a25", "#2e7d32", "#4a9d4e", "#75bd79", "#a6d6a9", "#d6eed7"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page h1 / hero titles in Hopkins Navy. Restrained, max ~2.25rem." },
+      "body": { "displayName": "Body", "purpose": "Reading and data-cell text in Archive Ink, capped 65-75ch." },
+      "label": { "displayName": "Label", "purpose": "Tracked uppercase metadata labels for toolbars and table heads only." },
+      "mono": { "displayName": "Mono", "purpose": "AUIDs, hashes, exact identifiers — the archive call-number." }
+    },
+    "shadows": [
+      { "name": "focus-ring", "value": "0 0 0 0.25rem rgba(0,45,114,0.25)", "purpose": "Keyboard/interaction focus only. No ambient resting shadows." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "ease", "purpose": "Default 0.15-0.2s state transitions (hover, tab underline, disclosure caret)." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "548px" },
+      { "name": "small", "value": "1000px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single call-to-action per view. Hopkins Navy fill.",
+      "html": "<button class=\"ds-btn-primary\">Save record</button>",
+      "css": ".ds-btn-primary { background: #002d72; color: #fff; font-family: Lato, -apple-system, sans-serif; font-weight: 600; font-size: 1rem; padding: 0.5rem 1rem; border: 1px solid #002d72; border-radius: 0.35rem; cursor: pointer; transition: background 0.15s ease; } .ds-btn-primary:hover { background: #001a45; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 0.25rem rgba(0,45,114,0.25); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Default secondary / row-level action. Paper fill, navy stroke.",
+      "html": "<button class=\"ds-btn-outline\">Edit</button>",
+      "css": ".ds-btn-outline { background: #fff; color: #002d72; font-family: Lato, -apple-system, sans-serif; font-weight: 600; font-size: 0.875rem; padding: 0.4rem 0.9rem; border: 1px solid #002d72; border-radius: 0.35rem; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; } .ds-btn-outline:hover { background: #002d72; color: #fff; } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 0.25rem rgba(0,45,114,0.25); }"
+    },
+    {
+      "name": "Composition Chip",
+      "kind": "chip",
+      "refersTo": "chip-composition",
+      "description": "Data token summarizing an element and its ratio. The only sanctioned pill.",
+      "html": "<span class=\"ds-chip\">Ni<span class=\"ds-chip-ratio\">0.20</span></span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 0.35rem; background: #fff; color: #1a1510; font-family: Lato, -apple-system, sans-serif; font-weight: 600; padding: 0.3rem 0.9rem; border: 1px solid rgba(0,45,114,0.2); border-radius: 999px; } .ds-chip-ratio { font-weight: 400; color: rgba(26,21,16,0.7); }"
+    },
+    {
+      "name": "Affiliation Badge",
+      "kind": "chip",
+      "refersTo": "badge-affiliation",
+      "description": "Encoding badge — solid fill in the affiliation hue, always with its label.",
+      "html": "<span class=\"ds-badge\">S4E</span>",
+      "css": ".ds-badge { display: inline-block; background: #002d72; color: #fff; font-family: Lato, -apple-system, sans-serif; font-weight: 600; font-size: 0.75rem; padding: 0.2rem 0.6rem; border: 1px solid transparent; border-radius: 0.35rem; }"
+    },
+    {
+      "name": "AUID",
+      "kind": "custom",
+      "refersTo": "mono",
+      "description": "The record call-number: monospace, navy, tight tracking.",
+      "html": "<span class=\"ds-auid\">M:4a1f9c2e8b07</span>",
+      "css": ".ds-auid { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.15rem; font-weight: 600; letter-spacing: -0.02em; color: #002d72; }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Flat bordered surface. Toolbar header + body. No resting shadow.",
+      "html": "<section class=\"ds-panel\"><div class=\"ds-panel-toolbar\">Trials</div><div class=\"ds-panel-body\">Record content</div></section>",
+      "css": ".ds-panel { background: #fff; border: 1px solid rgba(26,21,16,0.1); border-radius: 12px; overflow: hidden; color: #1a1510; font-family: Lato, -apple-system, sans-serif; } .ds-panel-toolbar { padding: 1rem 1.15rem; background: rgba(0,45,114,0.03); border-bottom: 1px solid rgba(26,21,16,0.08); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(49,38,29,0.5); } .ds-panel-body { padding: 1rem 1.15rem; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Paper fill, grey stroke, small radius, visible focus.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Formula\" />",
+      "css": ".ds-input { background: #fff; color: #1a1510; font-family: Lato, -apple-system, sans-serif; font-size: 1rem; padding: 0.5rem; border: 1px solid #ccc; border-radius: 0.35rem; } .ds-input:focus-visible { outline: none; border-color: #002d72; box-shadow: 0 0 0 0.2rem rgba(0,45,114,0.2); }"
+    },
+    {
+      "name": "Detail Tab",
+      "kind": "nav",
+      "refersTo": "mono",
+      "description": "Text tab with a 2px navy underline when active — never boxed or pill.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab is-active\">Overview</a><a class=\"ds-tab\">Trials</a><a class=\"ds-tab\">Literature</a></nav>",
+      "css": ".ds-tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid rgba(26,21,16,0.1); } .ds-tab { padding: 0.65rem 1.1rem; font-family: Lato, -apple-system, sans-serif; font-weight: 600; font-size: 0.85rem; color: rgba(26,21,16,0.58); border-bottom: 2px solid transparent; cursor: pointer; text-decoration: none; } .ds-tab:hover { color: #002d72; } .ds-tab.is-active { color: #002d72; border-bottom-color: #002d72; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Institutional Archive",
+    "overview": "LOOP is the authoritative catalog of a university-and-national-lab materials consortium, and it should carry itself that way: serious, exact, and permanent. The metaphor is a great research archive — every record has a call number (its AUID), the structure of the catalog is itself trustworthy, and nothing is dressed up because the material is the point. Density is a feature, earned through hierarchy rather than cramming. The refined detail-page language — gradient hero banner, monospace call-numbers, underline tabs, flat bordered panels — is the target the rest of the platform grows toward, replacing older Bootstrap-plus-SCSS drift with one coherent hand.",
+    "keyCharacteristics": [
+      "Institutional navy as signature, spent deliberately — never as a background wash.",
+      "Monospace AUIDs treated as call-numbers: the identity of every record.",
+      "Color is a data encoding (affiliation, structure family) before it is ever decoration.",
+      "Flat, bordered surfaces; depth comes from tone and line, not shadow.",
+      "Dense but ordered — hierarchy carries the load, not cramming."
+    ],
+    "rules": [
+      { "name": "The One Navy Rule", "body": "Hopkins Navy is the single institutional voice — authority (headings, AUIDs, affiliation) and action (primary buttons, active states) only. If navy fills large decorative areas, it has been spent wrong.", "section": "colors" },
+      { "name": "The Encoding Rule", "body": "Structure-family and affiliation hues belong to data. Never reuse them for buttons, backgrounds, or ornament — it breaks the reader's learned color-to-meaning mapping.", "section": "colors" },
+      { "name": "The Call-Number Rule", "body": "Every AUID, hash, and machine-exact identifier is set in monospace. Prose is never monospace; identifiers are never prose.", "section": "typography" },
+      { "name": "The Quiet Display Rule", "body": "Display type maxes out near 2.25rem. LOOP never uses oversized hero type — an institution states, it doesn't advertise.", "section": "typography" },
+      { "name": "The Line-Not-Shadow Rule", "body": "Separation between surfaces is drawn with a 1px hairline and a tonal shift, not a drop shadow. A shadow may appear only in response to focus, hover-on-interactive, or a raised layer.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do spend Hopkins Navy (#002d72) only on authority and action — headings, primary buttons, active states, AUIDs, S4E affiliation. Keep it off large backgrounds.",
+      "Do set every AUID, hash, and exact identifier in the monospace family (the Call-Number Rule).",
+      "Do always pair an encoding color with its text label; assume a colorblind reader and never rely on hue alone.",
+      "Do separate surfaces with 1px hairlines and tonal washes; keep resting surfaces shadow-free (the Line-Not-Shadow Rule).",
+      "Do present many records as data tables with right-aligned numerics and mono AUIDs.",
+      "Do keep the small radius vocabulary — 0.35rem actions/inputs, 8-12px panels, 999px for data chips only.",
+      "Do provide honest loading, empty, and error states — Rietveld and batch jobs are slow and synchronous; always say what's happening."
+    ],
+    "donts": [
+      "Don't build a generic SaaS dashboard: no decorative gradient heroes, no violet/purple accent, no glassmorphism, no endless icon-card grids.",
+      "Don't slip back into the cluttered legacy academic look: no text-align: justify body copy, no hairline border-bottom on an h2 as a substitute for real hierarchy, no undifferentiated blue link-soup.",
+      "Don't go consumer or playful: no bubbly oversized radii, no candy color, no gamified flourishes, no mascot energy.",
+      "Don't reuse structure-family or affiliation hues for buttons, backgrounds, or ornament — that color belongs to data (the Encoding Rule).",
+      "Don't nest a card inside a card, or use a border-left/border-right greater than 1px as a colored accent stripe.",
+      "Don't oversize display type past ~2.25rem or use gradient text; emphasis comes from weight and navy, not spectacle.",
+      "Don't remove focus outlines or convey state (error, success, selected) through color alone."
+    ]
+  }
+}

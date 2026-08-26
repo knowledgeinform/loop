@@ -1,0 +1,3 @@
+[submodule "vendor/ChemScreen"]
+	path = vendor/ChemScreen
+	url = https://github.com/entropy4energy/ChemScreen.git

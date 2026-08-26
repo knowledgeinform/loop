@@ -31,6 +31,8 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Build static files
+        run: python manage.py collectstatic --noinput
       - name: Wait for MongoDB
         run: |
           for i in $(seq 1 60); do
