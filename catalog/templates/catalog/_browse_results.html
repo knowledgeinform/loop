@@ -102,21 +102,18 @@
   </div>
 
   {% elif view_mode == "recipes" %}
-  <div class="table-wrap">
-    <table class="table table-sm">
+  <div class="table-wrap browse-recipes-wrap" role="region" aria-label="Materials and recipes results" tabindex="0">
+    <table class="table table-sm browse-recipes-table">
       <thead>
         <tr>
           {% if search_mode == "semantic" %}
-          <th class="text-end text-nowrap">Score</th>
+          <th scope="col" class="text-end browse-recipe-score">Score</th>
           {% endif %}
-          <th>Organization</th>
-          <th>Recipe</th>
-          <th>Material</th>
-          <th>Structure</th>
-          <th class="text-nowrap">Synthesis (preview)</th>
-          <th class="text-nowrap">Temp.</th>
-          <th class="text-center">Lit.</th>
-          <th class="text-center">Exp.</th>
+          <th scope="col" class="browse-recipe-material">Material</th>
+          <th scope="col" class="browse-recipe-structure">Structure</th>
+          <th scope="col">Synthesis route</th>
+          <th scope="col" class="browse-recipe-org">Organization</th>
+          <th scope="col" class="browse-recipe-evidence">Records</th>
         </tr>
       </thead>
       <tbody>
@@ -126,7 +123,7 @@
           data-href="{% url 'recipe_detail' recipe_id=row.recipe_auid %}"
         >
           {% if search_mode == "semantic" %}
-          <td class="text-end text-nowrap">
+          <td class="text-end text-nowrap" data-label="Score">
             {% if row.semantic_score is not None %}
               <span class="font-monospace small">{{ row.semantic_score|floatformat:3 }}</span>
             {% else %}
@@ -134,7 +131,33 @@
             {% endif %}
           </td>
           {% endif %}
-          <td>
+          <td class="browse-recipe-material" data-label="Material">
+            <a href="{% url 'composition_detail' material_auid=row.material_auid %}"
+               title="{{ row.material_auid }}">{{ row.composition_display|default:"Composition not reported" }}</a>
+            {% if row.composition_fractions %}
+              <div class="browse-elements-inline">{{ row.composition_fractions }}</div>
+            {% endif %}
+          </td>
+          <td data-label="Structure">
+            {% if row.structure_family and row.structure_family != "unknown" %}
+              <span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span>
+            {% else %}
+              <span class="small text-muted">Not reported</span>
+            {% endif %}
+          </td>
+          <td class="browse-recipe-route" data-label="Synthesis route">
+            <a href="{% url 'recipe_detail' recipe_id=row.recipe_auid %}" title="{{ row.recipe_auid }}">
+              {% if row.steps_preview and row.steps_preview != "—" %}{{ row.steps_preview }}{% else %}Steps not reported{% endif %}
+            </a>
+            <div class="small text-muted browse-recipe-temperature">
+              {% if row.temperature_display and row.temperature_display != "—" %}
+                Recorded trial temperature: {{ row.temperature_display }} °C
+              {% else %}
+                Trial temperature not reported
+              {% endif %}
+            </div>
+          </td>
+          <td data-label="Organization">
             {% if row.organizations %}
               <div class="d-flex flex-wrap gap-1">
                 {% for org in row.organizations %}
@@ -145,22 +168,14 @@
               <span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td><a href="{% url 'recipe_detail' recipe_id=row.recipe_auid %}" class="browse-mono small">{{ row.recipe_auid }}</a></td>
-          <td><a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono small">{{ row.material_auid }}</a></td>
-          <td><span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span></td>
-          <td class="small text-muted browse-cell-truncate" title="{{ row.steps_preview|escape }}">{{ row.steps_preview }}</td>
-          <td class="text-nowrap small">{{ row.temperature_display }}</td>
-          <td class="text-center">
-            {% if row.literature_count %}
-              <a class="badge count-badge count-badge-link" href="{% url 'composition_detail' material_auid=row.material_auid %}#tab-lit" title="View literature for this material">{{ row.literature_count }}</a>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <td class="text-center">
+          <td class="browse-recipe-evidence small" data-label="Records">
             {% if row.trial_count %}
-              <a class="badge count-badge count-badge-link" href="{% url 'composition_detail' material_auid=row.material_auid %}#tab-routes" title="View experiments for this material">{{ row.trial_count }}</a>
-            {% else %}
+              <a href="{% url 'recipe_detail' recipe_id=row.recipe_auid %}#trials">{{ row.trial_count }} experiment{{ row.trial_count|pluralize }}</a>
+            {% endif %}
+            {% if row.literature_count %}
+              <a href="{% url 'recipe_detail' recipe_id=row.recipe_auid %}#literature">{{ row.literature_count }} literature record{{ row.literature_count|pluralize }}</a>
+            {% endif %}
+            {% if not row.trial_count and not row.literature_count %}
               <span class="text-muted">—</span>
             {% endif %}
           </td>

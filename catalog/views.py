@@ -96,6 +96,7 @@ from .forms import BatchExperimentalUploadForm, BatchLiteratureUploadForm
 from .gsas_tools import peak_finder, peak_finder_fast
 from .raw_db import record_raw_file
 from .prediction_table import format_composition, screen_3d_transition_metal_oxides
+from .synthesis_display import format_steps_preview
 from .upload_archive import archive_upload
 from .utils import parse_xrd_file, render_xrd_plot, xrd_parse
 from .services.batch_experiment_upload import (
@@ -1366,15 +1367,7 @@ def _format_atomic_fractions(elements: Optional[Dict[str, Any]]) -> str:
 
 
 def _format_steps_preview(steps, max_len: int = 96) -> str:
-    if not steps:
-        return "—"
-    try:
-        text = json.dumps(steps, ensure_ascii=False)
-    except (TypeError, ValueError):
-        text = str(steps)
-    if len(text) > max_len:
-        return text[: max_len - 1] + "…"
-    return text
+    return format_steps_preview(steps, max_len=max_len)
 
 
 def _extract_temperatures_from_exp_dict(exp_condition) -> List[float]:
@@ -1659,6 +1652,8 @@ def browse_data(request):
                     out_row = {
                         "recipe_auid": recipe.id,
                         "material_auid": material_auid,
+                        "composition_display": format_composition(meta.get("elements") or recipe.elements or {}),
+                        "composition_fractions": _format_atomic_fractions(meta.get("elements") or recipe.elements or {}),
                         "structure_family": meta.get("structure_family") or recipe.structure_family,
                         "element_symbols": meta.get("element_symbols") or list(recipe.element_symbols or []),
                         "num_elements": meta.get("num_elements") or recipe.num_elements,
@@ -1666,7 +1661,7 @@ def browse_data(request):
                         "literature_count": lit_visible,
                         "organizations": trial_orgs,
                         "temperature_display": _format_temperature_display(trial_temps),
-                        "steps_preview": _format_steps_preview(steps),
+                        "steps_preview": _format_steps_preview(steps, max_len=240),
                         "display_elements": _display_elements(dict(meta.get("elements") or recipe.elements or {})),
                     }
                     if search_mode == "semantic":

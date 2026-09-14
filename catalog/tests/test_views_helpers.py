@@ -124,7 +124,7 @@ class FormatStepsPreviewTests(SimpleTestCase):
         self.assertEqual(_format_steps_preview([]), "—")
 
     def test_truncation(self):
-        long_steps = [{"k": "x" * 200}]
+        long_steps = [{"step_type": "ball_milling", "atmosphere": "x" * 200}]
         out = _format_steps_preview(long_steps, max_len=20)
         self.assertTrue(out.endswith("…"))
         self.assertEqual(len(out), 20)

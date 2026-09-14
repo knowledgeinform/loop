@@ -23,10 +23,11 @@ python manage.py mongo_admin ensure-vector-indexes || echo "Warning: vector inde
 echo "Checking JSON archive..."
 python manage.py loop_archive status --warn-on-drift || echo "Warning: archive status check failed"
 
-if [ "${1:-}" = "python" ] && [ "${2:-}" = "manage.py" ]; then
-  echo "Compiling SCSS..."
-  python manage.py compile_scss --style "${SCSS_STYLE:-expanded}" || echo "SCSS compilation skipped"
-fi
+# Always compile, for gunicorn as well as runserver: the committed main.css
+# is a convenience for local work, not the deployed stylesheet, so a branch
+# that edits only the .scss sources still comes up styled in production.
+echo "Compiling SCSS..."
+python manage.py compile_scss --style "${SCSS_STYLE:-compressed}" || echo "SCSS compilation skipped"
 
 echo "Collecting static files..."
 python manage.py collectstatic --noinput

@@ -1,54 +1,50 @@
 // =============================================================================
-// App shell — header, primary nav, content/sidebar layout, footer
+// App shell — LOOP's own navigation and layout tweaks.
+//
+// The header, site tabs, family sub-nav, content column, news sidebar and
+// footer come from the group site: base_generic.html includes the fragments
+// from https://s4e.ai/partials/ and their stylesheet, shell.css (see
+// catalog/templatetags/s4e_shell.py). Only what is specific to LOOP lives
+// here; main.css loads after shell.css, so equal-specificity rules win.
 // =============================================================================
 
 $shell-max: 1320px;
 $nav-collapse: 768px;
-$footer-contributors-wrap: 1024px;
 
-// ------------------------------------------------------------------ Header
-header {
-  background-color: var(--navy);
-  color: #fff;
-}
-
-.hero {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  box-sizing: border-box;
-  max-width: $shell-max;
-  margin-inline: auto;
-  padding: 0.7rem 1.5rem;
-
-  img.logo {
-    height: 2.4rem;
-    width: auto;
-  }
-
-  .hero-text {
-    font-size: 1.35rem;
-    font-weight: 300;
-    letter-spacing: 0.01em;
-
-    strong {
-      font-weight: 700;
-    }
-
-    .subtitle {
-      font-size: 0.6em;
-      opacity: 0.82;
-    }
-  }
-}
-
-// ------------------------------------------------------------------ Nav
-// Light sticky bar, navy links, tab-style active underline. Shares its
-// language with the detail-page tabs. (White-on-sky failed contrast.)
-.main-nav {
-  position: sticky;
-  top: 0;
+// Fit the shared navigation into LOOP's stacking order, below modal dialogs.
+.site-nav {
   z-index: var(--z-sticky);
+}
+
+// Match shell.css's site-menu breakpoint. Keep its native checkbox operable
+// with Space and expose keyboard focus on the visible label. This also applies
+// to fetched fragments, so it does not depend on modifying the bundled HTML.
+@media screen and (max-width: 548px) {
+  .site-nav input#menu_toggle {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+
+    &:focus-visible + .menu {
+      outline: 2px solid var(--navy);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// ------------------------------------------------------------------ App nav
+// LOOP's own sections, one level below the site tabs and the Data and Tools
+// family sub-nav (Overview · CHAOS · LOOP). White band so it reads as the
+// app's toolbar rather than a second copy of the family row.
+.main-nav {
+  position: relative;
   width: 100%;
   background-color: var(--paper);
   border-bottom: 1px solid var(--line-2);
@@ -79,8 +75,8 @@ header {
   a {
     display: flex;
     align-items: center;
-    padding: 0.9rem 1.1rem;
-    font-size: 0.95rem;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--muted);
     text-decoration: none;
@@ -91,7 +87,6 @@ header {
 
     &:hover {
       color: var(--navy);
-      background-color: var(--navy-tint);
       text-decoration: none;
     }
 
@@ -259,15 +254,13 @@ header {
 }
 
 // ------------------------------------------------------------------ Layout
+// Keep the shared 75/25 proportions, reserving space for LOOP's column gap.
+// shell.css owns the max width, side padding and mobile flex layout.
 .main-content-wrapper {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 20rem;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
   gap: var(--gutter);
-  flex: 1 0 auto;
-  width: 100%;
-  max-width: $shell-max;
-  margin-inline: auto;
-  padding: 1.75rem 1.5rem 2.5rem;
+  padding-top: 1.75rem;
+  padding-bottom: 2.5rem;
 
   &.single-column {
     grid-template-columns: minmax(0, 1fr);
@@ -296,30 +289,20 @@ header {
 }
 
 // ------------------------------------------------------------------ Sidebar
+// Cards use the site's .sidebar-card / .sidebar-label styles; the Account
+// card is LOOP's, the news card is the shared fragment.
 .sidebar {
+  // Let the shared mobile news strip scroll inside the sidebar, not the page.
   min-width: 0;
+  max-width: 100%;
+  margin-top: 0;
 
-  &-content {
-    position: sticky;
-    top: calc(var(--z-sticky) * 0px + 4.5rem);
-    background-color: var(--surface-2);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    padding: 1.25rem 1.35rem;
-  }
-
-  h2 {
-    border: 0;
-    margin-bottom: 0.5rem;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
+  .sidebar-card + .sidebar-card {
+    margin-top: 1rem;
   }
 
   p {
-    margin-bottom: 0.5rem;
+    margin: 0 0 0.5rem;
     font-size: var(--fs-body);
     color: var(--ink);
   }
@@ -328,107 +311,11 @@ header {
     color: var(--navy);
     font-weight: 600;
   }
-
-  &-news-item {
-    display: block;
-    margin-bottom: 0.65rem;
-
-    &-date {
-      font-style: italic;
-      color: var(--muted);
-    }
-  }
 }
 
 @media screen and (max-width: $nav-collapse) {
   .main-content-wrapper {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 1.25rem 1rem 2rem;
-  }
-
-  .sidebar {
-    display: none;
-  }
-}
-
-// ------------------------------------------------------------------ Footer
-footer {
-  margin-top: auto;
-  background-color: var(--navy);
-  color: #fff;
-
-  .footer-inner {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 2rem;
-    max-width: $shell-max;
-    margin-inline: auto;
-    padding: 1.75rem 1.5rem;
-  }
-
-  img {
-    max-height: 68px;
-    width: auto;
-  }
-
-  .contact {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    font-size: 0.9rem;
-    line-height: 1.4;
-    color: rgba(255, 255, 255, 0.85);
-  }
-
-  .contact-line:first-child {
-    color: #fff;
-    font-weight: 600;
-    margin-bottom: 0.1rem;
-  }
-
-  .footer-contributors {
-    max-width: 26rem;
-    margin-left: auto;
-    font-size: var(--fs-sm);
-    line-height: var(--lh-snug);
-    color: rgba(255, 255, 255, 0.82);
-
-    summary {
-      width: fit-content;
-      color: rgba(255, 255, 255, 0.9);
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    ul {
-      margin: var(--sp-2) 0 0;
-      padding-left: var(--sp-3);
-    }
-
-    li + li {
-      margin-top: var(--sp-1);
-    }
-  }
-}
-
-@media screen and (max-width: $footer-contributors-wrap) {
-  footer .footer-contributors {
-    flex-basis: 100%;
-    max-width: none;
-    margin-left: 0;
-  }
-}
-
-@media screen and (max-width: 548px) {
-  footer .footer-inner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.25rem;
-  }
-
-  footer .footer-contributors {
-    width: 100%;
-    margin-left: 0;
+    padding-top: 1.25rem;
+    padding-bottom: 2rem;
   }
 }

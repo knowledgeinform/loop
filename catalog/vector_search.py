@@ -15,7 +15,7 @@ caller can fall back to the existing regex-over-``material_auid`` behaviour.
 from __future__ import annotations
 
 import logging
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from django.conf import settings
 from mongoengine.connection import get_db
@@ -98,6 +98,7 @@ def semantic_material_auids(
     num_candidates: Optional[int] = None,
     user_affiliations: Optional[Iterable[str]] = None,
     score_threshold: Optional[float] = None,
+    hit_filter: Optional[Callable[[Dict], bool]] = None,
 ) -> List[Tuple[str, float]]:
     """Return ``[(material_auid, score), ...]`` ranked by cross-field best score.
 
@@ -184,6 +185,10 @@ def semantic_material_auids(
             continue
         any_hits = True
         for hit in hits:
+            # Callers exposing scored evidence must authorize the underlying
+            # record before its score can influence a material's ranking.
+            if hit_filter is not None and not hit_filter(hit):
+                continue
             material_auid = hit.get("material_auid")
             if not material_auid:
                 continue

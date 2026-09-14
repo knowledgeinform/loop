@@ -76,6 +76,29 @@ safe.
 
 ## Pagination
 
+### Semantic retrieval
+
+`GET /api/v1/search/?q=quenched+nickel+oxide&elements=Ni,O&structure_family=rocksalt&limit=20`
+searches the existing material, recipe, and computation text embeddings. It requires
+an approved account and `data:read` scope. `q` is required (1–2000 characters),
+`limit` is 1–100, and `elements` / `structure_family` are optional exact filters.
+Unrecognised parameters, including `offset`, are rejected.
+
+Each result includes `material_auid`, `similarity_score`, and `matched_records`
+identifying the visible material, recipe, or computation that matched. Hidden
+source records cannot contribute scores. Similarity is retrieval relevance, not
+synthesis probability or proof that two materials are chemically equivalent.
+
+`meta` reports the embedding model, threshold, candidate window, and applied
+filters. Semantic retrieval is approximate and bounded, so `complete` is always
+false: an empty answer is not proof that the full catalog contains no match.
+Missing embedding infrastructure or queryable vector indexes returns **503**;
+use `/materials/` for exact chemistry lookup. Administrators can prepare the
+existing indexes with `mongo_admin ensure-vector-indexes` and populate vectors
+with `backfill_embeddings`.
+
+### Exact list pagination
+
 Every list endpoint pages with `limit` (page size, default 50, clamped to 100)
 and `offset` (rows to skip, default 0). `offset` is applied after filtering and
 after visibility, so it composes with `structure_family`, `elements`, `doi` and

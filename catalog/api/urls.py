@@ -3,6 +3,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from rest_framework.permissions import IsAuthenticated
 
 from . import views
+from .search import semantic_search
 from .permissions import IsApprovedUser
 from .schema import BrowserOpenApiJsonView
 
@@ -46,6 +47,7 @@ urlpatterns = [
     path("literature/", views.literature, name="api-v1-literature"),
     path("computational/", views.computational, name="api-v1-computational"),
     path("materials/", views.materials, name="api-v1-materials"),
+    path("search/", semantic_search, name="api-v1-search"),
     path("materials/<str:material_auid>/", views.material_detail, name="api-v1-material-detail"),
     path(
         "materials/<str:material_auid>/recipes/",

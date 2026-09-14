@@ -83,3 +83,77 @@ a.browse-mono:hover { text-decoration: underline; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+// Give the route the remaining space; formulas and prose wrap within cells.
+.browse-recipes-table {
+  table-layout: fixed;
+  min-width: 44rem;
+
+  th, td {
+    overflow-wrap: anywhere;
+    white-space: normal;
+    vertical-align: top;
+  }
+
+  .browse-recipe-material { width: 22%; }
+  .browse-recipe-structure { width: 13%; }
+  .browse-recipe-org { width: 15%; }
+  .browse-recipe-evidence { width: 15%; }
+  .browse-recipe-score { width: 4rem; }
+
+  .browse-elements-inline { line-height: 1.5; }
+  .browse-recipe-route { line-height: 1.55; }
+  .browse-recipe-temperature { margin-top: 0.35rem; }
+  .browse-recipe-evidence a { display: block; margin-bottom: 0.3rem; }
+  .badge { white-space: normal; }
+}
+
+.browse-recipes-wrap:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 3px;
+}
+
+@media screen and (max-width: 48rem) {
+  .browse-recipes-table {
+    display: block;
+    min-width: 0;
+
+    // Retain the column headers for assistive technology.
+    thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    tbody { display: block; }
+    tbody tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      padding: 0.65rem;
+      border-bottom: 1px solid var(--line);
+    }
+    tbody tr:last-child { border-bottom: 0; }
+    tbody td,
+    tbody td:first-child,
+    tbody td:last-child {
+      display: block;
+      width: auto;
+      padding: 0.4rem;
+      border: 0;
+      text-align: left;
+    }
+    td::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .browse-recipe-route,
+    td[data-label="Score"] { grid-column: 1 / -1; }
+  }
+}

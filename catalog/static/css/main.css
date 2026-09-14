@@ -3748,6 +3748,111 @@ a.browse-mono:hover {
   white-space: nowrap;
 }
 
+.browse-recipes-table {
+  table-layout: fixed;
+  min-width: 44rem;
+}
+
+.browse-recipes-table th, .browse-recipes-table td {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  vertical-align: top;
+}
+
+.browse-recipes-table .browse-recipe-material {
+  width: 22%;
+}
+
+.browse-recipes-table .browse-recipe-structure {
+  width: 13%;
+}
+
+.browse-recipes-table .browse-recipe-org {
+  width: 15%;
+}
+
+.browse-recipes-table .browse-recipe-evidence {
+  width: 15%;
+}
+
+.browse-recipes-table .browse-recipe-score {
+  width: 4rem;
+}
+
+.browse-recipes-table .browse-elements-inline {
+  line-height: 1.5;
+}
+
+.browse-recipes-table .browse-recipe-route {
+  line-height: 1.55;
+}
+
+.browse-recipes-table .browse-recipe-temperature {
+  margin-top: 0.35rem;
+}
+
+.browse-recipes-table .browse-recipe-evidence a {
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.browse-recipes-table .badge {
+  white-space: normal;
+}
+
+.browse-recipes-wrap:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 3px;
+}
+
+@media screen and (max-width: 48rem) {
+  .browse-recipes-table {
+    display: block;
+    min-width: 0;
+  }
+  .browse-recipes-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .browse-recipes-table tbody {
+    display: block;
+  }
+  .browse-recipes-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 0.65rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .browse-recipes-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .browse-recipes-table tbody td,
+.browse-recipes-table tbody td:first-child,
+.browse-recipes-table tbody td:last-child {
+    display: block;
+    width: auto;
+    padding: 0.4rem;
+    border: 0;
+    text-align: left;
+  }
+  .browse-recipes-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .browse-recipes-table .browse-recipe-route,
+.browse-recipes-table td[data-label="Score"] {
+    grid-column: 1 / -1;
+  }
+}
+
 .auth-shell {
   max-width: 40rem;
   margin-inline: auto;

@@ -7,11 +7,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 {% load static %}
+{% load s4e_shell %}
 <link rel="icon" href="{% static 'media/icons/s4e.png' %}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;600;700&display=swap">
+{% s4e_partial "head" %}
 <link rel="stylesheet" href="{% static 'css/main.css' %}" />
 <script>
   window.LOOP_BASE_PATH = "{{ request.META.SCRIPT_NAME|default:''|escapejs }}";
@@ -19,19 +21,14 @@
 {% block extra_css %}{% endblock %}
 <script src="{% static 'js/site.js' %}" defer></script>
 </head>
-<body>
-  <header>
-    <div class="hero">
-      {% block hero %}
-      <img src="{% static 'media/icons/s4e.png' %}" alt="S4E" class="logo">
-      <div class="hero-text">
-        <strong>LOOP</strong> · Learning and Optimization Platform
-      </div>
-      {% endblock %}
-    </div>
-  </header>
+<body data-s4e-tab="tools" data-s4e-product="loop">
+  {% comment %}Shared site shell, rendered by the group site build and fetched at
+     request time (catalog/templatetags/s4e_shell.py).{% endcomment %}
+  {% s4e_partial "header-loop" %}
+  {% s4e_partial "nav" %}
+  {% s4e_partial "subnav" %}
 
-  <nav class="main-nav">
+  <nav class="main-nav" aria-label="LOOP sections">
     <input type="checkbox" id="nav-toggle">
     <label class="menu" for="nav-toggle">
       <span class="menu-icon">
@@ -102,8 +99,8 @@
     {% if not hide_sidebar %}
     {% block sidebar %}
     <aside class="sidebar">
-      <div class="sidebar-content">
-        <h2>Account</h2>
+      <div class="sidebar-card">
+        <div class="sidebar-label">Account</div>
         {% if user.is_authenticated %}
           <p>Signed in as <strong>{{ user.get_username }}</strong></p>
           <form method="post" action="{% url 'logout' %}">
@@ -115,38 +112,13 @@
         {% endif %}
         {% block pagination %}{% endblock %}
       </div>
+      {% s4e_partial "sidebar" %}
     </aside>
     {% endblock %}
     {% endif %}
   </main>
 
-  <footer>
-    <div class="footer-inner">
-      <img src="{% static 'media/footer/jhu.png' %}" alt="Johns Hopkins University logo">
-      <div class="contact">
-        <div class="contact-line">Entropy for Energy Laboratory</div>
-        <div class="contact-line">Department of Materials Science and Engineering</div>
-        <div class="contact-line">Johns Hopkins University</div>
-        <div class="contact-line">Baltimore, Maryland</div>
-      </div>
-      <details class="footer-contributors">
-        <summary>Contributors</summary>
-        <ul aria-label="LOOP contributors">
-          <li class="footer-contributor">Matthew Brownrigg — 2026–Present</li>
-          <li class="footer-contributor">Guangshuai Han — 2026</li>
-          <li class="footer-contributor">Shubham Singh — 2026–Present</li>
-          <li class="footer-contributor">Makumburage Don Hashan Chathuranga Peiris — 2026–Present</li>
-          <li class="footer-contributor">Jiayue Hu — 2026–Present</li>
-          <li class="footer-contributor">Isabela LaFleur — 2026–Present</li>
-          <li class="footer-contributor">Kendall Frederick — 2026–Present</li>
-          <li class="footer-contributor">Peter Boctor — 2026–Present</li>
-          <li class="footer-contributor">Bryan Lim — 2026–Present</li>
-          <li class="footer-contributor">Bregman, Avi G. — 2026–Present</li>
-          <li class="footer-contributor">Corey Oses — 2026–Present</li>
-        </ul>
-      </details>
-    </div>
-  </footer>
+  {% s4e_partial "footer-loop" %}
   {% block extra_js %}{% endblock %}
   <script>
     document.addEventListener('wheel', function() {

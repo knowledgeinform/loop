@@ -5,6 +5,8 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.cache import cache
+from django.template.loader import get_template
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
@@ -147,13 +149,26 @@ class CatalogURLSmokeTests(TestCase):
         self.assertNotContains(response, "Lead candidate")
 
 
+@override_settings(
+    S4E_SHELL_URL="",
+    CACHES={"default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "shell-login-tests",
+    }},
+)
 class CatalogLoginPageTests(TestCase):
     """Login route is exempt from the approval gate (anonymous OK)."""
+
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
 
     @override_settings(STORAGES=_TEST_STORAGES)
     def test_login_get(self):
         client = Client(enforce_csrf_checks=False)
-        self.assertEqual(client.get(reverse("login")).status_code, 200)
+        response = client.get(reverse("login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Shared site shell, rendered")
 
     @override_settings(STORAGES=_TEST_STORAGES)
     def test_login_has_collapsed_contributors(self):
@@ -164,27 +179,29 @@ class CatalogLoginPageTests(TestCase):
         self.assertIn('<details class="footer-contributors">', html)
         self.assertNotIn('<details class="footer-contributors" open', html)
 
-        contributors = [
-            ("Matthew Brownrigg", "2026–Present"),
-            ("Guangshuai Han", "2026"),
-            ("Shubham Singh", "2026–Present"),
-            ("Makumburage Don Hashan Chathuranga Peiris", "2026–Present"),
-            ("Jiayue Hu", "2026–Present"),
-            ("Isabela LaFleur", "2026–Present"),
-            ("Kendall Frederick", "2026–Present"),
-            ("Peter Boctor", "2026–Present"),
-            ("Bryan Lim", "2026–Present"),
-            ("Bregman, Avi G.", "2026–Present"),
-            ("Corey Oses", "2026–Present"),
-        ]
-        positions = []
-        for name, years in contributors:
-            credit = f"{name} — {years}"
-            self.assertContains(response, credit, count=1)
-            positions.append(html.index(credit))
+        # Names, years and ordering belong to the site. Assert that LOOP uses
+        # the entire bundled footer exactly once instead of duplicating them.
+        footer = get_template("s4e/partials/footer-loop.html").render({})
+        self.assertContains(response, footer, count=1)
+        self.assertContains(response, 'aria-label="LOOP contributors"', count=1)
+        self.assertGreater(html.count('class="footer-contributor"'), 0)
 
-        self.assertEqual(positions, sorted(positions))
-        self.assertEqual(html.count('class="footer-contributor"'), len(contributors))
+    @override_settings(STORAGES=_TEST_STORAGES, S4E_SHELL_URL="https://s4e.ai/")
+    def test_login_uses_site_managed_contributors(self):
+        from catalog.templatetags.s4e_shell import _fallback
+
+        footer = (
+            '<footer><details class="footer-contributors"><summary>Contributors</summary>'
+            '<ul aria-label="LOOP contributors"><li class="footer-contributor">'
+            'Site-managed contributor · 2027</li></ul></details></footer>'
+        )
+        with patch(
+            "catalog.templatetags.s4e_shell._fetch",
+            side_effect=lambda name: footer if name == "footer-loop" else _fallback(name),
+        ):
+            response = self.client.get(reverse("login"))
+        self.assertContains(response, footer, count=1)
+        self.assertContains(response, 'class="footer-contributor"', count=1)
 
 
 class CatalogBrowseApprovedGroupTests(TestCase):

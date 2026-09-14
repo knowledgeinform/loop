@@ -148,6 +148,12 @@ AFLOW_REFRESH_PER_TRAINING_JOB = int(
     os.environ.get("AFLOW_REFRESH_PER_TRAINING_JOB", "10")
 )
 
+# Shared site shell (header, nav, sidebar, footer) fetched from the group
+# site at request time; see catalog/templatetags/s4e_shell.py. Empty URL =
+# fetch nothing and use the committed copies (local development).
+S4E_SHELL_URL = os.environ.get("S4E_SHELL_URL", "https://s4e.ai/")
+S4E_SHELL_CACHE_SECONDS = int(os.environ.get("S4E_SHELL_CACHE_SECONDS", "600"))
+
 # The dev deployment runs against a clone of production, real password hashes
 # included, so the admin and the open registration form are liabilities there
 # rather than features. With this on, loop/urls.py leaves those routes out of the

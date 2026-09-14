@@ -63,7 +63,7 @@
     </div>
 
     {# --------------------------------------------------------------- Trials #}
-    <div class="detail-section-panel">
+    <div class="detail-section-panel" id="trials">
       <div class="comp-tab-toolbar">
         <h2>Trials <span class="badge count-badge">{{ trials|length }}</span></h2>
         <a href="{% url 'upload_exp_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add experiment</a>
@@ -92,7 +92,7 @@
     </div>
 
     {# ----------------------------------------------------------- Literature #}
-    <div class="detail-section-panel">
+    <div class="detail-section-panel" id="literature">
       <div class="comp-tab-toolbar">
         <h2>Literature <span class="badge count-badge">{{ literature|length }}</span></h2>
         <a href="{% url 'add_literature_data' %}?material_auid={{ material_auid }}" class="btn btn-outline-secondary btn-sm">Add reference</a>
