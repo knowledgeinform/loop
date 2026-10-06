@@ -15,7 +15,7 @@ from catalog.vector_search import VECTOR_FIELDS
 class SemanticSearchTests(SimpleTestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
-        self.user = SimpleNamespace(pk=731, is_authenticated=True, is_staff=True)
+        self.user = SimpleNamespace(pk=731, is_authenticated=True, is_active=True, is_staff=True)
         self.visible = SimpleNamespace(
             id="M:000000000001", elements={"Ni": 1, "O": 1}, element_symbols=["Ni", "O"],
             num_elements=2, structure_family="rocksalt", display_name="NiO", notes="",
@@ -23,10 +23,10 @@ class SemanticSearchTests(SimpleTestCase):
             default_visibility_affiliations=["APL"], dft_calculations=[],
         )
         self.other = SimpleNamespace(**{**vars(self.visible), "id": "M:000000000002",
-                                       "default_visibility_affiliations": ["Oak Ridge"]})
+                                       "default_visibility_affiliations": ["MIT"]})
         self.recipe = SimpleNamespace(id="M:000000000001:R:000000000003",
                                      material_auid=self.visible.id,
-                                     visibility_affiliations=["Oak Ridge"])
+                                     visibility_affiliations=["MIT"])
         self.collection = MagicMock()
         self.collection.list_search_indexes.return_value = [
             {"name": name, "queryable": True} for _, name in VECTOR_FIELDS
@@ -74,7 +74,7 @@ class SemanticSearchTests(SimpleTestCase):
 
     def test_private_computational_score_is_excluded(self):
         cid = self.visible.id + ":C:000000000004"
-        self.visible.dft_calculations = [SimpleNamespace(comp_auid=cid, visibility_affiliations=["Oak Ridge"])]
+        self.visible.dft_calculations = [SimpleNamespace(comp_auid=cid, visibility_affiliations=["MIT"])]
         self.collection.aggregate.return_value = [
             {"scope": "comp", "material_auid": self.visible.id, "comp_auid": cid, "_score": .99}
         ]

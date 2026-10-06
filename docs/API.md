@@ -651,3 +651,37 @@ Client integrations should rely only on the published versioned API, OpenAPI
 schema, and documented responses. Verify the health endpoint through the
 provided API base URL and begin with a read-only request before attempting a
 write.
+
+
+### Human XRD expert reviews
+
+Trial reads and exports include `xrd_analyses_url`. Follow it with **GET** to
+list existing analyses, including historical runs; reading this URL does not
+submit work or require the original raw file to be available. Each analysis
+includes `analysis_id`, `status_url`, `result_url`, and `reviews_url`.
+
+`GET /api/v1/xrd-analyses/{analysis_id}/reviews/` returns:
+
+```json
+{
+  "data": {
+    "analysis_id": "…",
+    "active_review": null,
+    "reviews": []
+  }
+}
+```
+
+When reviews exist, `active_review` contains the current review and `reviews`
+contains the complete history, newest first. Reviews include the original
+review fields plus `identified_structures` (an enum list), `other_structure`,
+`identified_phases` (free text), and the booleans `no_identifiable_structure`,
+`amorphous`, and `ambiguous`. They also include reviewer provenance, timestamps,
+`is_active`, and `supersedes_review_id`. Legacy reviews default to empty new
+fields and false flags; absence of an annotation is not a negative scientific
+finding. Selecting multiple structures does not change `reviewed_phase_state`.
+
+All reads require an approved account and `data:read` scope, and honor trial
+visibility. Automated results remain separate. ChemScreen should explicitly
+select the active human review and apply its own policy for unresolved,
+ambiguous, or needs-more-data reviews before using labels in training.

@@ -180,9 +180,128 @@
     window.addEventListener('beforeunload', stopPolling);
   }
 
+  function bindExpertReviewForm() {
+    var form = document.querySelector(
+      '[data-xrd-expert-review-form]'
+    );
+
+    if (!form) {
+      return;
+    }
+
+    var otherToggle = form.querySelector(
+      '[data-xrd-other-structure-toggle]'
+    );
+
+    var otherContainer = form.querySelector(
+      '[data-xrd-other-structure-container]'
+    );
+
+    var otherInput = form.querySelector(
+      '#id_other_structure'
+    );
+
+    var summary = form.querySelector(
+      '[data-xrd-structure-summary]'
+    );
+
+    var structureInputs = Array.from(
+      form.querySelectorAll(
+        'input[name="identified_structures"]'
+      )
+    );
+
+    function updateOtherStructure() {
+      if (
+        !otherToggle ||
+        !otherContainer ||
+        !otherInput
+      ) {
+        return;
+      }
+
+      var selected = Boolean(
+        otherToggle.checked
+      );
+
+      otherContainer.hidden = !selected;
+
+      otherInput.required = selected;
+
+      if (!selected) {
+        otherInput.value = '';
+      }
+    }
+
+    function updateStructureSummary() {
+      if (!summary) {
+        return;
+      }
+
+      var selected = (
+        structureInputs
+          .filter(function (input) {
+            return input.checked;
+          })
+          .map(function (input) {
+            var label = form.querySelector(
+              'label[for="' +
+              input.id +
+              '"]'
+            );
+
+            return (
+              label
+                ? label.textContent.trim()
+                : input.value
+            );
+          })
+      );
+
+      if (selected.length <= 1) {
+        summary.hidden = true;
+        summary.textContent = '';
+        return;
+      }
+
+      summary.hidden = false;
+
+      summary.textContent = (
+        'Informational: multiple structural ' +
+        'families are identified (' +
+        selected.join(', ') +
+        '). This does not automatically ' +
+        'change the explicit Phase State.'
+      );
+    }
+
+    structureInputs.forEach(
+      function (input) {
+        input.addEventListener(
+          'change',
+          function () {
+            updateOtherStructure();
+            updateStructureSummary();
+          }
+        );
+      }
+    );
+
+    updateOtherStructure();
+    updateStructureSummary();
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     bindPlotToggles();
-    document.querySelectorAll('[data-xrd-analysis-card]').forEach(bindTrialAnalysisCard);
-    document.querySelectorAll('[data-xrd-analysis-detail]').forEach(bindDetailPolling);
+
+    document
+      .querySelectorAll('[data-xrd-analysis-card]')
+      .forEach(bindTrialAnalysisCard);
+
+    document
+      .querySelectorAll('[data-xrd-analysis-detail]')
+      .forEach(bindDetailPolling);
+
+    bindExpertReviewForm();
   });
 })();

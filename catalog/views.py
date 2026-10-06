@@ -42,13 +42,14 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_safe
 from django.views.defaults import page_not_found as django_page_not_found
 from django.views.defaults import server_error as django_server_error
 from django.views.generic import CreateView, TemplateView
 from django.core.files.storage import default_storage
 
 from . import aggregation as aggregation_mod
+from . import browse_search
 from . import api_download
 from . import auid as auid_mod
 from .permissions import (
@@ -90,6 +91,8 @@ from .documents import (
     get_recipes_for_material,
     get_user_affiliations,
     normalize_elements_payload,
+    XRD_EXPERT_STRUCTURE_CHOICES,
+    XRD_EXPERT_STRUCTURE_VALUES,
 )
 from .forms import LiteratureDataForm, SignupForm
 from .forms import BatchExperimentalUploadForm, BatchLiteratureUploadForm
@@ -115,6 +118,7 @@ from catalog.xrd_analysis import (
     to_jsonable,
     validate_persisted_xrd_analysis,
 )
+from access import policy as access_policy
 
 
 # =============================================================================
@@ -570,7 +574,7 @@ def _get(obj, name, default=None):
 # =============================================================================
 
 def _user_affiliations(user):
-    return _normalize_visibility_tags(get_user_affiliations(user) or list(VISIBILITY_DEFAULT))
+    return _normalize_visibility_tags(get_user_affiliations(user), default=[])
 
 
 def _get_visibility_affiliations_for_create(user):
@@ -586,14 +590,9 @@ def _is_uploader_or_superuser(user, uploader):
 
 
 def _user_is_approved(user):
-    if not getattr(user, "is_authenticated", False):
-        return False
-    if getattr(settings, "APPROVED_BYPASS_SUPERUSERS", True) and (
-        getattr(user, "is_staff", False) or getattr(user, "is_superuser", False)
-    ):
-        return True
-    group_name = getattr(settings, "APPROVED_GROUP_NAME", "Approved")
-    return user.groups.filter(name=group_name).exists()
+    # The Approved group and an affiliation set by an admin (staff bypass as
+    # before); one rule for the gate, the API and the views.
+    return access_policy.has_loop_access(user)
 
 
 def _user_can_submit_xrd_analysis(user):
@@ -1188,12 +1187,65 @@ def persist_literature_entry(
 # Top-level + auth views
 # =============================================================================
 
+# Signed-out visitors to LOOP's landing page go to the LOOP front page on the
+# group site (https://s4e.ai/loop), which says what LOOP holds and how to get
+# an account (decided by Corey Oses, 2026-09-30). LOOP_FRONT_PAGE_URL empty:
+# no redirect, as in development. Before the front page existed, Apache
+# answered /loop with a permanent redirect to /loop/, and a browser that kept
+# that redirect would bounce between the two pages. The short cookie set with
+# the redirect stops that after one round: a signed-out visitor back within a
+# minute sees this page.
+FRONT_PAGE_COOKIE = "loop_front_page"
+
+
 def index(request):
+    front = getattr(settings, "LOOP_FRONT_PAGE_URL", "")
+    if front and not request.user.is_authenticated and not request.COOKIES.get(FRONT_PAGE_COOKIE):
+        response = redirect(front)
+        response.set_cookie(
+            FRONT_PAGE_COOKIE,
+            "1",
+            max_age=60,
+            path=reverse("index"),
+            secure=getattr(settings, "SESSION_COOKIE_SECURE", False),
+            httponly=True,
+            samesite="Lax",
+        )
+        return response
     num_visits = request.session.get("num_visits", 0) + 1
     request.session["num_visits"] = num_visits
     # Full-database totals for everyone (Browse still respects org visibility).
     context = {"num_visits": num_visits, **aggregation_mod.catalog_landing_page_totals()}
     return render(request, "index.html", context=context)
+
+
+@require_safe
+def catalog_counts(request):
+    """``GET /api/v1/stats/``: the catalog's totals, counts only, for anyone.
+
+    The LOOP front page on the group site shows these totals and refreshes
+    them from here when it loads, as the CHAOS page does from the CHAOS API's
+    ?stats. They are the numbers this app's landing page shows every visitor
+    (catalog_landing_page_totals, cached for five minutes), and two that
+    separate the laboratory's own records from the CHAOS import
+    (catalog_front_page_counts).
+    """
+    totals = aggregation_mod.catalog_landing_page_totals()
+    extra = aggregation_mod.catalog_front_page_counts()
+    response = JsonResponse(
+        {
+            "materials": totals["material_count"],
+            "materials_with_recipes": extra["materials_with_recipes"],
+            "recipes": totals["recipe_count"],
+            "experiments": totals["experiment_count"],
+            "literature": totals["literature_count"],
+            "calculations": totals["computational_count"],
+            "calculations_from_chaos": extra["calculations_from_chaos"],
+            "as_of": timezone.now().date().isoformat(),
+        }
+    )
+    response["Cache-Control"] = "public, max-age=300"
+    return response
 
 
 def add_data(request):
@@ -1209,11 +1261,20 @@ def predict(request):
 
 @login_required
 def account(request):
+    from access import policy as access_policy
+
     selected_affiliations = _user_affiliations(request.user)
     return render(
         request,
         "catalog/account.html",
-        {"selected_affiliations": selected_affiliations},
+        {
+            "selected_affiliations": selected_affiliations,
+            # The profile every account fills in once (access.Profile), shown
+            # here with a link to edit it, and what the account may open.
+            "profile": getattr(request.user, "profile", None),
+            "loop_access": access_policy.has_loop_access(request.user),
+            "chaos_access": access_policy.has_chaos_access(request.user),
+        },
     )
 
 
@@ -1239,7 +1300,7 @@ class SignUpView(CreateView):
         text_body = (
             f"Hi {self.object.username},\n\n"
             f"Please verify your email by clicking the link below:\n{activate_url}\n\n"
-            f"After verifying, email the site admin at loop@mintaka.arch.jhu.edu to request access.\n"
+            f"After verifying, email the site admin at s4e-loop@mintaka.arch.jhu.edu to request access.\n"
             f"You won't see protected pages until your account is approved."
         )
         html_body = (
@@ -1247,7 +1308,7 @@ class SignUpView(CreateView):
             f"<p>Please verify your email by clicking the link below:<br>"
             f'<a href="{activate_url}">{activate_url}</a></p>'
             f"<p>After verifying, email the site admin at "
-            f'<a href="mailto:loop@mintaka.arch.jhu.edu">loop@mintaka.arch.jhu.edu</a> to request access.<br>'
+            f'<a href="mailto:s4e-loop@mintaka.arch.jhu.edu">s4e-loop@mintaka.arch.jhu.edu</a> to request access.<br>'
             f"You won't see protected pages until your account is approved.</p>"
         )
 
@@ -1256,7 +1317,7 @@ class SignUpView(CreateView):
             body=text_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user_email],
-            reply_to=["loop@mintaka.arch.jhu.edu"],
+            reply_to=["s4e-loop@mintaka.arch.jhu.edu"],
         )
         msg.attach_alternative(html_body, "text/html")
         msg.send(fail_silently=True)
@@ -1269,7 +1330,7 @@ class SignUpView(CreateView):
             subject="New signup",
             body=admin_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=["loop@mintaka.arch.jhu.edu"],
+            to=["s4e-loop@mintaka.arch.jhu.edu"],
             reply_to=[user_email],
         )
         admin_msg.send(fail_silently=False)
@@ -1281,7 +1342,7 @@ class SignupPendingView(TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
-            if request.user.groups.filter(name=settings.APPROVED_GROUP_NAME).exists():
+            if access_policy.has_loop_access(request.user):
                 return redirect("index")
             return redirect("awaiting_approval")
         return super().dispatch(request, *args, **kwargs)
@@ -1292,7 +1353,7 @@ class SignupCompleteView(TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
-            if request.user.groups.filter(name=settings.APPROVED_GROUP_NAME).exists():
+            if access_policy.has_loop_access(request.user):
                 return redirect("index")
             return redirect("awaiting_approval")
         return super().dispatch(request, *args, **kwargs)
@@ -1309,6 +1370,9 @@ def activate(request, uidb64, token):
         from django.contrib.auth.models import Group
         email_group, _ = Group.objects.get_or_create(name="email_confirmed")
         user.groups.add(email_group)
+        from access.policy import record_verified_email
+
+        record_verified_email(user)
         return redirect("signup_complete")
     return render(request, "registration/activation_invalid.html", status=400)
 
@@ -1425,27 +1489,41 @@ def browse_data(request):
 
     user_affiliations = _user_affiliations(request.user)
 
-    semantic_auids: Optional[list] = None
-    semantic_score_by_auid: Dict[str, float] = {}
+    semantic_auids = None
+    semantic_score_by_auid = {}
     search_mode = "none"
-    semantic_error: Optional[str] = None
+    semantic_error = None
+    literal_matches = None
+    search_type = "semantic" if request.GET.get("search_type") == "semantic" else "catalog"
+    sort_order = request.GET.get("sort", "")
+    if sort_order not in ("newest", "oldest", "relevance"):
+        sort_order = "relevance" if search_query and search_type == "semantic" else "newest"
     if search_query:
-        try:
-            ranked = vector_search_mod.semantic_material_auids(
-                search_query,
-                limit=200,
-                user_affiliations=user_affiliations,
-            )
-            semantic_auids = [auid for auid, _score in ranked]
-            semantic_score_by_auid = {auid: float(score) for auid, score in ranked}
-            search_mode = "semantic"
-        except vector_search_mod.VectorSearchUnavailable as exc:
-            semantic_auids = None
-            search_mode = "auid"
-            semantic_error = str(exc)
-
-    material_auid_query = search_query if search_mode == "auid" else None
-    material_auid_in = semantic_auids if search_mode == "semantic" else None
+        # A complete composition is precise even when entered in discovery mode.
+        lookup = browse_search.catalog_matches(search_query, user_affiliations)
+        identifier_query = bool(re.fullmatch(
+            r"(?:M:.*|L:.*|10\.\d{4,9}/.*|[A-Za-z]+[-_ ]+\d+|[A-Za-z]+\d+[A-Za-z]*[-_]\d+)",
+            search_query, re.IGNORECASE,
+        ))
+        if search_type == "catalog" or lookup.mode == "composition" or lookup.materials or identifier_query:
+            literal_matches = lookup
+            search_mode = literal_matches.mode
+        else:
+            try:
+                ranked = vector_search_mod.semantic_material_auids(
+                    search_query, limit=200, user_affiliations=user_affiliations,
+                )
+                semantic_auids = [auid for auid, _score in ranked]
+                semantic_score_by_auid = {auid: float(score) for auid, score in ranked}
+                search_mode = "semantic"
+            except vector_search_mod.VectorSearchUnavailable:
+                # Do not silently substitute a different query when discovery fails.
+                semantic_auids = []
+                search_mode = "unavailable"
+                semantic_error = "Semantic search is temporarily unavailable. Try catalog lookup."
+    material_auid_query = None
+    material_auid_in = (sorted(literal_matches.materials)
+                        if literal_matches is not None else semantic_auids)
 
     temp_filter_active = (
         temp_filter_enabled
@@ -1453,7 +1531,7 @@ def browse_data(request):
         and temp_max is not None
     )
 
-    page = _safe_int(request.GET.get("page")) or 1
+    page = max(1, _safe_int(request.GET.get("page")) or 1)
     default_per_page = 25 if view_mode == "materials" else 30
     req_per_page = _safe_int(request.GET.get("per_page"))
     per_page = req_per_page if req_per_page and req_per_page > 0 else default_per_page
@@ -1478,6 +1556,7 @@ def browse_data(request):
             user_affiliations=user_affiliations,
             material_auid_query=material_auid_query,
             material_auid_in=material_auid_in,
+            sort_order=sort_order,
         )
         if db_page_ok:
             bm = aggregation_mod.browse_materials(
@@ -1556,6 +1635,7 @@ def browse_data(request):
 
             out_row = {
                 "material_auid": material_auid,
+                "created_at": row.get("created_at"),
                 "elements": row.get("elements") or {},
                 "element_symbols": row.get("element_symbols") or [],
                 "structure_family": row.get("structure_family"),
@@ -1606,6 +1686,8 @@ def browse_data(request):
             for material_auid in material_order:
                 meta = meta_by_m.get(material_auid) or {}
                 for recipe in recipes_by_m.get(material_auid, []):
+                    if literal_matches is not None and not literal_matches.includes_recipe(material_auid, recipe.id):
+                        continue
                     if not _recipe_visible_for_browse(recipe, user_affiliations):
                         continue
                     steps = list(recipe.synthesis_steps or [])
@@ -1651,6 +1733,7 @@ def browse_data(request):
 
                     out_row = {
                         "recipe_auid": recipe.id,
+                        "created_at": recipe.created_at,
                         "material_auid": material_auid,
                         "composition_display": format_composition(meta.get("elements") or recipe.elements or {}),
                         "composition_fractions": _format_atomic_fractions(meta.get("elements") or recipe.elements or {}),
@@ -1681,6 +1764,8 @@ def browse_data(request):
         )
         lit_stage1: List[Dict[str, Any]] = []
         for row in lit_rows:
+            if literal_matches is not None and not literal_matches.includes_literature(row):
+                continue
             if not _is_visible_to_user(row.get("lit_visibility"), user_affiliations):
                 continue
             lit_tags = _normalize_visibility_tags(row.get("lit_visibility"))
@@ -1730,6 +1815,7 @@ def browse_data(request):
             lit_id_val = row.get("lit_id") or (_lit_auid(doi_val) if doi_val else "")
             out_row = {
                 "material_auid": row.get("material_auid"),
+                "created_at": row.get("created_at"),
                 "recipe_auid": row.get("recipe_auid"),
                 "structure_family": row.get("structure_family"),
                 "element_symbols": row.get("element_symbols") or [],
@@ -1758,6 +1844,8 @@ def browse_data(request):
             material_auid_in=material_auid_in,
         )
         for row in comp_rows:
+            if literal_matches is not None and not literal_matches.includes_computation(row):
+                continue
             if not _is_visible_to_user(row.get("dft_visibility"), user_affiliations):
                 continue
             dft_tags = _normalize_visibility_tags(row.get("dft_visibility"))
@@ -1766,6 +1854,7 @@ def browse_data(request):
 
             out_row = {
                 "material_auid": row.get("material_auid"),
+                "created_at": row.get("created_at"),
                 "comp_auid": row.get("comp_auid"),
                 "structure_family": row.get("structure_family"),
                 "element_symbols": row.get("element_symbols") or [],
@@ -1779,6 +1868,9 @@ def browse_data(request):
             if search_mode == "semantic":
                 out_row["semantic_score"] = semantic_score_by_auid.get(row.get("material_auid"))
             filtered_rows.append(out_row)
+
+    if sort_order in ("newest", "oldest"):
+        browse_search.sort_by_added(filtered_rows, sort_order)
 
     if view_mode == "materials" and browse_materials_db_paginated and materials_agg_total is not None:
         total = materials_agg_total
@@ -1807,6 +1899,8 @@ def browse_data(request):
         "filters": {
             "structure_family": structure_family,
             "search": search_query,
+            "search_type": search_type,
+            "sort": sort_order,
             "has_literature": has_literature,
             "has_experiments": has_experiments,
             "has_computational": has_computational,
@@ -2284,6 +2378,48 @@ def _job_status_meta(job, *, phase_state=None):
         return {"label": "Running", "badge_class": "bg-primary", "job_status": "running"}
     return {"label": "Queued", "badge_class": "bg-info text-dark", "job_status": "queued"}
 
+def _request_bool(
+    request,
+    name,
+):
+    return str(
+        request.POST.get(
+            name,
+            "",
+        )
+        or ""
+    ).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _parse_identified_structures(
+    request,
+):
+    values = []
+
+    for raw in request.POST.getlist(
+        "identified_structures"
+    ):
+        value = str(
+            raw
+            or ""
+        ).strip()
+
+        if (
+            value
+            in XRD_EXPERT_STRUCTURE_VALUES
+            and value
+            not in values
+        ):
+            values.append(
+                value
+            )
+
+    return values
 
 def _target_structure_rows(recipe, record):
     rows = [
@@ -2359,6 +2495,12 @@ def _collect_review_history(analysis_id):
             "reviewed_phase_state": review.reviewed_phase_state,
             "selected_hypothesis_id": review.selected_hypothesis_id,
             "added_candidate_identifiers": list(review.added_candidate_identifiers or []),
+            "identified_structures": list(review.identified_structures or []),
+            "other_structure": review.other_structure or "",
+            "identified_phases": review.identified_phases or "",
+            "no_identifiable_structure": bool(review.no_identifiable_structure),
+            "amorphous": bool(review.amorphous),
+            "ambiguous": bool(review.ambiguous),
             "confidence": review.confidence,
             "notes": review.notes,
             "reviewer_username": review.reviewer_username,
@@ -2863,6 +3005,8 @@ def xrd_analysis_detail(request, recipe_id, trial_id, analysis_id):
         "review_status_values": XRD_ANALYSIS_REVIEW_STATUS_VALUES,
         "phase_state_values": XRD_ANALYSIS_PHASE_STATE_VALUES,
         "review_history": review_history,
+        "xrd_structure_choices":
+            XRD_EXPERT_STRUCTURE_CHOICES,
         "active_review": active_review,
         "can_review_xrd_analysis": _user_can_review_xrd_analysis(request.user),
         "review_post_url": _xrd_analysis_review_path(recipe.id, trial_id, analysis_id),
@@ -2905,6 +3049,71 @@ def xrd_analysis_review_create(request, recipe_id, trial_id, analysis_id):
     confidence = str(request.POST.get("confidence") or "").strip() or None
     notes = str(request.POST.get("notes") or "").strip()
 
+    identified_structures = (
+        _parse_identified_structures(
+            request
+        )
+    )
+
+    other_structure = str(
+        request.POST.get(
+            "other_structure",
+            "",
+        )
+        or ""
+    ).strip()
+
+    identified_phases = str(
+        request.POST.get(
+            "identified_phases",
+            "",
+        )
+        or ""
+    ).strip()
+
+    no_identifiable_structure = (
+        _request_bool(
+            request,
+            "no_identifiable_structure",
+        )
+    )
+
+    amorphous = _request_bool(
+        request,
+        "amorphous",
+    )
+
+    ambiguous = _request_bool(
+        request,
+        "ambiguous",
+    )
+
+    if (
+        "other" in identified_structures
+        and not other_structure
+    ):
+        messages.error(
+            request,
+            (
+                "Enter the structure name "
+                "when Other is selected."
+            ),
+        )
+
+        return redirect(
+            _xrd_analysis_detail_path(
+                recipe.id,
+                trial_id,
+                analysis_id,
+            )
+        )
+
+
+    # Do not persist stale Other text when Other
+    # was not actually selected.
+    if "other" not in identified_structures:
+        other_structure = ""
+
     if review_status not in XRD_ANALYSIS_REVIEW_STATUS_VALUES:
         messages.error(request, "Review status is invalid.")
         return redirect(_xrd_analysis_detail_path(recipe.id, trial_id, analysis_id))
@@ -2940,6 +3149,27 @@ def xrd_analysis_review_create(request, recipe_id, trial_id, analysis_id):
         reviewed_phase_state=reviewed_phase_state or None,
         selected_hypothesis_id=selected_hypothesis_id or None,
         added_candidate_identifiers=added_candidate_identifiers,
+
+        # New structured fields.
+        identified_structures=
+            identified_structures,
+
+        other_structure=
+            other_structure,
+
+        identified_phases=
+            identified_phases,
+
+        no_identifiable_structure=
+            no_identifiable_structure,
+
+        amorphous=
+            amorphous,
+
+        ambiguous=
+            ambiguous,
+
+
         confidence=confidence,
         notes=notes,
         supersedes_review_id=str(getattr(previous_active, "id", "") or "") or None,
@@ -3766,13 +3996,25 @@ def developer_keys(request):
     from catalog.api import key_service
     from catalog.api.serializers import APIKeyCreateSerializer, API_KEY_SCOPES
 
-    can_manage_api_keys = bool(
+    from access import policy as access_policy
+
+    loop_keys = bool(
         request.user.is_authenticated
         and (
             request.user.is_staff
             or request.user.is_superuser
-            or request.user.groups.filter(name=settings.APPROVED_GROUP_NAME).exists()
+            or access_policy.has_loop_access(request.user)
         )
+    )
+    # CHAOS access (access/policy.py) is separate from LOOP approval: an account
+    # with only CHAOS access manages keys too, limited to the chaos:read scope.
+    chaos_keys = access_policy.has_chaos_access(request.user)
+    can_manage_api_keys = loop_keys or chaos_keys
+    allowed_scopes = tuple(
+        scope
+        for scope in API_KEY_SCOPES
+        if (scope == access_policy.CHAOS_KEY_SCOPE and chaos_keys)
+        or (scope != access_policy.CHAOS_KEY_SCOPE and loop_keys)
     )
     if request.method == "POST" and not can_manage_api_keys:
         if not request.user.is_authenticated:
@@ -3813,19 +4055,21 @@ def developer_keys(request):
                         "expires_at": expires_at,
                     }
                 )
-                if serializer.is_valid():
+                if not serializer.is_valid():
+                    form_errors = serializer.errors
+                elif not set(serializer.validated_data["scopes"]) <= set(allowed_scopes):
+                    form_errors = {"scopes": ["Your account cannot hold one of these scopes."]}
+                else:
                     _, new_api_key = key_service.issue(
                         user=request.user, **serializer.validated_data
                     )
                     request.session["developer_keys.new_api_key"] = new_api_key
                     return redirect("developer_keys")
-                else:
-                    form_errors = serializer.errors
 
     context = {
         "hide_sidebar": True,
         "api_keys": key_service.list_for_user(request.user) if can_manage_api_keys else [],
-        "api_key_scopes": API_KEY_SCOPES if can_manage_api_keys else [],
+        "api_key_scopes": allowed_scopes if can_manage_api_keys else [],
         "can_manage_api_keys": can_manage_api_keys,
         "new_api_key": new_api_key,
         "form_errors": form_errors,

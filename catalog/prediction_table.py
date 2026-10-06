@@ -877,7 +877,13 @@ def screen_3d_transition_metal_oxides(
     first; EFA (higher is better in the ChemScreen screening workflow) breaks
     ties.
     """
-    affiliations = list(user_affiliations or ["S4E"])
+    affiliations = list(user_affiliations or [])
+    if not affiliations:
+        return {
+            "rows": [], "eligible_count": 0, "displayed_count": 0,
+            "model_status": {},
+            "criteria": "An organization affiliation is required to view LOOP predictions.",
+        }
     materials = [
         material
         for material in Material.objects(
@@ -1165,7 +1171,12 @@ def run_prediction_query(
     query = parse_prediction_query(prompt, default_limit=default_limit)
     if not query.raw:
         return {"rows": [], "error": "Enter a composition or a materials question.", "query": query}
-    affiliations = list(user_affiliations or ["S4E"])
+    affiliations = list(user_affiliations or [])
+    if not affiliations:
+        return {
+            "rows": [], "query": query,
+            "error": "An organization affiliation is required to view LOOP predictions.",
+        }
 
     if query.formula:
         try:

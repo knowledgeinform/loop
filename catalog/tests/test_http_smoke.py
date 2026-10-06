@@ -221,4 +221,7 @@ class CatalogBrowseApprovedGroupTests(TestCase):
         user.groups.add(group)
         client = Client(enforce_csrf_checks=False)
         client.force_login(user)
-        self.assertEqual(client.get(reverse("browse_data")).status_code, 200)
+        # Approval is the group plus an affiliation (access.policy), kept in
+        # MongoDB; fixed here so the test needs no affiliation record.
+        with patch("access.policy.loop_affiliations", return_value=["S4E"]):
+            self.assertEqual(client.get(reverse("browse_data")).status_code, 200)

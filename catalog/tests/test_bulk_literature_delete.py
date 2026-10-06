@@ -228,6 +228,13 @@ class BulkDeleteViewTests(TestCase):
         self.bob = U.objects.create_user("bob", "b@example.com", "pw-bob-123")
         self.alice.groups.add(approved)
         self.bob.groups.add(approved)
+        # Approval also needs an affiliation (access.policy.loop_affiliations).
+        # Patched rather than written, so no UserAffiliation row is created
+        # under a test user id in the shared MongoDB.
+        from unittest import mock
+        patcher = mock.patch("access.policy.loop_affiliations", return_value=["S4E"])
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.d1 = f"10.21/{uuid.uuid4().hex[:6]}"
         self.d2 = f"10.22/{uuid.uuid4().hex[:6]}"
         self.d3 = f"10.23/{uuid.uuid4().hex[:6]}"
@@ -312,6 +319,13 @@ class SelectionLimitViewTests(TestCase):
             name=getattr(settings, "APPROVED_GROUP_NAME", "Approved"))
         self.user = U.objects.create_user("capuser", "cap@example.com", "pw-cap-12345")
         self.user.groups.add(approved)
+        # Approval also needs an affiliation (access.policy.loop_affiliations).
+        # Patched rather than written, so no UserAffiliation row is created
+        # under a test user id in the shared MongoDB.
+        from unittest import mock
+        patcher = mock.patch("access.policy.loop_affiliations", return_value=["S4E"])
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.recipe, self.auid = _make_recipe([
             {"lit_id": "L:a", "doi": f"10.31/{uuid.uuid4().hex[:6]}", "extracted_by": "capuser"},
         ])

@@ -111,6 +111,11 @@ urlpatterns = [
         name="api-v1-xrd-analysis-result",
     ),
     path(
+        "xrd-analyses/<str:analysis_id>/reviews/",
+        views.xrd_analysis_reviews,
+        name="api-v1-xrd-analysis-reviews",
+    ),
+    path(
         "xrd-analyses/<str:analysis_id>/artifacts/<str:artifact_name>/",
         views.xrd_analysis_artifact,
         name="api-v1-xrd-analysis-artifact",

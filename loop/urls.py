@@ -27,6 +27,8 @@ from catalog import views as catalog_views
 from catalog import discovery_views
 from catalog.views import SignUpView, SignupPendingView, SignupCompleteView, activate
 from catalog.forms import LoopAuthenticationForm
+from access.api import access_status
+from access import views as access_views
 
 
 def _static_patterns_for(url, document_root):
@@ -61,8 +63,15 @@ if not LOCKDOWN:
     urlpatterns += [path('admin/', admin.site.urls)]
 
 urlpatterns += [
+    # Which curtains (LOOP, CHAOS) the caller may pass; used by other s4e.ai
+    # services with the visitor's cookie or key.
+    path('api/v1/access/', access_status, name='api-v1-access'),
+    # The catalog's totals, counts only, for the LOOP front page on s4e.ai.
+    path('api/v1/stats/', catalog_views.catalog_counts, name='api-v1-stats'),
     # Versioned machine API (DRF); auth via catalog.api.authentication.
     path('api/v1/', include('catalog.api.urls')),
+    # CHAOS access requests and terms; open to accounts LOOP has not approved.
+    path('access/', include('access.urls')),
     # Older docs and bookmarks used /catalog/; app routes now live at the site root.
     path('catalog/', RedirectView.as_view(url='/', permanent=False)),
     path('', include('catalog.urls')),
@@ -77,6 +86,9 @@ urlpatterns += [
         auth_views.LoginView.as_view(authentication_form=LoopAuthenticationForm),
         name='login'
     ),
+    # Asked once of every account before it can use LOOP or CHAOS
+    # (access/middleware.py ProfileRequiredMiddleware); editable afterwards.
+    path('accounts/profile/', access_views.profile, name='profile'),
     path('accounts/', include('django.contrib.auth.urls')),
 ]
 

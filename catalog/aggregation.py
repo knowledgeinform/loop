@@ -46,7 +46,7 @@ def _visible_to(user_affiliations: Optional[Iterable[str]], tags: Optional[Itera
     if "S4E" in user_list:
         return True
     if not user_list:
-        return "S4E" in tag_list
+        return False
     if "S4E" in tag_list:
         return True
     return any(t in tag_list for t in user_list)
@@ -65,7 +65,8 @@ def composition_view(
     user_affiliations: Optional[Iterable[str]] = None,
 ) -> Dict[str, Any]:
     """Return the full joined view for a material class."""
-    material = Material.objects(id=material_auid).first()
+    # An account with no organization membership cannot read catalog records.
+    material = Material.objects(id=material_auid).first() if user_affiliations else None
     if material is None:
         return {
             "material_auid": material_auid,
@@ -406,6 +407,7 @@ def browse_materials(
     material_auid_in: Optional[Iterable[str]] = None,
     skip: Optional[int] = None,
     limit: Optional[int] = None,
+    sort_order: Optional[str] = None,
 ) -> BrowseMaterialsResult:
     """Return one summary row per material matching the filters.
 
@@ -421,6 +423,8 @@ def browse_materials(
     When ``material_auid_in`` is provided, rows are re-sorted in Python to
     match the semantic-search order.
     """
+    if not user_affiliations:
+        return BrowseMaterialsResult([], 0)
     db = get_db()
     coll = Material._meta["collection"]
 
@@ -440,7 +444,7 @@ def browse_materials(
         prefilter_stages.append({"$match": {"_id": {"$in": auid_list}}})
 
     user_tags = list(user_affiliations or [])
-    is_public_user = "S4E" in user_tags or not user_tags
+    is_public_user = "S4E" in user_tags
 
     use_facet = (
         skip is not None
@@ -471,7 +475,9 @@ def browse_materials(
 
     if can_sort_early:
         sort_stage: Dict[str, Any] = {
-            "$sort": {"latest_trial_date": -1, "created_at": -1, "_id": 1}
+            "$sort": ({"created_at": 1 if sort_order == "oldest" else -1, "_id": 1}
+                      if sort_order in ("newest", "oldest") else
+                      {"latest_trial_date": -1, "created_at": -1, "_id": 1})
         }
 
         # Count: prefilter only — no $lookup needed, just count matching materials.
@@ -552,7 +558,9 @@ def browse_materials(
         pipeline.append({"$match": {"has_computational": bool(has_computational)}})
 
     pipeline.append(
-        {"$sort": {"latest_trial_date": -1, "created_at": -1, "material_auid": 1}}
+        {"$sort": ({"created_at": 1 if sort_order == "oldest" else -1, "material_auid": 1}
+                   if sort_order in ("newest", "oldest") else
+                   {"latest_trial_date": -1, "created_at": -1, "material_auid": 1})}
     )
 
     if use_facet and limit_n:
@@ -572,7 +580,7 @@ def browse_materials(
         rows = list(db[coll].aggregate(pipeline, allowDiskUse=True))
         total_count = len(rows)
 
-    if auid_order:
+    if auid_order and sort_order not in ("newest", "oldest"):
         rows.sort(key=lambda row: auid_order.get(row.get("material_auid"), 1 << 30))
 
     return BrowseMaterialsResult(rows=rows, total_count=total_count)
@@ -596,6 +604,8 @@ def _material_prefilter_pipeline(
     :func:`browse_materials` without materializing concatenated trial/literature arrays.
     Leaves ``_recipes`` on each material for ``$unwind`` (literature / computational flat views).
     """
+    if not user_affiliations:
+        return []
     prefilter_stages = search_mod.combine_match_stages(
         search_mod.element_match_stage(elements),
         search_mod.structure_family_match_stage(structure_family),
@@ -611,7 +621,7 @@ def _material_prefilter_pipeline(
         prefilter_stages.append({"$match": {"_id": {"$in": auid_list}}})
 
     user_tags = list(user_affiliations or [])
-    is_public_user = "S4E" in user_tags or not user_tags
+    is_public_user = "S4E" in user_tags
 
     pipeline: List[Dict[str, Any]] = list(prefilter_stages) + [
         _recipes_lookup_stage(slim=False),
@@ -686,6 +696,7 @@ def browse_literature_flat(
                 "num_elements": "$num_elements",
                 "recipe_auid": "$_recipes._id",
                 "lit_id": "$_recipes.literature.lit_id",
+                "created_at": "$_recipes.literature.created_at",
                 "doi": "$_recipes.literature.doi",
                 "title": "$_recipes.literature.title",
                 "authors": "$_recipes.literature.authors",
@@ -762,6 +773,7 @@ def browse_computational_flat(
                 "element_symbols": "$element_symbols",
                 "num_elements": "$num_elements",
                 "comp_auid": "$dft_calculations.comp_auid",
+                "created_at": "$dft_calculations.created_at",
                 "dft_source": "$dft_calculations.dft_source",
                 "dft_formation_energy_ev": "$dft_calculations.dft_formation_energy_ev",
                 "dft_hull_distance_ev": "$dft_calculations.dft_hull_distance_ev",
@@ -864,6 +876,52 @@ def catalog_landing_page_totals() -> Dict[str, int]:
     return result
 
 
+_FRONT_PAGE_COUNTS_CACHE_KEY = "catalog_front_page_counts"
+
+
+def catalog_front_page_counts() -> Dict[str, int]:
+    """Two counts that separate LOOP's own records from the CHAOS import, for
+    the LOOP front page on s4e.ai (catalog.views.catalog_counts).
+
+    materials_with_recipes: materials that have at least one recipe.
+    calculations_from_chaos: DFT records written by import_chaos_data, which
+    marks each one uploaded_by="import".
+
+    Most materials and nearly all DFT records in the catalog come from that
+    import, so the totals alone describe the CHAOS database more than the
+    laboratory's own records. Cached for five minutes, like the totals.
+    """
+    cached = cache.get(_FRONT_PAGE_COUNTS_CACHE_KEY)
+    if cached is not None:
+        return cached
+    db = get_db()
+    with_recipes = len(db[Recipe._meta["collection"]].distinct("material_auid"))
+    pipeline = [
+        {
+            "$group": {
+                "_id": None,
+                "imported": {
+                    "$sum": {
+                        "$size": {
+                            "$filter": {
+                                "input": {"$ifNull": ["$dft_calculations", []]},
+                                "cond": {"$eq": ["$$this.uploaded_by", "import"]},
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    ]
+    imported = list(db[Material._meta["collection"]].aggregate(pipeline, allowDiskUse=True))
+    result = {
+        "materials_with_recipes": with_recipes,
+        "calculations_from_chaos": imported[0]["imported"] if imported else 0,
+    }
+    cache.set(_FRONT_PAGE_COUNTS_CACHE_KEY, result, _LANDING_TOTALS_TTL)
+    return result
+
+
 def catalog_stats() -> Dict[str, int]:
     """Backward-compatible alias of :func:`catalog_landing_page_totals`."""
     return catalog_landing_page_totals()
@@ -878,5 +936,6 @@ __all__ = [
     "browse_computational_flat",
     "synthesis_steps_search_text",
     "catalog_landing_page_totals",
+    "catalog_front_page_counts",
     "catalog_stats",
 ]

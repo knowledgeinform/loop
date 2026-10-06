@@ -1,4 +1,12 @@
 {% load humanize %}
+<div class="mb-2 small" role="status" aria-live="polite">
+  {% if search_mode == "composition" %}Composition lookup: matching element set{% if filters.search %} for {{ filters.search }}{% endif %}.
+  {% elif search_mode == "catalog" %}Catalog lookup: exact identifiers or literal paper-title matches.
+  {% elif search_mode == "semantic" %}Semantic discovery: up to 200 related materials, not exact record matches.
+  {% elif search_mode == "unavailable" %}{{ semantic_error }}
+  {% endif %}
+  {% if filters.sort == "newest" %}Date added: newest first.{% elif filters.sort == "oldest" %}Date added: oldest first.{% endif %}
+</div>
 <div class="browse-results-toolbar">
   <span class="browse-count">
     {% if view_mode == "materials" %}
@@ -26,6 +34,7 @@
           <th>Organization</th>
           <th>Material</th>
           <th>Structure</th>
+          <th class="text-nowrap">Date added</th>
           <th class="text-end text-nowrap" title="Number of distinct elements"># El</th>
           <th class="text-nowrap">Temp. (°C)</th>
           <th class="text-center">Lit.</th>
@@ -72,6 +81,7 @@
             {% endif %}
           </td>
           <td><span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span></td>
+          <td class="text-nowrap small" data-label="Date added">{{ row.created_at|date:"Y-m-d H:i"|default:"—" }}</td>
           <td class="text-end">{{ row.num_elements }}</td>
           <td class="text-nowrap small">{{ row.temperature_display }}</td>
           <td class="text-center">
@@ -111,6 +121,7 @@
           {% endif %}
           <th scope="col" class="browse-recipe-material">Material</th>
           <th scope="col" class="browse-recipe-structure">Structure</th>
+          <th scope="col">Date added</th>
           <th scope="col">Synthesis route</th>
           <th scope="col" class="browse-recipe-org">Organization</th>
           <th scope="col" class="browse-recipe-evidence">Records</th>
@@ -145,6 +156,7 @@
               <span class="small text-muted">Not reported</span>
             {% endif %}
           </td>
+          <td class="text-nowrap small" data-label="Date added">{{ row.created_at|date:"Y-m-d H:i"|default:"—" }}</td>
           <td class="browse-recipe-route" data-label="Synthesis route">
             <a href="{% url 'recipe_detail' recipe_id=row.recipe_auid %}" title="{{ row.recipe_auid }}">
               {% if row.steps_preview and row.steps_preview != "—" %}{{ row.steps_preview }}{% else %}Steps not reported{% endif %}
@@ -197,6 +209,7 @@
           <th>DOI</th>
           <th>Title</th>
           <th>Year</th>
+          <th>Date added</th>
           <th>Journal</th>
           <th>Material</th>
           <th class="text-nowrap">Temp.</th>
@@ -231,6 +244,7 @@
           <td class="small browse-mono">{{ row.doi }}</td>
           <td class="small browse-cell-truncate" title="{{ row.title|escape }}">{{ row.title|default:"—" }}</td>
           <td class="text-nowrap small">{% if row.year %}{{ row.year }}{% else %}—{% endif %}</td>
+          <td class="text-nowrap small" data-label="Date added">{{ row.created_at|date:"Y-m-d H:i"|default:"—" }}</td>
           <td class="small browse-cell-truncate">{{ row.journal|default:"—" }}</td>
           <td><a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono small">{{ row.material_auid }}</a></td>
           <td class="text-nowrap small">{{ row.temperature_display }}</td>
@@ -252,6 +266,7 @@
           <th>Calculation</th>
           <th>Material</th>
           <th>Structure</th>
+          <th class="text-nowrap">Date added</th>
           <th class="text-end text-nowrap" title="Formation energy (eV/atom or as stored)">E<sub>f</sub></th>
           <th class="text-end text-nowrap">Hull (eV)</th>
           <th class="text-end text-nowrap">E<sub>g</sub> (eV)</th>
@@ -287,6 +302,7 @@
           <td><a href="{% url 'computational_detail' material_auid=row.material_auid comp_auid=row.comp_auid %}" class="browse-mono small">{{ row.comp_auid }}</a></td>
           <td><a href="{% url 'composition_detail' material_auid=row.material_auid %}" class="browse-mono small">{{ row.material_auid }}</a></td>
           <td><span class="badge structure-badge structure-badge-{{ row.structure_family|lower }}">{{ row.structure_family|title }}</span></td>
+          <td class="text-nowrap small" data-label="Date added">{{ row.created_at|date:"Y-m-d H:i"|default:"—" }}</td>
           <td class="text-end font-monospace small">
             {% if row.dft_formation_energy_ev is not None %}{{ row.dft_formation_energy_ev|floatformat:3 }}{% else %}—{% endif %}
           </td>

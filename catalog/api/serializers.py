@@ -5,7 +5,49 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from catalog.auid import STRUCTURE_FAMILY_VALUES
-from catalog.documents import normalize_elements_payload
+from catalog.documents import (
+    XRD_ANALYSIS_PHASE_STATE_VALUES,
+    XRD_ANALYSIS_REVIEW_STATUS_VALUES,
+    XRD_EXPERT_STRUCTURE_VALUES,
+    normalize_elements_payload,
+)
+
+
+class XRDAnalysisReviewSerializer(serializers.Serializer):
+    review_id = serializers.CharField()
+    analysis_id = serializers.CharField()
+    material_auid = serializers.CharField()
+    recipe_auid = serializers.CharField()
+    trial_id = serializers.CharField()
+    reviewer_username = serializers.CharField()
+    reviewer_display_name = serializers.CharField(allow_blank=True)
+    reviewer_organization = serializers.CharField(allow_blank=True)
+    review_status = serializers.ChoiceField(choices=XRD_ANALYSIS_REVIEW_STATUS_VALUES)
+    reviewed_phase_state = serializers.ChoiceField(choices=XRD_ANALYSIS_PHASE_STATE_VALUES, allow_blank=True)
+    selected_hypothesis_id = serializers.CharField(allow_blank=True)
+    added_candidate_identifiers = serializers.ListField(child=serializers.CharField())
+    identified_structures = serializers.ListField(child=serializers.ChoiceField(choices=XRD_EXPERT_STRUCTURE_VALUES))
+    other_structure = serializers.CharField(allow_blank=True)
+    identified_phases = serializers.CharField(allow_blank=True)
+    no_identifiable_structure = serializers.BooleanField()
+    amorphous = serializers.BooleanField()
+    ambiguous = serializers.BooleanField()
+    confidence = serializers.CharField(allow_blank=True)
+    notes = serializers.CharField(allow_blank=True)
+    supersedes_review_id = serializers.CharField(allow_blank=True)
+    is_active = serializers.BooleanField()
+    created_at = serializers.DateTimeField(allow_null=True)
+    updated_at = serializers.DateTimeField(allow_null=True)
+
+
+class XRDAnalysisReviewsSerializer(serializers.Serializer):
+    analysis_id = serializers.CharField()
+    active_review = XRDAnalysisReviewSerializer(allow_null=True)
+    reviews = XRDAnalysisReviewSerializer(many=True)
+
+
+class XRDAnalysisReviewsResponseSerializer(serializers.Serializer):
+    data = XRDAnalysisReviewsSerializer()
 
 
 API_KEY_SCOPES = (
@@ -13,6 +55,9 @@ API_KEY_SCOPES = (
     "data:write",
     "files:write",
     "imports:write",
+    # CHAOS database on s4e.ai (access/policy.py); the only scope an account
+    # with CHAOS access but no LOOP approval can hold.
+    "chaos:read",
 )
 
 SYNTHESIS_STEP_TYPES = (

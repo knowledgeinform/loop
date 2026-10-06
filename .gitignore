@@ -244,6 +244,8 @@ migrations/
 # Django migrations are source code and must be committed.
 !catalog/migrations/
 !catalog/migrations/*.py
+!access/migrations/
+!access/migrations/*.py
 deploy/dev/.env.dev
 deploy/dev/access-emails.txt
 

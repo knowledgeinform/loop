@@ -8,13 +8,14 @@ from catalog.aggregation import _visible_to
 class VisibleToTests(SimpleTestCase):
     def test_matrix(self):
         cases = [
-            (["S4E"], ["Oak Ridge"], True),
+            (["S4E"], ["MIT"], True),
             (["S4E"], None, True),
             (["APL"], ["S4E"], True),
-            (["APL"], ["S4E", "Oak Ridge"], True),
+            (["APL"], ["S4E", "MIT"], True),
             (["APL"], ["APL"], True),
-            (["APL"], ["Oak Ridge"], False),
-            ([], None, True),
+            (["APL"], ["MIT"], False),
+            ([], None, False),
+            ([], ["S4E"], False),
             ([], ["APL"], False),
             (["APL"], [], True),
         ]

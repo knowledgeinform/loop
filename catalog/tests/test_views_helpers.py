@@ -38,8 +38,8 @@ class NormalizeVisibilityTagsTests(SimpleTestCase):
 
     def test_comma_split(self):
         self.assertEqual(
-            _normalize_visibility_tags("APL, S4E , Oak Ridge"),
-            ["APL", "S4E", "Oak Ridge"],
+            _normalize_visibility_tags("APL, S4E , MIT"),
+            ["APL", "S4E", "MIT"],
         )
 
     def test_json_list_string_requires_brackets(self):
@@ -57,7 +57,7 @@ class NormalizeVisibilityTagsTests(SimpleTestCase):
 
 class IsVisibleToUserTests(SimpleTestCase):
     def test_s4e_user_sees_everything(self):
-        self.assertTrue(_is_visible_to_user(["Oak Ridge"], ["S4E"]))
+        self.assertTrue(_is_visible_to_user(["MIT"], ["S4E"]))
 
     def test_pure_s4e_item_hidden_from_non_s4e_user(self):
         self.assertFalse(_is_visible_to_user(["S4E"], ["APL"]))
@@ -66,7 +66,7 @@ class IsVisibleToUserTests(SimpleTestCase):
         self.assertTrue(_is_visible_to_user(["S4E", "APL"], ["APL"]))
 
     def test_no_overlap(self):
-        self.assertFalse(_is_visible_to_user(["Oak Ridge"], ["APL"]))
+        self.assertFalse(_is_visible_to_user(["MIT"], ["APL"]))
 
 
 class ParseCompositionQueryTests(SimpleTestCase):

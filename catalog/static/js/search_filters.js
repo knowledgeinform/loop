@@ -222,6 +222,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (structureSelect) {
     structureSelect.addEventListener('change', () => scheduleSubmit(250));
   }
+  ['sort', 'search-type'].forEach((id) => {
+    const control = document.getElementById(id);
+    if (control) control.addEventListener('change', () => scheduleSubmit(150));
+  });
   availabilityChecks.forEach((cb) => {
     cb.addEventListener('change', () => scheduleSubmit(250));
   });

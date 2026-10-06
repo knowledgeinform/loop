@@ -66,6 +66,7 @@
             </div>
         </section>
 
+ 
         <!-- Composition & Site Assignments -->
         <section class="upload-section">
             <h2>2. Composition &amp; Site Assignments</h2>
@@ -129,9 +130,37 @@
             {% endif %}
         </section>
 
+        <!-- Process Conditions Key Values -->
+        <section class="upload-section">
+            <h2>3. Process Conditions Key Values</h2>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="step_1_max_temp" class="form-label"> Max Temperature (°C)</label>
+                    <input type="number" step="1" name="step_1_max_temp" id="step_1_max_temp" class="form-control" placeholder="1000">
+                </div>
+                <div class="col-md-4">
+                    <label for="step_1_heat_atmosphere" class="form-label">Atmosphere</label>
+                        <select name="step_1_heat_atmosphere" id="step_1_heat_atmosphere" class="form-select">
+                            <option value="air">Air</option>
+                            <option value="argon">Argon</option>
+                            <option value="nitrogen">Nitrogen</option>
+                            <option value="hydrogen">H₂/Ar (Reducing)</option>
+                            <option value="oxygen">Oxygen</option>
+                            <option value="vacuum">Vacuum</option>
+                            <option value="unknown">Unknown</option>
+                            <option value="na">N/A</option>
+                        </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="step_1_o2_pressure" class="form-label">O₂ Partial Pressure (bar)</label>
+                    <input type="number" step="0.001" name="step_1_o2_pressure" id="step_1_o2_pressure" class="form-control" placeholder="0.001">
+                </div>
+            </div>
+        </section>
+
         <!-- Multi-Step Synthesis Process -->
         <section class="upload-section">
-            <h2>3. Synthesis Process</h2>
+            <h2>4. Synthesis Process</h2>
             <p class="text-muted mb-3">Add steps in the order they were performed. Click a step to expand/collapse details.</p>
 
             <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
@@ -535,7 +564,7 @@
 
         <!-- Results -->
         <section class="upload-section">
-            <h2>4. Experiment Results</h2>
+            <h2>5. Experiment Results</h2>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Phase Outcome <span class="text-danger">*</span></label>

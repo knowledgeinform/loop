@@ -1,0 +1,128 @@
+{% extends "base_generic.html" %}
+
+{% block title %}<title>Your profile - LOOP</title>{% endblock %}
+
+{% block content %}
+  <div class="auth-shell">
+    <h1 class="mb-3">Your profile</h1>
+
+    {% if first_time %}
+      <p>Please complete your profile before continuing. We use this information to understand who uses LOOP and CHAOS and to report aggregate usage to the agencies that support the work. You can update your profile at any time.</p>
+    {% else %}
+      <p>Update anything that has changed.</p>
+    {% endif %}
+
+    <aside class="usage-notice border rounded p-3 mb-4 bg-body-tertiary" aria-labelledby="usage-notice-title">
+      <h2 class="h6 mb-2" id="usage-notice-title">What we record</h2>
+      <p>When you use LOOP or CHAOS, we record the pages you visit, searches and API requests, and CHAOS-Agent conversations, including the questions, responses, and database queries. These records include your account, time of access, IP address, and browser.</p>
+      <p>We use this information to operate and improve the tools and to report aggregate usage. Reports contain summary statistics, such as the number of users by country, institution type, research area, or career stage, not individual activity.</p>
+      <p>Usage records are retained for the life of the projects plus five years.</p>
+      <p class="mb-0 small">{% if usage_contact %}Questions: <a href="mailto:{{ usage_contact }}">{{ usage_contact }}</a>. {% endif %}<span class="text-body-secondary">Notice version {{ usage_notice_version }}.</span></p>
+    </aside>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      {{ form.ror_id }}{{ form.ror_type }}
+      <datalist id="ror-suggestions"></datalist>
+      {% for field in form.visible_fields %}
+        {% if field.name == "contact_ok" or field.name == "accept_usage_notice" %}
+          <div class="mb-3 form-check">
+            {{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% elif field.name == "research_areas" %}
+          <fieldset class="mb-3">
+            <legend class="form-label fs-6">{{ field.label }}</legend>
+            {% for box in field %}
+              <div class="form-check">
+                {{ box.tag }} <label class="form-check-label" for="{{ box.id_for_label }}">{{ box.choice_label }}</label>
+              </div>
+            {% endfor %}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </fieldset>
+        {% else %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+      <button type="submit" class="btn btn-primary">Save and continue</button>
+    </form>
+  </div>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Institution names from the Research Organization Registry (https://ror.org).
+  // Choosing a suggestion stores its ROR id and type, and fills the country
+  // and the kind of institution if they are still empty. Typing the name by
+  // hand works too; then no ROR id is stored.
+  (function () {
+    var input = document.getElementById("id_institution");
+    var list = document.getElementById("ror-suggestions");
+    var rorId = document.getElementById("id_ror_id");
+    var rorType = document.getElementById("id_ror_type");
+    var country = document.getElementById("id_country");
+    var sector = document.getElementById("id_sector");
+    if (!input || !list || !window.fetch) return;
+    var found = {};
+    var timer = null;
+    var SECTOR = { education: "academia", facility: "lab", company: "industry", government: "government", nonprofit: "nonprofit" };
+
+    function nameOf(item) {
+      if (Array.isArray(item.names)) {
+        for (var i = 0; i < item.names.length; i++) {
+          if ((item.names[i].types || []).indexOf("ror_display") >= 0) return item.names[i].value;
+        }
+        if (item.names.length) return item.names[0].value;
+      }
+      return item.name || "";
+    }
+    function countryOf(item) {
+      var loc = (item.locations || [])[0];
+      if (loc && loc.geonames_details) return loc.geonames_details.country_code || "";
+      return (item.country && item.country.country_code) || "";
+    }
+    function suggest() {
+      var q = input.value.trim();
+      if (q.length < 3) return;
+      fetch("https://api.ror.org/v2/organizations?query=" + encodeURIComponent(q))
+        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+        .then(function (data) {
+          found = {};
+          list.innerHTML = "";
+          (data.items || []).slice(0, 10).forEach(function (item) {
+            var name = nameOf(item);
+            if (!name) return;
+            found[name] = { id: item.id, type: (item.types || [])[0] || "", country: countryOf(item) };
+            var option = document.createElement("option");
+            option.value = name;
+            list.appendChild(option);
+          });
+        })
+        .catch(function () {});
+    }
+    input.addEventListener("input", function () {
+      var hit = found[input.value];
+      if (hit) {
+        rorId.value = hit.id || "";
+        rorType.value = hit.type || "";
+        if (country && !country.value && hit.country) country.value = hit.country;
+        if (sector && !sector.value && SECTOR[hit.type]) sector.value = SECTOR[hit.type];
+        return;
+      }
+      rorId.value = "";
+      rorType.value = "";
+      clearTimeout(timer);
+      timer = setTimeout(suggest, 300);
+    });
+  })();
+</script>
+{% endblock %}

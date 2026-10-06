@@ -8,7 +8,8 @@ import unittest
 import uuid
 from datetime import datetime, timezone
 
-from django.contrib.auth.models import AnonymousUser
+from types import SimpleNamespace
+from unittest.mock import patch
 from django.test import SimpleTestCase, RequestFactory
 
 from catalog import views
@@ -64,8 +65,9 @@ class ApiReadEndpointsTests(SimpleTestCase):
 
     def _get(self, view, **params):
         request = self.factory.get("/api/", params)
-        request.user = AnonymousUser()
-        return view(request)
+        request.user = SimpleNamespace(is_authenticated=True)
+        with patch.object(views, "_user_affiliations", return_value=["S4E"]):
+            return view(request)
 
     # --- search-composition --------------------------------------------------
     def test_search_composition_finds_material(self):

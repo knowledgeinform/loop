@@ -132,8 +132,17 @@ class XRDAnalysisReviewViewTests(TestCase):
                     "reviewed_phase_state": "likely single-phase",
                     "selected_hypothesis_id": "hyp-1",
                     "added_candidate_identifiers": "curated_nacl, curated_nacl3",
+                    "identified_structures": [
+                        "spinel",
+                        "rock_salt",
+                    ],
+                    "other_structure": "",
+                    "identified_phases": "CoFe2O4",
+                    "no_identifiable_structure": "",
+                    "amorphous": "",
+                    "ambiguous": "",
                     "confidence": "high",
-                    "notes": "Keep the automated result and the expert review separate.",
+                    "notes": "Predominantly spinel with minor rocksalt evidence.",
                 },
             )
 
@@ -148,6 +157,17 @@ class XRDAnalysisReviewViewTests(TestCase):
         self.assertEqual(created.kwargs["reviewed_phase_state"], "likely single-phase")
         self.assertEqual(created.kwargs["selected_hypothesis_id"], "hyp-1")
         self.assertEqual(created.kwargs["added_candidate_identifiers"], ["curated_nacl", "curated_nacl3"])
+        self.assertEqual(
+            created.kwargs["identified_structures"],
+            [
+                "spinel",
+                "rock_salt",
+            ],
+        )
+        self.assertEqual(created.kwargs["identified_phases"], "CoFe2O4")
+        self.assertFalse(created.kwargs["no_identifiable_structure"])
+        self.assertFalse(created.kwargs["amorphous"])
+        self.assertFalse(created.kwargs["ambiguous"])
         self.assertEqual(created.kwargs["supersedes_review_id"], "review-1")
 
     def test_review_post_rejects_unknown_hypothesis(self):
@@ -173,6 +193,31 @@ class XRDAnalysisReviewViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(len(_FakeReviewModel.created), 0)
 
+    def test_review_post_requires_other_structure_name(self):
+        with mock.patch("catalog.views._resolve_visible_trial", return_value=(_fake_recipe(), _fake_trial())), mock.patch(
+            "catalog.views._analysis_job_for_trial", return_value=_fake_job()
+        ), mock.patch(
+            "catalog.views._load_visible_persisted_analysis", return_value=(_fake_persisted(), None)
+        ), mock.patch("catalog.views.XRDAnalysisReview", _FakeReviewModel), mock.patch(
+            "catalog.views._user_affiliations", return_value=["S4E"]
+        ):
+            response = self.client.post(
+                reverse(
+                    "xrd_analysis_review_create",
+                    kwargs={"recipe_id": "M:test:R:test", "trial_id": "T1", "analysis_id": "analysis-1"},
+                ),
+                {
+                    "review_status": "confirmed",
+                    "identified_structures": [
+                        "other",
+                    ],
+                    "other_structure": "",
+                },
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(_FakeReviewModel.created), 0)
+
 
 @override_settings(STORAGES=_TEST_STORAGES)
 @override_settings(EMBEDDINGS_ON_WRITE=False)
@@ -191,7 +236,10 @@ class XRDAnalysisReviewDocumentTests(TestCase):
     def test_review_document_persists_superseding_history(self):
         from catalog.documents import XRDAnalysisReview
 
+        # MongoDB stores millisecond timestamps; two quick saves can tie.
+        # Give this history fixture a definite chronology.
         first = XRDAnalysisReview(
+            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
             analysis_id="analysis-review-test",
             material_auid="M:test",
             recipe_auid="M:test:R:test",
@@ -201,6 +249,14 @@ class XRDAnalysisReviewDocumentTests(TestCase):
             reviewer_organization="S4E",
             review_status="confirmed",
             reviewed_phase_state="likely single-phase",
+            identified_structures=[
+                "spinel",
+                "rock_salt",
+            ],
+            identified_phases="CoFe2O4",
+            no_identifiable_structure=False,
+            amorphous=False,
+            ambiguous=False,
             notes="Initial review.",
             is_active=True,
         )
@@ -209,6 +265,7 @@ class XRDAnalysisReviewDocumentTests(TestCase):
         first.save()
 
         second = XRDAnalysisReview(
+            created_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
             analysis_id="analysis-review-test",
             material_auid="M:test",
             recipe_auid="M:test:R:test",
@@ -218,6 +275,13 @@ class XRDAnalysisReviewDocumentTests(TestCase):
             reviewer_organization="S4E",
             review_status="corrected",
             reviewed_phase_state="unresolved",
+            identified_structures=[
+                "spinel",
+            ],
+            identified_phases="CoFe2O4",
+            no_identifiable_structure=False,
+            amorphous=False,
+            ambiguous=True,
             supersedes_review_id=str(first.id),
             notes="Superseding review.",
             is_active=True,
@@ -230,3 +294,26 @@ class XRDAnalysisReviewDocumentTests(TestCase):
         self.assertEqual(persisted[0].supersedes_review_id, str(first.id))
         self.assertTrue(persisted[0].is_active)
         self.assertFalse(persisted[1].is_active)
+
+        self.assertEqual(
+            persisted[0].identified_structures,
+            [
+                "spinel",
+            ],
+        )
+        self.assertEqual(persisted[0].identified_phases, "CoFe2O4")
+        self.assertFalse(persisted[0].no_identifiable_structure)
+        self.assertFalse(persisted[0].amorphous)
+        self.assertTrue(persisted[0].ambiguous)
+
+        self.assertEqual(
+            persisted[1].identified_structures,
+            [
+                "spinel",
+                "rock_salt",
+            ],
+        )
+        self.assertEqual(persisted[1].identified_phases, "CoFe2O4")
+        self.assertFalse(persisted[1].no_identifiable_structure)
+        self.assertFalse(persisted[1].amorphous)
+        self.assertFalse(persisted[1].ambiguous)

@@ -7,6 +7,10 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
+      # Keep the startup permission guard in sync with the checkout even when
+      # recreating a container from an existing image.
+      - ./docker/entrypoint.sh:/usr/local/bin/loop-entrypoint.sh:ro
+      - ./docker/secure_sqlite.py:/app/docker/secure_sqlite.py:ro
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/staticfiles:/app/staticfiles
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/media:/app/media
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/hf-cache:/hf-cache
@@ -16,6 +20,10 @@ services:
       # rebuildable index over it, so this bind mount is the one that must
       # survive a host rebuild and be included in offsite backups.
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/archive:/app/archive
+      # Usage record (access/usage.py): one line per request, kept outside the
+      # LOOP tree with the other tools' records. The writer adds the "loop"
+      # folder to USAGE_DIR, so the mount is at /app/usage/loop.
+      - ${USAGE_ROOT:-/mnt/data/common/USAGE}/loop:/app/usage/loop
       - ${LOOP_DATA_ROOT:?set LOOP_DATA_ROOT}/CHAOS:/app/chaos-data
       # Trained EFA/DEED model artifacts. Without this mount they are written
       # to the container's own filesystem and destroyed on every recreation,
@@ -35,6 +43,16 @@ services:
       SQLITE_PATH: /app/sqlite/db.sqlite3
       RAW_UPLOADS_ROOT: /app/raw-uploads
       ARCHIVE_ROOT: /app/archive
+      USAGE_DIR: /app/usage
+      # Every account fills in its profile once (access/middleware.py). To
+      # switch it off in an emergency without editing this file, start the
+      # service with PROFILE_REQUIRED=0 in the shell or in .env (compose reads
+      # both); "environment" here wins over env_file, so the default lives here.
+      PROFILE_REQUIRED: "${PROFILE_REQUIRED:-1}"
+      # Signed-out visitors to LOOP's landing page go to the LOOP front page
+      # on the group site (catalog.views.index). LOOP_FRONT_PAGE_URL= (empty)
+      # in the shell or .env switches the redirect off.
+      LOOP_FRONT_PAGE_URL: "${LOOP_FRONT_PAGE_URL-https://s4e.ai/loop}"
       CHAOS_DB_PATH: /app/chaos-data/chaos.db
       MONGODB_URI: mongodb://mongodb:27017/loop
       MONGODB_RAW_URI: mongodb://mongodb:27017/loop_raw

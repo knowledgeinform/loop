@@ -12,39 +12,72 @@
   literature references, and computational predictions.
 </p>
 
-<form class="home-search" method="get" action="{% url 'browse_data' %}" role="search">
-  <label for="home-search-input" class="home-search-label">Search the catalog</label>
-  <div class="home-search-row">
-    <input type="text" id="home-search-input" name="search" class="form-control form-control-lg"
-           placeholder="Describe a material, or paste an AUID, composition, or DOI…"
-           autocomplete="off" autofocus>
-    <button type="submit" class="btn btn-primary">Search</button>
-  </div>
-  <p class="home-search-hint">
-    Ranked by semantic similarity across composition, structure, and synthesis — or
-    <a href="{% url 'browse_data' %}">open advanced filters</a>.
-  </p>
-</form>
-
 <h2 class="section-eyebrow mt-4 mb-2">Catalog holdings</h2>
 <div class="catalog-census">
   <a class="census-cell" href="{% url 'browse_data' %}?view=materials">
     <div class="census-figure">{{ material_count|compact_number }}</div>
     <div class="census-label">Materials</div>
   </a>
-  <a class="census-cell" href="{% url 'browse_data' %}?view=literature">
+  <a class="census-cell" href="{% url 'browse_data' %}?view=literature&amp;has_literature=true">
     <div class="census-figure">{{ literature_count|compact_number }}</div>
     <div class="census-label">Literature</div>
   </a>
-  <a class="census-cell" href="{% url 'browse_data' %}?view=materials">
+  <a class="census-cell" href="{% url 'browse_data' %}?view=recipes&amp;has_experiments=true">
     <div class="census-figure">{{ experiment_count|compact_number }}</div>
     <div class="census-label">Experiments</div>
   </a>
-  <a class="census-cell" href="{% url 'browse_data' %}?view=computational">
+  <a class="census-cell" href="{% url 'browse_data' %}?view=computational&amp;has_computational=true">
     <div class="census-figure">{{ computational_count|compact_number }}</div>
     <div class="census-label">Computational</div>
   </a>
 </div>
+
+<form class="home-search" method="get" action="{% url 'browse_data' %}" role="search">
+  <h2 class="h5">Find records</h2>
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <label for="home-view" class="form-label">Result type</label>
+      <select id="home-view" name="view" class="form-select">
+        <option value="materials">Materials</option>
+        <option value="recipes">Recipes and experiments</option>
+        <option value="literature">Literature</option>
+        <option value="computational">Computational</option>
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label for="home-structure" class="form-label">Structure family</label>
+      <select id="home-structure" name="structure_family" class="form-select">
+        <option value="">All structures</option>
+        <option value="rocksalt">Rocksalt</option><option value="pyrochlore">Pyrochlore</option>
+        <option value="spinel">Spinel</option><option value="perovskite">Perovskite</option>
+        <option value="fluorite">Fluorite</option><option value="other">Other</option>
+        <option value="unknown">Unknown</option>
+      </select>
+    </div>
+  </div>
+  <label for="home-search-input" class="form-label">Composition or record lookup</label>
+  <div class="home-search-row">
+    <input type="text" id="home-search-input" name="search" class="form-control"
+           placeholder="AlCoCuFeZn, batch ID, AUID, DOI, or paper title" autocomplete="off"
+           aria-describedby="home-search-help">
+    <button type="submit" class="btn btn-primary">Find records</button>
+  </div>
+  <p class="form-text" id="home-search-help">Identifiers match exactly. Composition matches the element set; explicit coefficients also match ratios.</p>
+  <a href="{% url 'browse_data' %}">Browse with composition, temperature, and organization filters</a>
+</form>
+
+<details class="mb-4">
+  <summary>Discover related materials with semantic search</summary>
+  <form method="get" action="{% url 'browse_data' %}" class="mt-3" role="search">
+    <input type="hidden" name="search_type" value="semantic">
+    <label for="home-semantic" class="form-label">Describe a material or synthesis process</label>
+    <div class="home-search-row">
+      <input id="home-semantic" name="search" class="form-control" placeholder="e.g. ball-milled rocksalt oxides" aria-describedby="home-semantic-help">
+      <button class="btn btn-outline-primary" type="submit">Discover</button>
+    </div>
+    <p id="home-semantic-help" class="form-text">Similarity results may include different compositions. Use record lookup for batch IDs and other identifiers.</p>
+  </form>
+</details>
 
 <div class="home-actions">
   <a href="{% url 'upload_exp_data' %}" class="btn btn-outline-secondary btn-sm">+ New experiment</a>

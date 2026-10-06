@@ -82,11 +82,16 @@ def _owning_trial(relative_path: str) -> Optional[Tuple[str, str]]:
 
 
 def _is_visible(recipe_or_material: str, trial_id: str, user) -> bool:
+    from access.policy import has_loop_access
     from .views import _user_affiliations  # local import avoids a cycle
 
-    affiliations = _user_affiliations(user)
     if getattr(user, "is_superuser", False):
         return True
+    # /media/ is exempt from ApprovedGateMiddleware, so LOOP approval (the
+    # Approved group and an affiliation) is checked here.
+    if not has_loop_access(user):
+        return False
+    affiliations = _user_affiliations(user)
 
     recipe = get_recipe(recipe_or_material)
     if recipe is None:

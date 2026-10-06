@@ -158,7 +158,7 @@ class ApiNotFoundTests(TestCase):
         self.client.force_login(self.user)
 
     def test_unrouted_api_paths_answer_problem_json_not_html(self):
-        for path in ("/api/v1/", "/api/v1/stats/", "/api/v1/experiments/count/"):
+        for path in ("/api/v1/", "/api/v1/summary/", "/api/v1/experiments/count/"):
             with self.subTest(path=path):
                 response = self.client.get(path)
 
@@ -175,7 +175,7 @@ class ApiNotFoundTests(TestCase):
                 self.assertEqual(body["errors"]["code"], "unknown_endpoint")
 
     def test_unrouted_api_path_is_json_for_an_unauthenticated_caller_too(self):
-        response = Client().get("/api/v1/stats/")
+        response = Client().get("/api/v1/summary/")
 
         self.assertEqual(response.status_code, 404)
         self.assertTrue(
@@ -192,7 +192,7 @@ class ApiNotFoundTests(TestCase):
 
     def test_errors_are_json_even_when_the_caller_asks_for_html(self):
         cases = (
-            ("resolver 404", self.client, "get", "/api/v1/stats/", 404),
+            ("resolver 404", self.client, "get", "/api/v1/summary/", 404),
             ("drf 404", self.client, "get", "/api/v1/materials/count/", 404),
             ("401", Client(), "get", "/api/v1/materials/", 401),
             ("400", self.client, "get", "/api/v1/materials/?limit=abc", 400),
@@ -265,7 +265,7 @@ class ApiNotFoundTests(TestCase):
         self.assertEqual(json.loads(response.content)["status"], 404)
 
     def test_generic_unknown_endpoint_points_at_the_schema(self):
-        body = self.client.get("/api/v1/stats/").json()
+        body = self.client.get("/api/v1/summary/").json()
 
         self.assertIn("/api/v1/openapi.json", body["detail"])
         self.assertNotIn("endpoint", body["errors"])
@@ -354,7 +354,7 @@ class ApiNotFoundTests(TestCase):
         browser_accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         cases = (
             ("/api/v1/materials/count/", 404),
-            ("/api/v1/stats/", 404),
+            ("/api/v1/summary/", 404),
             ("/api/v1/materials/?bogus=1", 400),
             ("/api/v1/materials/?limit=abc", 400),
             ("/api/v1/materials/?limit=0", 400),
@@ -825,6 +825,8 @@ class ApiExperimentTests(TestCase):
         self.user = get_user_model().objects.create_user(
             "experiment-api", "experiment-api@example.com", "pass", is_staff=True
         )
+        upsert_user_affiliations(self.user, ["S4E"])
+        self.addCleanup(lambda: UserAffiliation.objects(user_id=self.user.id).delete())
         self.client = Client(enforce_csrf_checks=False)
         self.client.force_login(self.user)
 
@@ -978,6 +980,8 @@ class ApiLiteratureTests(TestCase):
         self.user = get_user_model().objects.create_user(
             "literature-api", "literature-api@example.com", "pass", is_staff=True
         )
+        upsert_user_affiliations(self.user, ["S4E"])
+        self.addCleanup(lambda: UserAffiliation.objects(user_id=self.user.id).delete())
         self.client = Client(enforce_csrf_checks=False)
         self.client.force_login(self.user)
 
@@ -1058,6 +1062,8 @@ class ApiComputationalTests(TestCase):
         self.user = get_user_model().objects.create_user(
             "computational-api", "computational-api@example.com", "pass", is_staff=True
         )
+        upsert_user_affiliations(self.user, ["S4E"])
+        self.addCleanup(lambda: UserAffiliation.objects(user_id=self.user.id).delete())
         self.client = Client(enforce_csrf_checks=False)
         self.client.force_login(self.user)
 
@@ -1148,6 +1154,8 @@ class ApiListQueryParamTests(TestCase):
         self.user = get_user_model().objects.create_user(
             "list-params-api", "list-params-api@example.com", "pass", is_staff=True
         )
+        upsert_user_affiliations(self.user, ["S4E"])
+        self.addCleanup(lambda: UserAffiliation.objects(user_id=self.user.id).delete())
         self.client = Client(enforce_csrf_checks=False)
         self.client.force_login(self.user)
 
@@ -1360,6 +1368,8 @@ class PagedListFixtureMixin:
         self.user = get_user_model().objects.create_user(
             "pagination-api", "pagination-api@example.com", "pass", is_staff=True
         )
+        upsert_user_affiliations(self.user, ["S4E"])
+        self.addCleanup(lambda: UserAffiliation.objects(user_id=self.user.id).delete())
         self.client = Client(enforce_csrf_checks=False)
         self.client.force_login(self.user)
 
@@ -1440,12 +1450,12 @@ class PagedListFixtureMixin:
             "scoped",
             age_seconds=2,
             trials=[
-                self._trial(index, visibility=["APL" if index % 2 == 0 else "Oak Ridge"])
+                self._trial(index, visibility=["APL" if index % 2 == 0 else "MIT"])
                 for index in range(6)
             ],
             literature=[
                 self._literature(
-                    index, visibility=["APL" if index % 2 == 0 else "Oak Ridge"]
+                    index, visibility=["APL" if index % 2 == 0 else "MIT"]
                 )
                 for index in range(6)
             ],
@@ -1552,7 +1562,7 @@ class ApiPaginationTests(PagedListFixtureMixin, TestCase):
         visible = self._body(f"{base}&limit=100", self.apl_client)["data"]
         page = self._body(f"{base}&limit=1&offset=1", self.apl_client)
 
-        # Positions 1, 3 and 5 belong to Oak Ridge; skipping in the database
+        # Positions 1, 3 and 5 belong to MIT; skipping in the database
         # would have landed on one of them instead of the second APL trial.
         self.assertEqual(
             [row["trial_id"] for row in visible],
@@ -1757,7 +1767,7 @@ class ApiTotalCountTests(PagedListFixtureMixin, TestCase):
         s4e = self._body(f"{base}&limit=1")["meta"]
         apl = self._body(f"{base}&limit=1", self.apl_client)["meta"]
 
-        # Three of the six trials are Oak Ridge only. A total of 6 for the APL
+        # Three of the six trials are MIT only. A total of 6 for the APL
         # viewer would advertise records they are never served.
         self.assertEqual(s4e["total"], 6)
         self.assertEqual(apl["total"], 3)
@@ -1770,7 +1780,7 @@ class ApiTotalCountTests(PagedListFixtureMixin, TestCase):
             "hidden",
             age_seconds=3,
             trials=[
-                self._trial(index, visibility=["Oak Ridge"]) for index in range(4)
+                self._trial(index, visibility=["MIT"]) for index in range(4)
             ],
         )
         base = f"/api/v1/experiments/?recipe_auid={self.AUID}:material0:R:hidden"
@@ -1800,7 +1810,7 @@ class ApiTotalCountTests(PagedListFixtureMixin, TestCase):
         base = f"/api/v1/literature/?recipe_auid={self.AUID}:material0:R:scoped"
 
         matched = self._body(f"{base}&doi=10.5555/loop.page.2&limit=10")
-        # L:page3 is Oak Ridge, so an APL viewer must not learn that it exists.
+        # L:page3 is MIT, so an APL viewer must not learn that it exists.
         hidden = self._body(
             f"{base}&doi=10.5555/loop.page.3&limit=10", self.apl_client
         )
@@ -1824,13 +1834,13 @@ class ApiTotalCountTests(PagedListFixtureMixin, TestCase):
             UserPrecursor(
                 user_id=self.user.id,
                 name=f"pagination-precursor-{index}",
-                visibility_affiliations=["Oak Ridge"],
+                visibility_affiliations=["MIT"],
             ).save()
             UserProtocol(
                 user_id=self.user.id,
                 name=f"pagination-protocol-{index}",
                 steps=[],
-                visibility_affiliations=["Oak Ridge"],
+                visibility_affiliations=["MIT"],
             ).save()
 
         for path in ("/api/v1/precursors/", "/api/v1/protocols/"):
@@ -1843,7 +1853,7 @@ class ApiTotalCountTests(PagedListFixtureMixin, TestCase):
                 self.assertEqual(
                     len(self._walk(f"{path}?format=json", 3)), owner["total"]
                 )
-                # Uploaded by someone else and shared with Oak Ridge only.
+                # Uploaded by someone else and shared with MIT only.
                 self.assertEqual(other["total"], before[path][1])
 
     def test_unpaged_subresource_lists_report_a_total_too(self):

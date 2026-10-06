@@ -10,7 +10,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         before = SynthesisPrediction.objects.count()
-        result = screen_3d_transition_metal_oxides(limit=10000)
+        # Every eligible material: S4E sees all records. An empty affiliation
+        # sees none since #50, so it must be named.
+        result = screen_3d_transition_metal_oxides(user_affiliations=["S4E"], limit=10000)
         after = SynthesisPrediction.objects.count()
         self.stdout.write(
             self.style.SUCCESS(

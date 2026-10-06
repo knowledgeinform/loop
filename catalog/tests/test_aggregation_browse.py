@@ -31,7 +31,7 @@ def _embedded_item_visible_mongo_rules(
 def _reference_material_rollups(
     material_auid: str, user_tags: List[str]
 ) -> Dict[str, Any]:
-    is_public = "S4E" in user_tags or not user_tags
+    is_public = "S4E" in user_tags
     trial_count = 0
     lit_count = 0
     dates: List[datetime] = []
@@ -82,7 +82,7 @@ class BrowseMaterialsAggregationParityTests(SimpleTestCase):
                     trial_id="t1",
                     trial_date=d1,
                     exp_condition=ExpCondition(),
-                    visibility_affiliations=["Oak Ridge"],
+                    visibility_affiliations=["MIT"],
                 ),
                 EmbeddedTrial(
                     trial_id="t2",
@@ -99,9 +99,9 @@ class BrowseMaterialsAggregationParityTests(SimpleTestCase):
         Recipe.objects(id=self.recipe_auid).delete()
         Material.objects(id=self.material_auid).delete()
 
-    def test_public_user_counts_match_reference(self):
-        ref = _reference_material_rollups(self.material_auid, [])
-        bm = aggregation_mod.browse_materials(material_auid_in=[self.material_auid])
+    def test_s4e_user_counts_match_reference(self):
+        ref = _reference_material_rollups(self.material_auid, ["S4E"])
+        bm = aggregation_mod.browse_materials(material_auid_in=[self.material_auid], user_affiliations=["S4E"])
         self.assertEqual(len(bm.rows), 1)
         row = bm.rows[0]
         self.assertEqual(row["trial_count"], ref["trial_count"])
@@ -122,6 +122,7 @@ class BrowseMaterialsAggregationParityTests(SimpleTestCase):
     def test_facet_pagination_total(self):
         bm = aggregation_mod.browse_materials(
             material_auid_query=self.material_auid,
+            user_affiliations=["S4E"],
             skip=0,
             limit=10,
         )

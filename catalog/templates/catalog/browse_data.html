@@ -17,40 +17,11 @@
 {% block content %}
 <div class="page-head">
   <h1>Search catalog</h1>
-  {% if browse_materials_db_paginated %}
-  <p class="text-muted small mb-0">
-    Totals and paging use server-side filters. Organization or temperature filters switch to full in-memory refinement and may load more rows per request.
-  </p>
-  {% endif %}
 </div>
 
 <form id="search-form" method="get" class="filter-form browse-filter-form">
   <div class="search-panel">
     <div class="row g-3 align-items-end">
-      <div class="col-12 col-lg browse-search-primary">
-        <label for="search" class="form-label search-field-label">
-          <span>Semantic search</span>
-          <span id="search-mode-indicator"
-                data-mode="{{ search_mode|default:'none' }}"
-                data-error="{{ semantic_error|default_if_none:'' }}">
-            {% if search_mode == "semantic" %}
-              <span class="badge bg-primary" title="Ranked by vector similarity across composition, structure, and synthesis embeddings.">AI</span>
-            {% elif search_mode == "auid" %}
-              <span class="badge bg-warning text-dark" title="Semantic search unavailable — matching against material ID instead.">Fallback</span>
-            {% endif %}
-          </span>
-        </label>
-        <input type="text" class="form-control form-control-lg" id="search" name="search"
-               value="{{ request.GET.search|default_if_none:'' }}"
-               placeholder="Describe a material, synthesis, structure, or property…"
-               autocomplete="off">
-        {% if search_mode == "auid" %}
-        <div class="mt-1 small text-warning-emphasis">
-          Semantic search is unavailable — results are filtered by material ID substring instead.
-          {% if semantic_error %}<details class="d-inline"><summary class="text-muted" style="cursor:pointer;list-style:none;display:inline">Why?</summary> <span class="text-muted fst-italic">{{ semantic_error }}</span></details>{% endif %}
-        </div>
-        {% endif %}
-      </div>
       <div class="col-12">
         <span class="form-label d-block">Result type</span>
         <div class="btn-group btn-group-sm flex-wrap browse-view-modes" role="group" aria-label="Browse view">
@@ -59,7 +30,7 @@
           <label class="btn btn-outline-secondary" for="view-materials">Materials</label>
           <input type="radio" class="btn-check" name="view" id="view-recipes" value="recipes"
                  {% if view_mode == "recipes" %}checked{% endif %} autocomplete="off">
-          <label class="btn btn-outline-secondary" for="view-recipes">Materials + recipes</label>
+          <label class="btn btn-outline-secondary" for="view-recipes">Recipes</label>
           <input type="radio" class="btn-check" name="view" id="view-literature" value="literature"
                  {% if view_mode == "literature" %}checked{% endif %} autocomplete="off">
           <label class="btn btn-outline-secondary" for="view-literature">Literature</label>
@@ -70,8 +41,7 @@
       </div>
     </div>
 
-    <details class="browse-details mt-3" {% if filters.temp_filter_enabled or filters.structure_family or composition_summary or filters.affiliations or filters.has_literature or filters.has_experiments or filters.has_computational or filters.steps_q %}open{% endif %}>
-      <summary>Advanced filters</summary>
+    <section class="mt-3" aria-label="Catalog filters">
       <div class="browse-advanced-inner">
         <div class="row g-3">
           <div class="col-md-4">
@@ -189,12 +159,37 @@
           </div>
         </div>
 
+        <div class="row g-3 mt-2">
+          <div class="col-md-4">
+            <label for="sort" class="form-label">Sort by</label>
+            <select name="sort" id="sort" class="form-select">
+              <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>Date added: newest first</option>
+              <option value="oldest" {% if filters.sort == "oldest" %}selected{% endif %}>Date added: oldest first</option>
+              <option value="relevance" {% if filters.sort == "relevance" %}selected{% endif %}>Relevance (semantic search)</option>
+            </select>
+          </div>
+          <div class="col-md-8">
+            <label for="search" class="form-label">Composition or record lookup</label>
+            <input type="text" class="form-control" id="search" name="search"
+                   value="{{ filters.search|default_if_none:'' }}"
+                   placeholder="AlCoCuFeZn, batch ID, AUID, DOI, or paper title"
+                   aria-describedby="catalog-search-help" autocomplete="off">
+          </div>
+        </div>
+        <div class="mt-3">
+          <label for="search-type" class="form-label">Search method</label>
+          <select name="search_type" id="search-type" class="form-select" style="max-width: 28rem">
+            <option value="catalog" {% if filters.search_type == "catalog" %}selected{% endif %}>Catalog lookup</option>
+            <option value="semantic" {% if filters.search_type == "semantic" %}selected{% endif %}>Semantic discovery: related materials</option>
+          </select>
+          <p id="catalog-search-help" class="form-text">Catalog lookup matches exact identifiers or words in paper titles. Complete compositions match element sets; explicit coefficients also match ratios. Semantic discovery finds related materials and is not a batch-ID lookup.</p>
+        </div>
         <div class="mt-3 d-flex gap-2 flex-wrap">
           <button class="btn btn-primary btn-sm" type="submit">Apply filters</button>
           <a href="{% url 'browse_data' %}" class="btn btn-outline-secondary btn-sm">Clear all</a>
         </div>
       </div>
-    </details>
+    </section>
   </div>
 
   <input type="hidden" id="has-element">

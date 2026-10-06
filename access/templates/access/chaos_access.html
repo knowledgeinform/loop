@@ -1,0 +1,68 @@
+{% extends "base_generic.html" %}
+
+{% block title %}<title>CHAOS access - LOOP</title>{% endblock %}
+
+{% block content %}
+  <div class="auth-shell">
+    <h1 class="mb-3">CHAOS access</h1>
+
+    {% if state == "granted" %}
+      <div class="card auth-card">
+        <div class="card-body">
+          <p>Your account can use the CHAOS database: the pages, the API and the downloads for your access level.</p>
+          <p class="mb-0">For the API, create a personal key with the <code>chaos:read</code> scope on the <a href="{% url 'developer_keys' %}">API keys</a> page.</p>
+        </div>
+      </div>
+
+    {% elif state == "pending" %}
+      <div class="card auth-card">
+        <div class="card-body">
+          <p class="mb-0">Your request from {{ open_request.created_at|date:"F j, Y" }} is waiting for approval. You will get an email when it is decided.</p>
+        </div>
+      </div>
+
+    {% else %}
+      <div class="card auth-card mb-3">
+        <div class="card-body">
+          {% if state == "terms_needed" %}
+            <p class="mb-0">The CHAOS terms of use changed (version {{ terms_version }}). Please read and accept them to keep using CHAOS.</p>
+          {% elif prior_refusal %}
+            <p class="mb-0">An earlier request was not approved, or access was withdrawn. A new request goes to the site administrators.</p>
+          {% elif automatic_route == "verified_email" %}
+            <p class="mb-0">Your verified address qualifies for immediate access. Accept the terms below to start.</p>
+          {% elif automatic_route == "loop_approved" %}
+            <p class="mb-0">Your LOOP account qualifies for immediate access. Accept the terms below to start.</p>
+          {% else %}
+            <p class="mb-0">Accounts with a verified academic address get access at once. Other requests are reviewed by the site administrators.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card auth-card mb-3">
+        <div class="card-body">
+          <h2 class="h5">Terms of use (version {{ terms_version }})</h2>
+          {% include terms_template %}
+        </div>
+      </div>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="mb-3{% if field.name == 'accept_terms' %} form-check{% endif %}">
+            {% if field.name == "accept_terms" %}
+              {{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% else %}
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">{% if state == "terms_needed" %}Accept{% else %}Request access{% endif %}</button>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

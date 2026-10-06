@@ -2,18 +2,14 @@ from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 
-from .documents import AFFILIATION_CHOICES, AFFILIATION_VALUES, upsert_user_affiliations
-
 
 class SignupForm(UserCreationForm):
+    """Sign-up asks for no affiliation: an admin sets one when approving the
+    account, and until then the account waits (access.policy.has_loop_access).
+    The choice used to be open to anyone and named the partner groups."""
+
     first_name = forms.CharField(max_length=30, required=True, help_text="Required.")
     last_name = forms.CharField(max_length=30, required=True, help_text="Required.")
-    affiliations = forms.MultipleChoiceField(
-        choices=AFFILIATION_CHOICES,
-        required=True,
-        widget=forms.CheckboxSelectMultiple,
-        help_text="Select one or more affiliations.",
-    )
 
     class Meta:
         model = User
@@ -37,20 +33,6 @@ class SignupForm(UserCreationForm):
         if User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("An account with this email already exists.")
         return email
-
-    def clean_affiliations(self):
-        selected = self.cleaned_data.get("affiliations", [])
-        invalid = [a for a in selected if a not in AFFILIATION_VALUES]
-        if invalid:
-            raise forms.ValidationError("Invalid affiliation selection.")
-        return selected
-
-    def save(self, commit=True):
-        user = super().save(commit=commit)
-        if commit:
-            selected = self.cleaned_data.get("affiliations", [])
-            upsert_user_affiliations(user, selected)
-        return user
 
 
 class LoopAuthenticationForm(AuthenticationForm):

@@ -62,4 +62,57 @@
         </div>
     </div>
 </div>
+
+<h2 class="h5 mt-4 mb-3" id="profile">Profile</h2>
+<div class="card">
+    <div class="card-body">
+        {% if profile %}
+        <dl class="row mb-3">
+            <dt class="col-sm-3">Institution or company</dt>
+            <dd class="col-sm-9">{{ profile.institution }}{% if profile.ror_id %} <a href="{{ profile.ror_id }}" class="font-monospace small" target="_blank" rel="noopener">{{ profile.ror_id|cut:"https://" }}</a>{% endif %}</dd>
+
+            <dt class="col-sm-3">Country</dt>
+            <dd class="col-sm-9">{{ profile.country_name }}</dd>
+
+            <dt class="col-sm-3">Role</dt>
+            <dd class="col-sm-9">{{ profile.get_role_display }}</dd>
+
+            <dt class="col-sm-3">Kind of institution</dt>
+            <dd class="col-sm-9">{{ profile.get_sector_display }}</dd>
+
+            <dt class="col-sm-3">Research areas</dt>
+            <dd class="col-sm-9">{{ profile.research_area_labels|join:", " }}</dd>
+
+            <dt class="col-sm-3">Use of LOOP or CHAOS</dt>
+            <dd class="col-sm-9">{{ profile.intended_use|linebreaksbr }}</dd>
+
+            <dt class="col-sm-3">ORCID iD</dt>
+            <dd class="col-sm-9">{% if profile.orcid %}<a href="https://orcid.org/{{ profile.orcid }}" class="font-monospace" target="_blank" rel="noopener">{{ profile.orcid }}</a>{% else %}Not given{% endif %}</dd>
+
+            <dt class="col-sm-3">Email about updates</dt>
+            <dd class="col-sm-9">{% if profile.contact_ok %}Yes{% else %}No{% endif %}</dd>
+
+            <dt class="col-sm-3">Last updated</dt>
+            <dd class="col-sm-9">{{ profile.updated_at|date:"F j, Y" }}</dd>
+        </dl>
+        <a href="{% url 'profile' %}?next={{ request.path|urlencode }}" class="btn btn-primary btn-sm">Edit profile</a>
+        {% else %}
+        <p>Your profile is not filled in yet.</p>
+        <a href="{% url 'profile' %}?next={{ request.path|urlencode }}" class="btn btn-primary btn-sm">Complete your profile</a>
+        {% endif %}
+    </div>
+</div>
+
+<h2 class="h5 mt-4 mb-3" id="access">Access</h2>
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">LOOP</dt>
+            <dd class="col-sm-9">{% if loop_access %}Approved{% else %}Waiting for approval{% endif %}</dd>
+
+            <dt class="col-sm-3">CHAOS</dt>
+            <dd class="col-sm-9">{% if chaos_access %}Yes{% else %}Not yet. <a href="{% url 'chaos_access' %}">Request CHAOS access</a>{% endif %}</dd>
+        </dl>
+    </div>
+</div>
 {% endblock %}

@@ -32,6 +32,7 @@ from catalog.documents import (
     UserPrecursor,
     UserProtocol,
     XRDAnalysisJob,
+    XRDAnalysisReview,
     compute_material_auid,
 )
 from catalog.xrd_analysis.persistence import (
@@ -84,6 +85,7 @@ from .serializers import (
     PrecursorWriteSerializer,
     ProtocolWriteSerializer,
     RecordValidationSerializer,
+    XRDAnalysisReviewsResponseSerializer,
 )
 
 
@@ -1180,6 +1182,7 @@ def experiment_detail(request, recipe_auid, trial_id):
         data["synthesis_steps"] = additional.get("synthesis_steps", [])
         data["material_auid"] = recipe.material_auid
         data["recipe_auid"] = recipe.id
+        data["xrd_analyses_url"] = _trial_analyses_url(recipe.id, trial.trial_id)
         return Response({"data": data})
     return _problem(
         request, status_code=404, title="Not Found", detail="Trial was not found."
@@ -1581,6 +1584,12 @@ def _material_data(material):
     }
 
 
+def _trial_analyses_url(recipe_auid, trial_id):
+    return reverse("api-v1-experiment-xrd-analysis-submit", kwargs={
+        "recipe_auid": recipe_auid, "trial_id": trial_id,
+    })
+
+
 def _trial_data(recipe, trial):
     """Return the public representation shared by trial reads and exports."""
     data = trial.to_mongo().to_dict()
@@ -1589,6 +1598,7 @@ def _trial_data(recipe, trial):
     additional = condition.get("additional_params", {}) or {}
     data["material_auid"] = recipe.material_auid
     data["recipe_auid"] = recipe.id
+    data["xrd_analyses_url"] = _trial_analyses_url(recipe.id, trial.trial_id)
     data["synthesis_steps"] = additional.get(
         "synthesis_steps", list(recipe.synthesis_steps or [])
     )
@@ -1789,6 +1799,7 @@ def _job_payload(job):
         "failure_codes": list(job.failure_codes or []),
         "error_summary": job.error_summary,
         "status_url": _job_status_url(job),
+        "reviews_url": reverse("api-v1-xrd-analysis-reviews", kwargs={"analysis_id": job.analysis_id}),
         "result_url": _analysis_result_url(job) if job.status == "succeeded" else None,
     }
 
@@ -2060,10 +2071,17 @@ def experiment_xrd_preview(request, recipe_auid, trial_id):
 @extend_schema(
     tags=["XRD"],
     summary="Submit a background XRD phase-analysis job for a visible trial",
+    methods=["POST"],
     request=None,
     responses={200: OpenApiTypes.OBJECT, 202: OpenApiTypes.OBJECT},
 )
-@api_view(["POST"])
+@extend_schema(
+    tags=["XRD"],
+    summary="List existing XRD analyses and expert-review links for a visible trial",
+    methods=["GET"],
+    responses={200: OpenApiTypes.OBJECT},
+)
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated, IsApprovedUser, HasDataReadScope])
 def experiment_xrd_analysis_submit(request, recipe_auid, trial_id):
     recipe, trial, problem = _visible_trial_or_problem(request, recipe_auid, trial_id)
@@ -2075,6 +2093,13 @@ def experiment_xrd_analysis_submit(request, recipe_auid, trial_id):
             detail="Trial was not found.",
             code="xrd_trial_not_found",
         )
+    if request.method == "GET":
+        query_problem = _unsupported_query_params_problem(request, UNFILTERED_LIST_QUERY_PARAMS)
+        if query_problem is not None:
+            return query_problem
+        jobs = XRDAnalysisJob.objects(recipe_auid=recipe_auid, trial_id=trial_id).order_by("-created_at")
+        rows = [_job_payload(job) for job in jobs]
+        return Response({"data": rows, "meta": _unpaged_meta(rows)})
     if _trial_xrd_path(recipe, trial) is None:
         return _analysis_problem(
             request,
@@ -2150,9 +2175,14 @@ def xrd_analysis_job_detail(request, job_id):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsApprovedUser, HasDataReadScope])
 def xrd_analysis_result(request, analysis_id):
-    job, recipe, trial, problem = _visible_analysis_job_or_problem(request, analysis_id=analysis_id)
+    job, recipe, trial, problem = _visible_analysis_job_or_problem(
+        request,
+        analysis_id=analysis_id,
+    )
+
     if problem:
         return problem
+
     try:
         context = assemble_repository_xrd_input(
             recipe.id,
@@ -2161,6 +2191,7 @@ def xrd_analysis_result(request, analysis_id):
             trial=trial,
             require_accessible_raw_file=False,
         )
+
     except XRDAnalysisJobError as exc:
         return _analysis_problem(
             request,
@@ -2169,10 +2200,12 @@ def xrd_analysis_result(request, analysis_id):
             detail=exc.message,
             code=exc.code,
         )
+
     validation = validate_persisted_xrd_analysis(
         context.analysis_input,
         analysis_id=analysis_id,
     )
+
     if not validation.valid:
         if validation.failure_code == "analysis_cache_not_found":
             return _analysis_problem(
@@ -2182,28 +2215,102 @@ def xrd_analysis_result(request, analysis_id):
                 detail="No persisted XRD analysis result was found for this identity.",
                 code="analysis_result_not_found",
             )
+
         return _analysis_problem(
             request,
             status_code=409,
             title="Persisted Analysis Integrity Failure",
-            detail=validation.detail or "The persisted XRD analysis artifacts failed validation.",
+            detail=(
+                validation.detail
+                or "The persisted XRD analysis artifacts failed validation."
+            ),
             code="analysis_result_integrity_failed",
         )
+
     persisted = load_persisted_xrd_analysis(
         context.analysis_input,
         analysis_id=analysis_id,
         cache_validation=validation,
     )
+
     payload = {
         "analysis_id": persisted.analysis_id,
         "job": _job_payload(job),
         "summary": persisted.summary,
         "result": persisted.result,
         "reproducibility_manifest": persisted.reproducibility_manifest,
-        "artifacts": _artifact_metadata_rows(job, persisted),
-        "persistence_warning_codes": list(getattr(persisted, "persistence_warning_codes", ()) or ()),
+        "artifacts": _artifact_metadata_rows(
+            job,
+            persisted,
+        ),
+        "persistence_warning_codes": list(
+            getattr(
+                persisted,
+                "persistence_warning_codes",
+                (),
+            )
+            or ()
+        ),
     }
-    return Response({"data": payload})
+
+    return Response(
+        {
+            "data": payload
+        }
+    )
+
+
+@extend_schema(
+    tags=["XRD"],
+    summary="Retrieve human expert reviews for a visible XRD analysis",
+    responses={200: XRDAnalysisReviewsResponseSerializer},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsApprovedUser, HasDataReadScope])
+def xrd_analysis_reviews(request, analysis_id):
+    """Return the active human review and its history, separate from automated output."""
+    job, recipe, trial, problem = _visible_analysis_job_or_problem(
+        request, analysis_id=analysis_id,
+    )
+    if problem:
+        return problem
+
+    reviews = XRDAnalysisReview.objects(analysis_id=analysis_id).order_by("-created_at")
+    serialized = [
+        {
+            "review_id": str(review.id),
+            "analysis_id": review.analysis_id,
+            "material_auid": review.material_auid,
+            "recipe_auid": review.recipe_auid,
+            "trial_id": review.trial_id,
+            "reviewer_username": review.reviewer_username,
+            "reviewer_display_name": review.reviewer_display_name or "",
+            "reviewer_organization": review.reviewer_organization or "",
+            "review_status": review.review_status,
+            "reviewed_phase_state": review.reviewed_phase_state or "",
+            "selected_hypothesis_id": review.selected_hypothesis_id or "",
+            "added_candidate_identifiers": list(review.added_candidate_identifiers or []),
+            "identified_structures": list(review.identified_structures or []),
+            "other_structure": review.other_structure or "",
+            "identified_phases": review.identified_phases or "",
+            "no_identifiable_structure": bool(review.no_identifiable_structure),
+            "amorphous": bool(review.amorphous),
+            "ambiguous": bool(review.ambiguous),
+            "confidence": review.confidence or "",
+            "notes": review.notes or "",
+            "supersedes_review_id": review.supersedes_review_id or "",
+            "is_active": bool(review.is_active),
+            "created_at": _iso_or_none(review.created_at),
+            "updated_at": _iso_or_none(review.updated_at),
+        }
+        for review in reviews
+    ]
+    active_review = next((review for review in serialized if review["is_active"]), None)
+    return Response({"data": {
+        "analysis_id": analysis_id,
+        "active_review": active_review,
+        "reviews": serialized,
+    }})
 
 
 @extend_schema(

@@ -145,7 +145,7 @@ A restrained institutional palette: one authoritative navy, warm near-black ink 
 
 ### Tertiary — Encoding Hues (meaning, not decoration)
 These are a controlled vocabulary. Each maps to a fixed data value and is always paired with its text label.
-- **Affiliations** — S4E `#002d72`, APL `#68ace5`, Oak Ridge `#2e7d32`.
+- **Affiliations** — S4E `#002d72`, APL `#68ace5`.
 - **Structure families** — Rocksalt `#5a4e9c`, Pyrochlore `#4a63b8`, Spinel `#68ace5`, Perovskite `#4f7dc4`, Fluorite `#2e7d32`, Other `#6c757d`.
 - **Status** — Success/Open `#2e7d32`, Danger/Error `#b02a37`.
 - **Note** — Amber note card, `#fffbeb` fill on `#f5e6c8` border, for advisory annotations only.

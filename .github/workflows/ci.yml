@@ -46,3 +46,5 @@ jobs:
           exit 1
       - name: Run tests
         run: python manage.py test
+      - name: Check SQLite file permissions
+        run: python -m unittest discover -s docker -p 'test_secure_sqlite.py'

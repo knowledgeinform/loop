@@ -154,6 +154,7 @@ All IDs are content-addressable: SHA256 of canonical content, truncated to 12 he
 - Every document (Material, Recipe, EmbeddedTrial, EmbeddedLiterature, EmbeddedDFT) has a `visibility_affiliations` list (e.g. `["S4E", "APL"]`).
 - `UserAffiliation` (MongoDB) maps each Django user to their allowed affiliations.
 - `ApprovedGateMiddleware` (`loop/middleware.py`) redirects unapproved users to `/accounts/awaiting-approval/`.
+- LOOP approval is the `Approved` group **and** an affiliation set by an admin (`access.policy.has_loop_access`, used by the gate, the API permission and the views). Sign-up asks for no affiliation; an approved account without one waits, because the record filters would treat it as S4E and show it everything. Saving the Users page with no affiliation removes the record.
 - Superusers listed in `APPROVED_BYPASS_SUPERUSERS` (settings) skip the affiliation check.
 
 ---

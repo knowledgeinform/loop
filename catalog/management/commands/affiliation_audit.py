@@ -1,18 +1,11 @@
-"""Report where affiliation visibility currently relies on the S4E fallback.
+"""Report missing memberships and documents that use default visibility.
 
 Read-only. Writes nothing, changes nothing.
 
-Both user affiliations and document visibility fall back to
-``VISIBILITY_DEFAULT`` (``["S4E"]``) when they are empty -- see
-``get_user_affiliations`` (documents.py) and ``_normalize_visibility_tags``.
-While every member of the consortium is S4E that fallback is invisible, because
-defaulting to S4E and being S4E are indistinguishable. Adding a second
-institution makes it load-bearing in a way it was never designed to be: an
-approved user with no ``UserAffiliation`` record reads the S4E catalogue.
-
-This command measures the blast radius before anyone changes that default, so
-the decision is made against counts rather than guesses. Run it before and
-after any backfill.
+Empty or missing user affiliations grant no organization membership. Document
+visibility still falls back to ``VISIBILITY_DEFAULT`` (``["S4E"]``). Run this
+audit to identify existing accounts that previously relied on implicit S4E
+membership and need an administrator to assign their actual affiliation.
 """
 
 from django.contrib.auth import get_user_model
@@ -24,11 +17,12 @@ from catalog.documents import (
     Recipe,
     UserAffiliation,
     VISIBILITY_DEFAULT,
+    USER_AFFILIATIONS_DEFAULT,
 )
 
 
 class Command(BaseCommand):
-    help = "Report users and documents that depend on the default S4E visibility fallback."
+    help = "Report users without affiliations and documents using default visibility."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -48,7 +42,8 @@ class Command(BaseCommand):
         group = options["group"] or getattr(settings, "APPROVED_GROUP_NAME", "Approved")
 
         self.stdout.write(f"Allowed affiliations : {', '.join(AFFILIATION_VALUES)}")
-        self.stdout.write(f"Fallback when empty  : {VISIBILITY_DEFAULT}")
+        self.stdout.write(f"User default         : {USER_AFFILIATIONS_DEFAULT}")
+        self.stdout.write(f"Document default     : {VISIBILITY_DEFAULT}")
         self.stdout.write("")
 
         self._audit_users(group, list_users=options["list_users"])
@@ -93,7 +88,7 @@ class Command(BaseCommand):
             self.stdout.write(f"    {tag:<12} {by_affiliation[tag]}")
 
         total_falling_back = len(missing) + len(empty)
-        line = f"  relying on the fallback  : {total_falling_back}"
+        line = f"  without affiliations     : {total_falling_back}"
         self.stdout.write(self.style.ERROR(line) if total_falling_back else self.style.SUCCESS(line))
         if missing:
             self.stdout.write(f"    no UserAffiliation record : {len(missing)}")
@@ -154,9 +149,9 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self.stdout.write(
-            "Users counted under the fallback read "
-            f"{VISIBILITY_DEFAULT} today; give them an explicit affiliation "
-            "before changing the default, or they are locked out. Materials "
+            "Users without affiliations have no organization access. Assign "
+            "their actual affiliation if they need catalog access; CHAOS "
+            "approval is independent. Materials "
             "without a default do not disappear from browse -- their visibility "
             "comes from their recipes and trials -- but they are excluded from "
             "the composition-level download for non-S4E users."

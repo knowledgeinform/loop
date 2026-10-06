@@ -157,6 +157,6 @@ class PredictionRankingTests(SimpleTestCase):
             {"ranking_value": 1.5},
             {"ranking_value": None},
         ]
-        result = run_prediction_query("lowest conductivity")
+        result = run_prediction_query("lowest conductivity", user_affiliations=["S4E"])
         self.assertIsNone(result["error"])
         self.assertEqual([row["ranking_value"] for row in result["rows"]], [1.5, 9.0])

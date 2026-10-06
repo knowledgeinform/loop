@@ -61,13 +61,14 @@ def visibility_match_stage(user_affiliations: Optional[Iterable[str]]) -> Option
 
     S4E users bypass this filter (they see everything). For other users we
     require either the record to carry S4E (public within the org) *or* at
-    least one overlapping non-S4E tag.
+    least one overlapping non-S4E tag. Accounts without affiliations match
+    nothing; S4E is not an implicit membership.
     """
     tags = [t for t in (user_affiliations or []) if t]
     if "S4E" in tags:
         return None
     if not tags:
-        return {"$match": {"visibility_affiliations": "S4E"}}
+        return {"$match": {"_id": {"$in": []}}}
     return {
         "$match": {
             "visibility_affiliations": {"$in": list(tags) + ["S4E"]},

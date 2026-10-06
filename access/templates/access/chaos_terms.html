@@ -1,0 +1,17 @@
+{% extends "base_generic.html" %}
+
+{% block title %}<title>CHAOS terms of use - LOOP</title>{% endblock %}
+
+{% block content %}
+  <div class="auth-shell">
+    <h1 class="mb-3">CHAOS terms of use</h1>
+    <div class="card auth-card">
+      <div class="card-body">
+        <p class="text-muted small">Version {{ terms_version }}</p>
+        {% include terms_template %}
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

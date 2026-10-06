@@ -2,11 +2,15 @@
 set -eu
 
 if [ -n "${SQLITE_PATH:-}" ]; then
-  mkdir -p "$(dirname "$SQLITE_PATH")"
+  python /app/docker/secure_sqlite.py "$SQLITE_PATH"
 fi
 
 echo "Applying database migrations..."
 python manage.py migrate --noinput
+
+if [ -n "${SQLITE_PATH:-}" ]; then
+  python /app/docker/secure_sqlite.py "$SQLITE_PATH"
+fi
 
 if [ "${CHEMSCREEN_BOOTSTRAP_ON_START:-0}" = "1" ]; then
   echo "Ensuring Predictions-tab ChemScreen data..."

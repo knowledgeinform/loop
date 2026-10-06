@@ -51,10 +51,12 @@ from mongoengine.connection import get_db
 from . import auid as auid_mod
 from .auid import STRUCTURE_FAMILY_VALUES
 
-AFFILIATION_VALUES = ("S4E", "APL", "Oak Ridge", "MIT")
+AFFILIATION_VALUES = ("S4E", "APL", "MIT")
 AFFILIATION_CHOICES = tuple((aff, aff) for aff in AFFILIATION_VALUES)
 
 VISIBILITY_DEFAULT: List[str] = ["S4E"]
+# Membership is independent of the default visibility assigned to new data.
+USER_AFFILIATIONS_DEFAULT: List[str] = []
 
 RAW_DATA_TYPE_CHOICES = ("xrd", "sem", "tem", "eds", "other", "unknown", "na")
 
@@ -475,6 +477,26 @@ XRD_ANALYSIS_PHASE_STATE_VALUES = (
 )
 
 
+XRD_EXPERT_STRUCTURE_CHOICES = (
+    ("rock_salt", "Rock Salt"),
+    ("spinel", "Spinel"),
+    ("perovskite", "Perovskite"),
+    ("pyrochlore", "Pyrochlore"),
+    ("fluorite", "Fluorite"),
+    ("rutile", "Rutile"),
+    ("wurtzite", "Wurtzite"),
+    ("zinc_blende", "Zinc Blende"),
+    ("corundum", "Corundum"),
+    ("other", "Other"),
+)
+
+XRD_EXPERT_STRUCTURE_VALUES = tuple(
+    value
+    for value, _label
+    in XRD_EXPERT_STRUCTURE_CHOICES
+)
+
+
 class SynthesisParseJob(Document):
     """Queue entry for background LLM discretization of a batch synthesis route.
 
@@ -696,57 +718,210 @@ class XRDAnalysisJob(Document):
 
 
 class XRDAnalysisReview(Document):
-    """Expert review record for one persisted automated XRD analysis."""
+    """
+    Expert review record for one persisted automated XRD analysis.
 
-    analysis_id = StringField(required=True)
-    material_auid = StringField(required=True)
-    recipe_auid = StringField(required=True)
-    trial_id = StringField(required=True)
+    Human interpretation remains separate from the automated XRD result.
+    Reviews are immutable in practice: a newer review supersedes the
+    previously active review rather than overwriting it.
+    """
 
-    reviewer_username = StringField(required=True)
+    analysis_id = StringField(
+        required=True
+    )
+
+    material_auid = StringField(
+        required=True
+    )
+
+    recipe_auid = StringField(
+        required=True
+    )
+
+    trial_id = StringField(
+        required=True
+    )
+
+    reviewer_username = StringField(
+        required=True
+    )
+
     reviewer_display_name = StringField()
+
     reviewer_organization = StringField()
 
+    # Existing review fields.
     review_status = StringField(
         required=True,
-        choices=list(XRD_ANALYSIS_REVIEW_STATUS_VALUES),
+        choices=list(
+            XRD_ANALYSIS_REVIEW_STATUS_VALUES
+        ),
     )
+
     reviewed_phase_state = StringField(
-        choices=list(XRD_ANALYSIS_PHASE_STATE_VALUES),
+        choices=list(
+            XRD_ANALYSIS_PHASE_STATE_VALUES
+        ),
         null=True,
     )
+
     selected_hypothesis_id = StringField()
-    added_candidate_identifiers = ListField(StringField())
+
+    added_candidate_identifiers = (
+        ListField(
+            StringField()
+        )
+    )
+
     confidence = StringField()
+
     notes = StringField()
 
-    supersedes_review_id = StringField()
-    is_active = BooleanField(default=True)
+    # ---------------------------------------------------------
+    # Structured expert XRD interpretation
+    # ---------------------------------------------------------
 
-    created_at = DateTimeField(default=_utc_now)
-    updated_at = DateTimeField(default=_utc_now)
+    identified_structures = ListField(
+        StringField(
+            choices=list(
+                XRD_EXPERT_STRUCTURE_VALUES
+            )
+        ),
+        default=list,
+    )
+
+    other_structure = StringField(
+        default=""
+    )
+
+    identified_phases = StringField(
+        default=""
+    )
+
+    no_identifiable_structure = (
+        BooleanField(
+            default=False
+        )
+    )
+
+    amorphous = BooleanField(
+        default=False
+    )
+
+    ambiguous = BooleanField(
+        default=False
+    )
+
+    # ---------------------------------------------------------
+    # Review-history fields
+    # ---------------------------------------------------------
+
+    supersedes_review_id = StringField()
+
+    is_active = BooleanField(
+        default=True
+    )
+
+    created_at = DateTimeField(
+        default=_utc_now
+    )
+
+    updated_at = DateTimeField(
+        default=_utc_now
+    )
 
     meta = {
-        "collection": "xrd_analysis_reviews",
+        "collection":
+            "xrd_analysis_reviews",
+
         "indexes": [
             "analysis_id",
             "recipe_auid",
             "trial_id",
             "review_status",
-            {"fields": ["analysis_id", "-created_at"]},
-            {"fields": ["analysis_id", "is_active"]},
-            {"fields": ["recipe_auid", "trial_id", "-created_at"]},
+            "identified_structures",
+
+            {
+                "fields": [
+                    "analysis_id",
+                    "-created_at",
+                ]
+            },
+
+            {
+                "fields": [
+                    "analysis_id",
+                    "is_active",
+                ]
+            },
+
+            {
+                "fields": [
+                    "recipe_auid",
+                    "trial_id",
+                    "-created_at",
+                ]
+            },
         ],
-        "ordering": ["-created_at"],
-        "strict": False,
+
+        "ordering": [
+            "-created_at"
+        ],
+
+        "strict":
+            False,
     }
 
-    def save(self, *args, **kwargs):
+    def clean(
+        self,
+    ):
+        structures = list(
+            self.identified_structures
+            or []
+        )
+
+        if (
+            "other"
+            in structures
+            and not str(
+                self.other_structure
+                or ""
+            ).strip()
+        ):
+            from mongoengine import (
+                ValidationError,
+            )
+
+            raise ValidationError(
+                (
+                    "other_structure is "
+                    "required when 'other' "
+                    "is selected."
+                )
+            )
+
+        if (
+            "other"
+            not in structures
+        ):
+            self.other_structure = ""
+
+    def save(
+        self,
+        *args,
+        **kwargs,
+    ):
         now = _utc_now()
+
         if not self.created_at:
             self.created_at = now
+
         self.updated_at = now
-        return super().save(*args, **kwargs)
+
+        return super().save(
+            *args,
+            **kwargs,
+        )
 
 
 class DOIMapping(Document):
@@ -884,8 +1059,7 @@ class UserAffiliation(Document):
     username = StringField(required=True)
     affiliations = ListField(
         StringField(choices=list(AFFILIATION_VALUES)),
-        required=True,
-        default=lambda: ["S4E"],
+        default=lambda: list(USER_AFFILIATIONS_DEFAULT),
     )
     created_at = DateTimeField(default=_utc_now)
     updated_at = DateTimeField(default=_utc_now)
@@ -909,19 +1083,31 @@ def get_user_affiliations(user) -> List[str]:
     if not getattr(user, "is_authenticated", False):
         return []
     profile = UserAffiliation.objects(user_id=user.id).first()
-    if profile and profile.affiliations:
-        return list(profile.affiliations)
-    return list(VISIBILITY_DEFAULT)
+    if profile:
+        return list(profile.affiliations or [])
+    return list(USER_AFFILIATIONS_DEFAULT)
 
 
 def upsert_user_affiliations(user, affiliations: List[str]) -> None:
+    """Set an account's affiliations.
+
+    An empty selection removes the account's record, so it has no
+    affiliation and waits like an unapproved account
+    (``access.policy.has_loop_access``). It used to store S4E, so saving the
+    Users page with no box ticked granted every record.
+    """
     normalized: List[str] = []
     for aff in affiliations or []:
         value = str(aff).strip()
         if value in AFFILIATION_VALUES and value not in normalized:
             normalized.append(value)
     if not normalized:
-        normalized = list(VISIBILITY_DEFAULT)
+        row = UserAffiliation.objects(user_id=user.id).first()
+        if row is not None:
+            # Document.delete fires pre_delete, so the archive hook writes
+            # the tombstone (catalog/archive/hooks.py).
+            row.delete()
+        return
 
     UserAffiliation.objects(user_id=user.id).update_one(
         set__username=user.get_username(),
@@ -1064,6 +1250,7 @@ __all__ = [
     "AFFILIATION_VALUES",
     "AFFILIATION_CHOICES",
     "VISIBILITY_DEFAULT",
+    "USER_AFFILIATIONS_DEFAULT",
     "RAW_DATA_TYPE_CHOICES",
     "STRUCTURE_FAMILY_VALUES",
     "PHASE_STATUS_VALUES",
@@ -1100,4 +1287,8 @@ __all__ = [
     "find_embedded_trial",
     "find_embedded_literature",
     "find_embedded_dft",
+    "XRD_ANALYSIS_REVIEW_STATUS_VALUES",
+    "XRD_ANALYSIS_PHASE_STATE_VALUES",
+    "XRD_EXPERT_STRUCTURE_CHOICES",
+    "XRD_EXPERT_STRUCTURE_VALUES",
 ]

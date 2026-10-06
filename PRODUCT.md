@@ -6,7 +6,7 @@ product
 
 ## Users
 
-Materials-science researchers at the **Entropy for Energy Laboratory** (Johns Hopkins, Dept. of Materials Science & Engineering) and affiliated research groups (e.g. APL, Oak Ridge). They span PIs, postdocs, grad students, and new lab members. Their context is bench-and-desk science: they arrive with experimental XRD data, literature records, or DFT computations and need to catalog, find, compare, and analyze records on high-entropy materials. Access is affiliation-gated — a user only sees data their group is cleared for.
+Materials-science researchers at the **Entropy for Energy Laboratory** (Johns Hopkins, Dept. of Materials Science & Engineering) and affiliated research groups (e.g. APL). They span PIs, postdocs, grad students, and new lab members. Their context is bench-and-desk science: they arrive with experimental XRD data, literature records, or DFT computations and need to catalog, find, compare, and analyze records on high-entropy materials. Access is affiliation-gated — a user only sees data their group is cleared for.
 
 The jobs to be done:
 - **Browse & find** — locate materials, recipes, trials, and literature by composition, structure family, or semantic similarity, then read dense detail pages without losing their place.

@@ -20,7 +20,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, LiveServerTestCase, TestCase, override_settings
 
 from catalog.api import code_samples
-from catalog.documents import Material, Recipe
+from catalog.documents import Material, Recipe, UserAffiliation, upsert_user_affiliations
 from catalog.models import APIKey
 from catalog.raw_db import RawFile
 from catalog.tests.mongo_guard import mongo_reachable
@@ -81,6 +81,8 @@ class PythonSampleExecutionTests(LiveServerTestCase):
         self.user = get_user_model().objects.create_user(
             "sample-runner", "sample-runner@example.com", "pass", is_staff=True
         )
+        upsert_user_affiliations(self.user, ["S4E"])
+        self.addCleanup(lambda: UserAffiliation.objects(user_id=self.user.id).delete())
         _, self.raw_key = APIKey.issue(
             user=self.user,
             name="Documented Python samples",

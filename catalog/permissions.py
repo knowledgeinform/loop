@@ -7,8 +7,6 @@ from .documents import AFFILIATION_VALUES, VISIBILITY_DEFAULT
 AFFILIATION_CANONICAL = {
     "s4e": "S4E",
     "apl": "APL",
-    "oak ridge": "Oak Ridge",
-    "oakridge": "Oak Ridge",
 }
 
 
@@ -31,7 +29,7 @@ def canonical_affiliation(value):
     return None
 
 
-def normalize_visibility_tags(tags):
+def normalize_visibility_tags(tags, *, default=None):
     """Coerce a string/JSON/CSV/list of affiliations into a canonical list."""
     if isinstance(tags, str):
         raw = tags.strip()
@@ -51,7 +49,7 @@ def normalize_visibility_tags(tags):
             else:
                 tags = [raw]
     normalized = []
-    for tag in (tags or list(VISIBILITY_DEFAULT)):
+    for tag in (tags or (VISIBILITY_DEFAULT if default is None else default)):
         canonical = canonical_affiliation(tag)
         if canonical and canonical not in normalized:
             normalized.append(canonical)
@@ -61,7 +59,7 @@ def normalize_visibility_tags(tags):
 def is_visible_to_user(item_visibility, user_affiliations):
     """True when any of the user's affiliations may see the item. S4E sees all."""
     visibility = normalize_visibility_tags(item_visibility or list(VISIBILITY_DEFAULT))
-    user_affiliations = normalize_visibility_tags(user_affiliations or list(VISIBILITY_DEFAULT))
+    user_affiliations = normalize_visibility_tags(user_affiliations, default=[])
     if "S4E" in user_affiliations:
         return True
     if "S4E" in visibility:

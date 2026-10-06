@@ -329,50 +329,344 @@
       <div class="comp-tab-toolbar"><h2>Expert review</h2></div>
       <div class="detail-section-body">
         {% if can_review_xrd_analysis %}
-        <form method="post" action="{{ review_post_url }}" class="mb-4">
+        <form
+          method="post"
+          action="{{ review_post_url }}"
+          class="mb-4"
+          data-xrd-expert-review-form
+        >
           {% csrf_token %}
+
           <div class="row g-3">
+
+            <!-- Existing fields -->
             <div class="col-md-4">
-              <label class="form-label" for="id_review_status">Review status</label>
-              <select id="id_review_status" name="review_status" class="form-select" required>
+              <label
+                class="form-label"
+                for="id_review_status"
+              >
+                Review status
+              </label>
+
+              <select
+                id="id_review_status"
+                name="review_status"
+                class="form-select"
+                required
+              >
                 {% for status in review_status_values %}
-                <option value="{{ status }}">{{ status }}</option>
+                <option value="{{ status }}">
+                  {{ status }}
+                </option>
                 {% endfor %}
               </select>
             </div>
+
             <div class="col-md-4">
-              <label class="form-label" for="id_reviewed_phase_state">Reviewed phase state</label>
-              <select id="id_reviewed_phase_state" name="reviewed_phase_state" class="form-select">
-                <option value="">---------</option>
+              <label
+                class="form-label"
+                for="id_reviewed_phase_state"
+              >
+                Reviewed phase state
+              </label>
+
+              <select
+                id="id_reviewed_phase_state"
+                name="reviewed_phase_state"
+                class="form-select"
+              >
+                <option value="">
+                  ---------
+                </option>
+
                 {% for phase_state in phase_state_values %}
-                <option value="{{ phase_state }}">{{ phase_state }}</option>
+                <option value="{{ phase_state }}">
+                  {{ phase_state }}
+                </option>
                 {% endfor %}
               </select>
             </div>
+
             <div class="col-md-4">
-              <label class="form-label" for="id_selected_hypothesis_id">Selected hypothesis</label>
-              <select id="id_selected_hypothesis_id" name="selected_hypothesis_id" class="form-select">
-                <option value="">---------</option>
+              <label
+                class="form-label"
+                for="id_selected_hypothesis_id"
+              >
+                Selected hypothesis
+              </label>
+
+              <select
+                id="id_selected_hypothesis_id"
+                name="selected_hypothesis_id"
+                class="form-select"
+              >
+                <option value="">
+                  ---------
+                </option>
+
                 {% for option in hypothesis_options %}
-                <option value="{{ option.hypothesis_id }}">{{ option.label }}</option>
+                <option
+                  value="{{ option.hypothesis_id }}"
+                >
+                  {{ option.label }}
+                </option>
                 {% endfor %}
               </select>
             </div>
+
+            <div class="col-12">
+              <hr>
+
+              <h3 class="h6 mb-2">
+                Expert XRD interpretation
+              </h3>
+
+              <p class="section-hint">
+                Record structural interpretation separately
+                from the explicit phase-state judgment.
+              </p>
+            </div>
+
+            <!-- Identified structures -->
+            <div class="col-12">
+              <fieldset>
+                <legend class="form-label">
+                  Identified Structure(s)
+                </legend>
+
+                <div
+                  class="row g-2"
+                  data-xrd-structure-options
+                >
+                  {% for value, label in xrd_structure_choices %}
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        name="identified_structures"
+                        value="{{ value }}"
+                        id="id_structure_{{ value }}"
+                        {% if value == "other" %}
+                        data-xrd-other-structure-toggle
+                        {% endif %}
+                      >
+
+                      <label
+                        class="form-check-label"
+                        for="id_structure_{{ value }}"
+                      >
+                        {{ label }}
+                      </label>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- Other structure -->
+            <div
+              class="col-md-6"
+              data-xrd-other-structure-container
+              hidden
+            >
+              <label
+                class="form-label"
+                for="id_other_structure"
+              >
+                Other structure
+              </label>
+
+              <input
+                id="id_other_structure"
+                name="other_structure"
+                type="text"
+                class="form-control"
+                maxlength="200"
+                autocomplete="off"
+              >
+            </div>
+
+            <!-- Identified phases -->
+            <div class="col-md-6">
+              <label
+                class="form-label"
+                for="id_identified_phases"
+              >
+                Identified Phase(s)
+              </label>
+
+              <input
+                id="id_identified_phases"
+                name="identified_phases"
+                type="text"
+                class="form-control"
+                maxlength="500"
+                placeholder="e.g. CoFe2O4"
+              >
+
+              <div class="form-text">
+                Optional specific phase or compound assignment.
+              </div>
+            </div>
+
+            <!-- Special interpretations -->
+            <div class="col-12">
+              <fieldset>
+                <legend class="form-label">
+                  Special Interpretation
+                </legend>
+
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="id_no_identifiable_structure"
+                    name="no_identifiable_structure"
+                    value="1"
+                  >
+
+                  <label
+                    class="form-check-label"
+                    for="id_no_identifiable_structure"
+                  >
+                    No Identifiable Structure
+                  </label>
+
+                  <div class="form-text">
+                    Crystalline features may exist, but they do
+                    not match the available/reference structural
+                    families.
+                  </div>
+                </div>
+
+                <div class="form-check mt-2">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="id_amorphous"
+                    name="amorphous"
+                    value="1"
+                  >
+
+                  <label
+                    class="form-check-label"
+                    for="id_amorphous"
+                  >
+                    Amorphous / Non-crystalline
+                  </label>
+
+                  <div class="form-text">
+                    The pattern is predominantly non-crystalline.
+                  </div>
+                </div>
+
+                <div class="form-check mt-2">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="id_ambiguous"
+                    name="ambiguous"
+                    value="1"
+                  >
+
+                  <label
+                    class="form-check-label"
+                    for="id_ambiguous"
+                  >
+                    Unknown / Ambiguous
+                  </label>
+
+                  <div class="form-text">
+                    Insufficient or conflicting evidence prevents
+                    a confident structural interpretation.
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- Existing fields -->
             <div class="col-md-4">
-              <label class="form-label" for="id_confidence">Confidence</label>
-              <input id="id_confidence" name="confidence" type="text" class="form-control" placeholder="high / medium / low">
+              <label
+                class="form-label"
+                for="id_confidence"
+              >
+                Confidence
+              </label>
+
+              <select
+                id="id_confidence"
+                name="confidence"
+                class="form-select"
+              >
+                <option value="">
+                  ---------
+                </option>
+                <option value="high">
+                  High
+                </option>
+                <option value="medium">
+                  Medium
+                </option>
+                <option value="low">
+                  Low
+                </option>
+              </select>
             </div>
+
             <div class="col-md-8">
-              <label class="form-label" for="id_added_candidate_identifiers">Added candidate identifiers</label>
-              <input id="id_added_candidate_identifiers" name="added_candidate_identifiers" type="text" class="form-control" placeholder="candidate_a, candidate_b">
+              <label
+                class="form-label"
+                for="id_added_candidate_identifiers"
+              >
+                Added candidate identifiers
+              </label>
+
+              <input
+                id="id_added_candidate_identifiers"
+                name="added_candidate_identifiers"
+                type="text"
+                class="form-control"
+                placeholder="candidate_a, candidate_b"
+              >
             </div>
+
             <div class="col-12">
-              <label class="form-label" for="id_notes">Notes</label>
-              <textarea id="id_notes" name="notes" class="form-control" rows="4" placeholder="Explain the review without altering the persisted automated result."></textarea>
+              <div
+                class="alert alert-secondary py-2 mb-0"
+                data-xrd-structure-summary
+                hidden
+              >
+              </div>
             </div>
+
             <div class="col-12">
-              <button type="submit" class="btn btn-primary btn-sm">Save expert review</button>
+              <label
+                class="form-label"
+                for="id_notes"
+              >
+                Notes
+              </label>
+
+              <textarea
+                id="id_notes"
+                name="notes"
+                class="form-control"
+                rows="4"
+                placeholder="Explain the expert interpretation without altering the persisted automated result."
+              ></textarea>
             </div>
+
+            <div class="col-12">
+              <button
+                type="submit"
+                class="btn btn-primary btn-sm"
+              >
+                Save expert review
+              </button>
+            </div>
+
           </div>
         </form>
         {% else %}
@@ -382,24 +676,109 @@
         {% if review_history %}
         <div class="table-wrap">
           <table class="table table-sm mb-0">
-            <thead><tr><th>Reviewer</th><th>Status</th><th>Phase state</th><th>Hypothesis</th><th>Confidence</th><th>Created</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Reviewer</th>
+                <th>Status</th>
+                <th>Phase state</th>
+                <th>Hypothesis</th>
+                <th>Structures</th>
+                <th>Phases</th>
+                <th>Interpretation</th>
+                <th>Confidence</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+
             <tbody>
               {% for review in review_history %}
               <tr>
                 <td>
                   {{ review.reviewer_display_name }}
-                  {% if review.is_active %}<span class="badge bg-success ms-2">Active</span>{% endif %}
-                  {% if review.reviewer_organization %}<div class="section-hint">{{ review.reviewer_organization }}</div>{% endif %}
+
+                  {% if review.is_active %}
+                  <span class="badge bg-success ms-2">
+                    Active
+                  </span>
+                  {% endif %}
+
+                  {% if review.reviewer_organization %}
+                  <div class="section-hint">
+                    {{ review.reviewer_organization }}
+                  </div>
+                  {% endif %}
                 </td>
-                <td>{{ review.review_status }}</td>
-                <td>{{ review.reviewed_phase_state|default:"—" }}</td>
-                <td>{{ review.selected_hypothesis_id|default:"—" }}</td>
-                <td>{{ review.confidence|default:"—" }}</td>
-                <td>{{ review.created_at|date:"Y-m-d H:i" }}</td>
+
+                <td>
+                  {{ review.review_status }}
+                </td>
+
+                <td>
+                  {{ review.reviewed_phase_state|default:"—" }}
+                </td>
+
+                <td>
+                  {{ review.selected_hypothesis_id|default:"—" }}
+                </td>
+
+                <td>
+                  {% if review.identified_structures %}
+                    {{ review.identified_structures|join:", " }}
+
+                    {% if review.other_structure %}
+                      ({{ review.other_structure }})
+                    {% endif %}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+
+                <td>
+                  {{ review.identified_phases|default:"—" }}
+                </td>
+
+                <td>
+                  {% if review.no_identifiable_structure %}
+                    <div>
+                      No identifiable structure
+                    </div>
+                  {% endif %}
+
+                  {% if review.amorphous %}
+                    <div>
+                      Amorphous / non-crystalline
+                    </div>
+                  {% endif %}
+
+                  {% if review.ambiguous %}
+                    <div>
+                      Unknown / ambiguous
+                    </div>
+                  {% endif %}
+
+                  {% if not review.no_identifiable_structure and not review.amorphous and not review.ambiguous %}
+                    —
+                  {% endif %}
+                </td>
+
+                <td>
+                  {{ review.confidence|default:"—" }}
+                </td>
+
+                <td>
+                  {{ review.created_at|date:"Y-m-d H:i" }}
+                </td>
               </tr>
+
               {% if review.notes %}
-              <tr><td colspan="6"><strong>Notes:</strong> {{ review.notes }}</td></tr>
+              <tr>
+                <td colspan="9">
+                  <strong>Notes:</strong>
+                  {{ review.notes }}
+                </td>
+              </tr>
               {% endif %}
+
               {% endfor %}
             </tbody>
           </table>

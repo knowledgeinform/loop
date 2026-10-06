@@ -152,6 +152,11 @@ AFLOW_REFRESH_PER_TRAINING_JOB = int(
 # site at request time; see catalog/templatetags/s4e_shell.py. Empty URL =
 # fetch nothing and use the committed copies (local development).
 S4E_SHELL_URL = os.environ.get("S4E_SHELL_URL", "https://s4e.ai/")
+# The LOOP front page on the group site (https://s4e.ai/loop). Signed-out
+# visitors to LOOP's landing page are sent there (catalog.views.index).
+# Empty = no redirect (local development, tests); docker-compose.prod.yml
+# sets it for production.
+LOOP_FRONT_PAGE_URL = os.environ.get("LOOP_FRONT_PAGE_URL", "")
 S4E_SHELL_CACHE_SECONDS = int(os.environ.get("S4E_SHELL_CACHE_SECONDS", "600"))
 
 # The dev deployment runs against a clone of production, real password hashes
@@ -177,6 +182,8 @@ INSTALLED_APPS = [
     # Add our new application
     # This object was created for us in in /catalog/apps.py
     'catalog.apps.CatalogConfig',
+    # One account, two curtains (LOOP and CHAOS); see access/policy.py.
+    'access.apps.AccessConfig',
     'django.contrib.humanize',
     'rest_framework',
     'drf_spectacular',
@@ -185,6 +192,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    # One line per request to the usage record (access/usage.py); after
+    # WhiteNoise, so static files are left out.
+    "access.middleware.UsageRecordMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -192,6 +202,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "loop.middleware.ApiTokenAuthMiddleware",
+    # Every account fills in its profile once (access/middleware.py).
+    "access.middleware.ProfileRequiredMiddleware",
     "loop.middleware.ApprovedGateMiddleware",
     # After the auth middlewares (including the API-key one) so archive journal
     # entries are attributed to the resolved user rather than "anonymous".
@@ -201,6 +213,32 @@ MIDDLEWARE = [
 APPROVED_GROUP_NAME = "Approved"
 APPROVED_BYPASS_SUPERUSERS = True
 AWAITING_APPROVAL_URL_NAME = "awaiting_approval"
+
+# CHAOS access (access/policy.py). LOOP approval above is unchanged. CHAOS is
+# granted at once to LOOP-approved accounts and to accounts whose verified
+# address ends in one of CHAOS_AUTO_EMAIL_SUFFIXES; everyone else waits for an
+# admin. Raising CHAOS_TERMS_VERSION asks every account to accept again.
+# Renaming the group: move its members to the new group first. An approved
+# account found without the group is recorded as revoked (access/policy.py).
+CHAOS_GROUP_NAME = os.environ.get("CHAOS_GROUP_NAME", "CHAOS")
+CHAOS_AUTO_EMAIL_SUFFIXES = env_list("CHAOS_AUTO_EMAIL_SUFFIXES", ".edu")
+CHAOS_TERMS_VERSION = os.environ.get("CHAOS_TERMS_VERSION", "draft-2026-09")
+# Who hears about requests that need a decision; empty = active superusers.
+ACCESS_ADMIN_EMAILS = env_list("ACCESS_ADMIN_EMAILS", "")
+
+# Usage record and profile (access/usage.py, access/middleware.py; decided by
+# Corey Oses, 2026-09-29). USAGE_DIR: the usage record's root; the lines go to
+# USAGE_DIR/loop/<day>.jsonl (in the container /app/usage, with
+# USAGE_ROOT/loop mounted at /app/usage/loop); empty: nothing is written.
+# PROFILE_REQUIRED=1 sends accounts without a profile to the profile page
+# (docker-compose.prod.yml sets it; off by default so the catalog's own tests
+# and local runs are not redirected; 0 in production lets everyone through if
+# the profile page itself breaks). A new USAGE_NOTICE_VERSION asks every
+# account to accept the notice again.
+USAGE_DIR = os.environ.get("USAGE_DIR", "")
+PROFILE_REQUIRED = os.environ.get("PROFILE_REQUIRED", "0") == "1"
+USAGE_NOTICE_VERSION = os.environ.get("USAGE_NOTICE_VERSION", "2026-09")
+USAGE_CONTACT_EMAIL = os.environ.get("USAGE_CONTACT_EMAIL", "corey.oses@jhu.edu")
 
 ROOT_URLCONF = 'loop.urls'
 

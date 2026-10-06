@@ -72,6 +72,8 @@ class ApiTokenAuthMiddleware:
             if user is None:
                 return JsonResponse({"error": "invalid API key"}, status=401)
             request.user = user
+            # For the usage record (access/usage.py): which key was used.
+            request.usage_key_prefix = raw_key.split("_", 2)[1]
             request._dont_enforce_csrf_checks = True
             return self.get_response(request)
 
@@ -118,6 +120,7 @@ DEFAULT_EXEMPT = (
     r"^awaiting-approval/?$",
     r"^admin/",                    # ⬅ allow the whole admin tree
     r"^api/v1/",                   # versioned API handles its own auth/permissions
+    r"^access/",                   # CHAOS access pages check their own login
     r"^llms\.txt$",                # public LLM documentation discovery
     r"^docs\.url$",                # canonical human documentation URI
     r"^developers/api\.md$",       # public Markdown API guide
@@ -138,7 +141,6 @@ class ApprovedGateMiddleware:
         login_path = settings.LOGIN_URL.lstrip("/")
         self.exempt = [re.compile(p) for p in patterns] + [re.compile(f"^{re.escape(login_path)}")]
 
-        self.approved_group = getattr(settings, "APPROVED_GROUP_NAME", "approved")
         self.superuser_bypass = getattr(settings, "APPROVED_BYPASS_SUPERUSERS", True)
 
     def __call__(self, request):
@@ -170,8 +172,11 @@ class ApprovedGateMiddleware:
         if self.superuser_bypass and (user.is_superuser or user.is_staff):
             return self.get_response(request)
 
-        # Must be in the "approved" group
-        if not user.groups.filter(name=self.approved_group).exists():
+        # Must be approved: the "approved" group and an affiliation set by an
+        # admin (access.policy.has_loop_access, shared with the API and views).
+        from access.policy import has_loop_access
+
+        if not has_loop_access(user):
             return redirect(getattr(settings, "AWAITING_APPROVAL_URL_NAME", "awaiting_approval"))
 
         # All good

@@ -10,7 +10,8 @@ import uuid
 import zipfile
 from datetime import datetime, timezone
 
-from django.contrib.auth.models import AnonymousUser
+from types import SimpleNamespace
+from unittest.mock import patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, RequestFactory, override_settings
 
@@ -215,8 +216,9 @@ class ApiDownloadViewTests(SimpleTestCase):
 
     def _get(self, view, **kwargs):
         request = self.factory.get("/api/")
-        request.user = AnonymousUser()
-        return view(request, **kwargs)
+        request.user = SimpleNamespace(is_authenticated=True)
+        with patch.object(views, "_user_affiliations", return_value=["S4E"]):
+            return view(request, **kwargs)
 
     def test_composition_download_headers_and_zip(self):
         resp = self._get(views.composition_download, material_auid=self.material_auid)

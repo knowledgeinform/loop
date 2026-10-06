@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from catalog.documents import UserAffiliation, upsert_user_affiliations
 
 
 # A LOOP-format CSV with one clear, well-resolved peak around 20.29 deg so the
@@ -68,6 +69,8 @@ class XrdCacheApiSuccessTests(TestCase):
         self.user = User.objects.create_user(
             "apisuccess", "success@example.com", "pass", is_staff=True, is_superuser=True
         )
+        upsert_user_affiliations(self.user, ["S4E"])
+        self.addCleanup(lambda: UserAffiliation.objects(user_id=self.user.id).delete())
         self.client = Client()
         self.client.force_login(self.user)
 

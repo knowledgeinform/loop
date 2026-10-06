@@ -86,8 +86,8 @@ class VisibilityMatchStageTests(SimpleTestCase):
     def test_s4e_bypass(self):
         self.assertIsNone(visibility_match_stage(["S4E", "APL"]))
 
-    def test_empty_tags_public_s4e_only(self):
-        expected = {"$match": {"visibility_affiliations": "S4E"}}
+    def test_empty_tags_match_nothing(self):
+        expected = {"$match": {"_id": {"$in": []}}}
         self.assertEqual(visibility_match_stage([]), expected)
         self.assertEqual(visibility_match_stage(None), expected)
 

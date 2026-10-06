@@ -1,6 +1,5 @@
 """Scope and approval permissions for LOOP API v1."""
 
-from django.conf import settings
 from rest_framework.permissions import BasePermission
 from rest_framework.permissions import SAFE_METHODS
 
@@ -13,15 +12,14 @@ class IsApprovedUser(BasePermission):
     message = "Your LOOP account has not been approved."
 
     def has_permission(self, request, view):
+        from access.policy import has_loop_access
+
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        if getattr(settings, "APPROVED_BYPASS_SUPERUSERS", True) and (
-            user.is_staff or user.is_superuser
-        ):
-            return True
-        group_name = getattr(settings, "APPROVED_GROUP_NAME", "Approved")
-        return user.groups.filter(name=group_name).exists()
+        # The Approved group and an affiliation set by an admin; staff and
+        # superusers pass when APPROVED_BYPASS_SUPERUSERS is on.
+        return has_loop_access(user)
 
 
 class HasDataReadScope(BasePermission):
